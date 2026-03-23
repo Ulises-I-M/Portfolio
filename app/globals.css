@@ -1,0 +1,125 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #0a0a0a;
+  --color-bg-2: #111111;
+  --color-accent: #a8ff00;
+  --color-accent-dim: #7acc00;
+  --color-text: #efefef;
+  --color-muted: #555555;
+  --color-border: #1e1e1e;
+
+  --font-family-mono: "Space Mono", "Fira Code", ui-monospace, monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  background-color: #0a0a0a;
+}
+
+body {
+  background-color: #0a0a0a;
+  color: #efefef;
+  font-family: "Space Mono", ui-monospace, monospace;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+::-webkit-scrollbar-thumb {
+  background: #a8ff00;
+}
+
+/* Selection */
+::selection {
+  background: #a8ff00;
+  color: #0a0a0a;
+}
+
+/* Blinking cursor */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+.blink {
+  animation: blink 1s step-end infinite;
+}
+
+/* Neon glow text utility */
+.glow {
+  text-shadow: 0 0 20px rgba(168, 255, 0, 0.5), 0 0 40px rgba(168, 255, 0, 0.2);
+}
+
+/* Neon box glow */
+.glow-box {
+  box-shadow: 0 0 0 1px #a8ff00, 0 0 20px rgba(168, 255, 0, 0.15);
+}
+
+/* HUD bracket corners */
+.hud-corners {
+  position: relative;
+}
+.hud-corners::before,
+.hud-corners::after {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-color: #a8ff00;
+  border-style: solid;
+}
+.hud-corners::before {
+  top: 0;
+  left: 0;
+  border-width: 1px 0 0 1px;
+}
+.hud-corners::after {
+  bottom: 0;
+  right: 0;
+  border-width: 0 1px 1px 0;
+}
+
+/* Thin neon rule */
+.neon-rule {
+  border: none;
+  height: 1px;
+  background: linear-gradient(to right, transparent, #a8ff00, transparent);
+  opacity: 0.4;
+}
+
+/* Grid background utility */
+.bg-grid {
+  background-image:
+    linear-gradient(rgba(168, 255, 0, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(168, 255, 0, 0.025) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+/* Focus states */
+*:focus-visible {
+  outline: 1px solid #a8ff00;
+  outline-offset: 2px;
+}
+
+/* Prefers reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
