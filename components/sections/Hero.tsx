@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
-import { Github, Linkedin, Instagram } from "lucide-react";
+import SocialIcon from "@/components/ui/SocialIcon";
 import Crosshair from "@/components/ui/Crosshair";
 import { personal, social } from "@/lib/data";
 
@@ -15,12 +15,6 @@ const stagger = {
     show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number] } },
   },
 };
-
-const socialIcons = {
-  github: Github,
-  linkedin: Linkedin,
-  instagram: Instagram,
-} as const;
 
 function SplitText({ text, className }: { text: string; className?: string }) {
   const prefersReducedMotion = useReducedMotion();
@@ -183,28 +177,23 @@ export default function Hero() {
 
         {/* Social links with icons */}
         <motion.div {...fadeIn(1.2)} className="mt-12 flex items-center gap-6">
-          {social.map((s) => {
-            const Icon = socialIcons[s.icon as keyof typeof socialIcons];
-            return (
-              <a
-                key={s.label}
-                href={s.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 font-mono text-[10px] tracking-[0.2em] text-[#555555] transition-colors duration-200 hover:text-[#a8ff00] cursor-pointer group"
-                aria-label={`${s.label} profile`}
-              >
-                {Icon && (
-                  <Icon
-                    size={14}
-                    className="transition-colors duration-200 group-hover:text-[#a8ff00]"
-                    aria-hidden="true"
-                  />
-                )}
-                {s.label.toUpperCase()}
-              </a>
-            );
-          })}
+          {social.map((s) => (
+            <a
+              key={s.label}
+              href={s.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 font-mono text-[10px] tracking-[0.2em] text-[#555555] transition-colors duration-200 hover:text-[#a8ff00] cursor-pointer group"
+              aria-label={`${s.label} profile`}
+            >
+              <SocialIcon
+                name={s.icon as "github" | "linkedin" | "instagram"}
+                size={14}
+                className="transition-colors duration-200 group-hover:text-[#a8ff00]"
+              />
+              {s.label.toUpperCase()}
+            </a>
+          ))}
         </motion.div>
       </div>
 

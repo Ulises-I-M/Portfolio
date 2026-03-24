@@ -1,18 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Github, Linkedin, Instagram } from "lucide-react";
+import SocialIcon from "@/components/ui/SocialIcon";
 import SectionLabel from "@/components/ui/SectionLabel";
 import HUDCorners from "@/components/ui/HUDCorners";
 import RevealText from "@/components/ui/RevealText";
 import Crosshair from "@/components/ui/Crosshair";
 import { personal, social } from "@/lib/data";
-
-const socialIcons = {
-  github: Github,
-  linkedin: Linkedin,
-  instagram: Instagram,
-} as const;
 
 export default function Contact() {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
@@ -104,28 +98,23 @@ export default function Contact() {
                 // SOCIAL
               </p>
               <div className="flex gap-6">
-                {social.map((s) => {
-                  const Icon = socialIcons[s.icon as keyof typeof socialIcons];
-                  return (
-                    <a
-                      key={s.label}
-                      href={s.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 font-mono text-xs tracking-[0.15em] text-[#555555] hover:text-[#a8ff00] transition-colors cursor-pointer group"
-                      aria-label={`${s.label} — ${s.handle}`}
-                    >
-                      {Icon && (
-                        <Icon
-                          size={14}
-                          className="transition-colors duration-200 group-hover:text-[#a8ff00]"
-                          aria-hidden="true"
-                        />
-                      )}
-                      {s.label.toUpperCase()}
-                    </a>
-                  );
-                })}
+                {social.map((s) => (
+                  <a
+                    key={s.label}
+                    href={s.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 font-mono text-xs tracking-[0.15em] text-[#555555] hover:text-[#a8ff00] transition-colors cursor-pointer group"
+                    aria-label={`${s.label} — ${s.handle}`}
+                  >
+                    <SocialIcon
+                      name={s.icon as "github" | "linkedin" | "instagram"}
+                      size={14}
+                      className="transition-colors duration-200 group-hover:text-[#a8ff00]"
+                    />
+                    {s.label.toUpperCase()}
+                  </a>
+                ))}
               </div>
             </div>
           </RevealText>
