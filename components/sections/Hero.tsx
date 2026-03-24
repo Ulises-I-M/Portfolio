@@ -1,6 +1,7 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
+import { Github, Linkedin, Instagram } from "lucide-react";
 import Crosshair from "@/components/ui/Crosshair";
 import { personal, social } from "@/lib/data";
 
@@ -14,6 +15,12 @@ const stagger = {
     show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number] } },
   },
 };
+
+const socialIcons = {
+  github: Github,
+  linkedin: Linkedin,
+  instagram: Instagram,
+} as const;
 
 function SplitText({ text, className }: { text: string; className?: string }) {
   const prefersReducedMotion = useReducedMotion();
@@ -72,12 +79,30 @@ export default function Hero() {
         style={{ background: "linear-gradient(to bottom, transparent, #a8ff00 30%, #a8ff00 70%, transparent)" }}
       />
 
+      {/* Floating ambient glow */}
+      <motion.div
+        aria-hidden="true"
+        className="absolute top-1/3 left-1/4 w-96 h-96 rounded-full pointer-events-none"
+        style={{ background: "radial-gradient(circle, rgba(168,255,0,0.04) 0%, transparent 70%)" }}
+        animate={prefersReducedMotion ? {} : {
+          scale: [1, 1.15, 1],
+          opacity: [0.5, 1, 0.5],
+        }}
+        transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+      />
+
       {/* HUD data labels — top right */}
       <div className="absolute top-24 right-8 hidden md:flex flex-col items-end gap-1 font-mono text-[10px] text-[#555555] tracking-[0.15em]">
         <span>LOC: {personal.locationCode}</span>
         <span>STACK: NEXT.JS</span>
         <span>ROLE: FRONTEND</span>
-        <span className="text-[#a8ff00]">STATUS: AVAILABLE</span>
+        <motion.span
+          className="text-[#a8ff00]"
+          animate={prefersReducedMotion ? {} : { opacity: [1, 0.4, 1] }}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+        >
+          STATUS: AVAILABLE
+        </motion.span>
       </div>
 
       {/* HUD data labels — bottom left */}
@@ -156,20 +181,30 @@ export default function Hero() {
           </a>
         </motion.div>
 
-        {/* Social links */}
+        {/* Social links with icons */}
         <motion.div {...fadeIn(1.2)} className="mt-12 flex items-center gap-6">
-          {social.map((s) => (
-            <a
-              key={s.label}
-              href={s.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-mono text-[10px] tracking-[0.2em] text-[#555555] transition-colors duration-200 hover:text-[#a8ff00] cursor-pointer"
-              aria-label={`${s.label} profile`}
-            >
-              {s.label.toUpperCase()}
-            </a>
-          ))}
+          {social.map((s) => {
+            const Icon = socialIcons[s.icon as keyof typeof socialIcons];
+            return (
+              <a
+                key={s.label}
+                href={s.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 font-mono text-[10px] tracking-[0.2em] text-[#555555] transition-colors duration-200 hover:text-[#a8ff00] cursor-pointer group"
+                aria-label={`${s.label} profile`}
+              >
+                {Icon && (
+                  <Icon
+                    size={14}
+                    className="transition-colors duration-200 group-hover:text-[#a8ff00]"
+                    aria-hidden="true"
+                  />
+                )}
+                {s.label.toUpperCase()}
+              </a>
+            );
+          })}
         </motion.div>
       </div>
 

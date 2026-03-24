@@ -53,7 +53,7 @@ export default function About() {
               </div>
               <div>
                 <span className="text-[#555555] block">FOCUS</span>
-                <span className="text-[#a8ff00]">FRONTEND</span>
+                <span className="text-[#a8ff00]">FE / UX</span>
               </div>
             </div>
           </RevealText>
@@ -77,11 +77,24 @@ export default function About() {
             </RevealText>
 
             <RevealText delay={0.4}>
-              <p className="font-mono text-sm leading-loose text-[#555555] mb-10 max-w-lg">
+              <p className="font-mono text-sm leading-loose text-[#555555] mb-6 max-w-lg">
                 Me especializo en construir interfaces rápidas y accesibles, con atención al
                 detalle visual y al rendimiento. Trabajo cómodo tanto en el diseño como en la
                 implementación técnica.
               </p>
+            </RevealText>
+
+            <RevealText delay={0.45}>
+              <div className="border-l-2 border-[#a8ff00] pl-4 mb-10 max-w-lg">
+                <p className="font-mono text-[10px] tracking-[0.2em] text-[#a8ff00] mb-1">
+                  // UX / UI
+                </p>
+                <p className="font-mono text-sm leading-loose text-[#555555]">
+                  Tengo una fuerte pasión por el diseño UX/UI y el diseño visual en general.
+                  Me preocupo por cada detalle: tipografía, espaciado, jerarquía, micro-interacciones.
+                  El código y el diseño no son mundos separados — los mejores productos viven en esa intersección.
+                </p>
+              </div>
             </RevealText>
 
             {/* Skills grid */}
