@@ -1,16 +1,6 @@
-@import "tailwindcss";
-
-@theme {
-  --color-bg: #0a0a0a;
-  --color-bg-2: #111111;
-  --color-accent: #a8ff00;
-  --color-accent-dim: #7acc00;
-  --color-text: #efefef;
-  --color-muted: #555555;
-  --color-border: #1e1e1e;
-
-  --font-family-mono: "Space Mono", "Fira Code", ui-monospace, monospace;
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 *,
 *::before,
@@ -65,30 +55,6 @@ body {
 /* Neon box glow */
 .glow-box {
   box-shadow: 0 0 0 1px #a8ff00, 0 0 20px rgba(168, 255, 0, 0.15);
-}
-
-/* HUD bracket corners */
-.hud-corners {
-  position: relative;
-}
-.hud-corners::before,
-.hud-corners::after {
-  content: "";
-  position: absolute;
-  width: 12px;
-  height: 12px;
-  border-color: #a8ff00;
-  border-style: solid;
-}
-.hud-corners::before {
-  top: 0;
-  left: 0;
-  border-width: 1px 0 0 1px;
-}
-.hud-corners::after {
-  bottom: 0;
-  right: 0;
-  border-width: 0 1px 1px 0;
 }
 
 /* Thin neon rule */
