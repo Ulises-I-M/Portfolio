@@ -90,14 +90,14 @@ export default function Hero() {
       {/* HUD data labels — top right */}
       <div className="absolute top-24 right-8 hidden md:flex flex-col items-end gap-1 font-mono text-[10px] text-[#555555] tracking-[0.15em]">
         <span>LOC: {personal.locationCode}</span>
-        <span>STACK: NEXT.JS</span>
-        <span>ROLE: FRONTEND</span>
+        <span>{tr.hero.hudStack}</span>
+        <span>{tr.hero.hudRole}</span>
         <motion.span
           className="text-[#a8ff00]"
           animate={prefersReducedMotion ? {} : { opacity: [1, 0.4, 1] }}
           transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
         >
-          STATUS: AVAILABLE
+          {tr.hero.hudStatus}
         </motion.span>
       </div>
 

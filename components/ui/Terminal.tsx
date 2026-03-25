@@ -153,6 +153,17 @@ export default function Terminal() {
   };
 
   return (
+    <>
+      {/* Floating trigger button — always visible */}
+      <button
+        onClick={() => setOpen(true)}
+        aria-label="Open terminal"
+        className="fixed bottom-8 left-8 z-[150] flex items-center gap-2 border border-[#1e1e1e] bg-[#0a0a0a] px-3 py-2 font-mono text-[10px] tracking-[0.2em] text-[#555555] hover:border-[#a8ff00] hover:text-[#a8ff00] transition-all duration-200 cursor-pointer group"
+      >
+        <span className="text-[#a8ff00] group-hover:opacity-100 opacity-60">&gt;_</span>
+        TERMINAL
+      </button>
+
     <AnimatePresence>
       {open && (
         <motion.div
@@ -226,5 +237,6 @@ export default function Terminal() {
         </motion.div>
       )}
     </AnimatePresence>
+    </>
   );
 }

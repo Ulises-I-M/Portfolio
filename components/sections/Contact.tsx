@@ -50,7 +50,7 @@ export default function Contact() {
 
       <div className="mx-auto max-w-7xl">
         <RevealText>
-          <SectionLabel index="07" label={tr.sections.contact} className="mb-12" />
+          <SectionLabel index="06" label={tr.sections.contact} className="mb-12" />
         </RevealText>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">

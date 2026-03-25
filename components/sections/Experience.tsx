@@ -10,7 +10,7 @@ import { useLang } from "@/context/LangContext";
 
 export default function Experience() {
   const [openAchievement, setOpenAchievement] = useState<string | null>(null);
-  const { tr } = useLang();
+  const { tr, lang } = useLang();
 
   return (
     <section
@@ -48,7 +48,7 @@ export default function Experience() {
 
                 {/* Description */}
                 <p className="font-mono text-sm leading-loose text-[#555555] mb-6">
-                  {exp.description}
+                  {lang === "es" && exp.descriptionEs ? exp.descriptionEs : exp.description}
                 </p>
 
                 {/* Tags */}
@@ -127,7 +127,7 @@ export default function Experience() {
                                 <div className="border border-t-0 border-[#a8ff00] border-opacity-30 px-4 py-4"
                                   style={{ borderColor: "rgba(168,255,0,0.2)" }}>
                                   <p className="font-mono text-xs leading-loose text-[#555555]">
-                                    {ach.description}
+                                    {lang === "es" && ach.descriptionEs ? ach.descriptionEs : ach.description}
                                   </p>
                                 </div>
                               </motion.div>

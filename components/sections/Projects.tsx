@@ -7,10 +7,11 @@ import SectionLabel from "@/components/ui/SectionLabel";
 import RevealText from "@/components/ui/RevealText";
 import { projects, type Project } from "@/lib/data";
 import { useLang } from "@/context/LangContext";
+import type { Lang } from "@/lib/i18n";
 
 // ─── Project Detail Modal ────────────────────────────────────────────────────
 
-function ProjectModal({ project, onClose }: { project: Project; onClose: () => void }) {
+function ProjectModal({ project, onClose, lang }: { project: Project; onClose: () => void; lang: Lang }) {
   const { tr } = useLang();
 
   return (
@@ -93,7 +94,7 @@ function ProjectModal({ project, onClose }: { project: Project; onClose: () => v
           </div>
 
           <p className="font-mono text-sm text-[#555555] leading-loose mb-5">
-            {project.description}
+            {lang === "es" && project.descriptionEs ? project.descriptionEs : project.description}
           </p>
 
           <div className="flex flex-wrap gap-2">
@@ -118,9 +119,11 @@ function ProjectModal({ project, onClose }: { project: Project; onClose: () => v
 function ProjectCard({
   project,
   onSelect,
+  lang,
 }: {
   project: Project;
   onSelect: (p: Project) => void;
+  lang: Lang;
 }) {
   const [hovered, setHovered] = useState(false);
   const { tr } = useLang();
@@ -211,7 +214,7 @@ function ProjectCard({
           </a>
         </div>
         <p className="font-mono text-xs text-[#555555] leading-relaxed mb-4">
-          {project.description}
+          {lang === "es" && project.descriptionEs ? project.descriptionEs : project.description}
         </p>
         <div className="flex flex-wrap gap-2">
           {project.tags.map((tag) => (
@@ -235,7 +238,7 @@ type Filter = "all" | "web" | "personal";
 export default function Projects() {
   const [filter, setFilter] = useState<Filter>("all");
   const [selected, setSelected] = useState<Project | null>(null);
-  const { tr } = useLang();
+  const { tr, lang } = useLang();
 
   const filters = [
     { label: tr.projects.filterAll, value: "all" as Filter },
@@ -287,7 +290,7 @@ export default function Projects() {
               className="grid grid-cols-1 sm:grid-cols-2 gap-6"
             >
               {filtered.map((project) => (
-                <ProjectCard key={project.title} project={project} onSelect={setSelected} />
+                <ProjectCard key={project.title} project={project} onSelect={setSelected} lang={lang} />
               ))}
             </motion.div>
           </AnimatePresence>
@@ -297,7 +300,7 @@ export default function Projects() {
       {/* Modal */}
       <AnimatePresence>
         {selected && (
-          <ProjectModal project={selected} onClose={() => setSelected(null)} />
+          <ProjectModal project={selected} onClose={() => setSelected(null)} lang={lang} />
         )}
       </AnimatePresence>
     </>

@@ -14,6 +14,9 @@ export const t = {
       viewWork: "VIEW WORK",
       contact: "CONTACT",
       cv: "CV.PDF",
+      hudStatus: "STATUS: AVAILABLE",
+      hudRole: "ROLE: FRONTEND",
+      hudStack: "STACK: NEXT.JS",
     },
     about: {
       heading1: "FRONTEND",
@@ -30,7 +33,6 @@ export const t = {
       experience: "Experience",
       education: "Education",
       projects: "Projects",
-      testimonials: "Testimonials",
       contact: "Contact",
     },
     experience: {
@@ -49,9 +51,6 @@ export const t = {
       filterPersonal: "PERSONAL",
       project: "PROJECT",
       projects: "PROJECTS",
-    },
-    testimonials: {
-      from: "FROM",
     },
     contact: {
       heading1: "LET'S BUILD",
@@ -90,6 +89,9 @@ export const t = {
       viewWork: "VER TRABAJO",
       contact: "CONTACTO",
       cv: "CV.PDF",
+      hudStatus: "ESTADO: DISPONIBLE",
+      hudRole: "ROL: FRONTEND",
+      hudStack: "STACK: NEXT.JS",
     },
     about: {
       heading1: "DESARROLLADOR",
@@ -106,7 +108,6 @@ export const t = {
       experience: "Experiencia",
       education: "Educación",
       projects: "Proyectos",
-      testimonials: "Testimonios",
       contact: "Contacto",
     },
     experience: {
@@ -125,9 +126,6 @@ export const t = {
       filterPersonal: "PERSONAL",
       project: "PROYECTO",
       projects: "PROYECTOS",
-    },
-    testimonials: {
-      from: "DE",
     },
     contact: {
       heading1: "INICIEMOS",
