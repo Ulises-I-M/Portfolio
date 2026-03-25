@@ -1,46 +1,26 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-
 export default function GrainOverlay() {
-  const svgRef = useRef<SVGSVGElement>(null);
-
-  useEffect(() => {
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduced) return;
-
-    // Query within our own SVG element — avoids dynamic ID issues
-    const turb = svgRef.current?.querySelector("feTurbulence");
-    if (!turb) return;
-
-    let rafId: number;
-    let lastTime = 0;
-
-    const animate = (timestamp: number) => {
-      if (timestamp - lastTime >= 80) {
-        turb.setAttribute("seed", String(Math.floor(Math.random() * 200)));
-        lastTime = timestamp;
-      }
-      rafId = requestAnimationFrame(animate);
-    };
-
-    rafId = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(rafId);
-  }, []);
-
   return (
     <>
-      {/* Animated SVG grain noise — seed is managed only via JS, not JSX props,
-          so React reconciliation never resets it back to a fixed value */}
+      {/* Animated grain noise — CSS steps() animation shifts the tiled
+          feTurbulence pattern to a new position each frame (~12fps).
+          stitchTiles="stitch" ensures seamless tiling at any offset. */}
       <svg
-        ref={svgRef}
         aria-hidden="true"
-        className="pointer-events-none fixed inset-0 z-[9999] h-full w-full"
-        style={{ opacity: 0.06 }}
+        className="pointer-events-none fixed z-[9999]"
+        style={{
+          /* Oversized so translations don't reveal edges */
+          top: "-30%",
+          left: "-30%",
+          width: "160%",
+          height: "160%",
+          opacity: 0.12,
+          animation: "grain 0.8s steps(10, end) infinite",
+        }}
         xmlns="http://www.w3.org/2000/svg"
       >
         <filter id="grain">
-          {/* No seed prop — owned entirely by the rAF loop below */}
           <feTurbulence
             type="fractalNoise"
             baseFrequency="0.65"
