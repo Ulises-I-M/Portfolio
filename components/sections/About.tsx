@@ -4,6 +4,7 @@ import Image from "next/image";
 import SectionLabel from "@/components/ui/SectionLabel";
 import HUDCorners from "@/components/ui/HUDCorners";
 import RevealText from "@/components/ui/RevealText";
+import GrainEffect from "@/components/ui/GrainEffect";
 import { personal, skills } from "@/lib/data";
 import { useLang } from "@/context/LangContext";
 
@@ -43,6 +44,7 @@ export default function About() {
                       "linear-gradient(135deg, rgba(168,255,0,0.06) 0%, transparent 60%)",
                   }}
                 />
+                <GrainEffect />
               </div>
             </HUDCorners>
 

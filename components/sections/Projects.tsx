@@ -5,6 +5,7 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import SectionLabel from "@/components/ui/SectionLabel";
 import RevealText from "@/components/ui/RevealText";
+import GrainEffect from "@/components/ui/GrainEffect";
 import { projects, type Project } from "@/lib/data";
 import { useLang } from "@/context/LangContext";
 import type { Lang } from "@/lib/i18n";
@@ -34,7 +35,7 @@ function ProjectModal({ project, onClose, lang }: { project: Project; onClose: (
         style={{ boxShadow: "0 0 40px rgba(168,255,0,0.08)" }}
       >
         {/* Image */}
-        <div className="relative aspect-video bg-[#111111]">
+        <div className="relative aspect-video overflow-hidden bg-[#111111]">
           <Image
             src={project.image}
             alt={project.title}
@@ -49,6 +50,7 @@ function ProjectModal({ project, onClose, lang }: { project: Project; onClose: (
             className="absolute inset-0 pointer-events-none"
             style={{ background: "linear-gradient(135deg, rgba(168,255,0,0.06) 0%, transparent 60%)" }}
           />
+          <GrainEffect />
           {/* HUD corners */}
           {["top-3 left-3", "top-3 right-3", "bottom-3 left-3", "bottom-3 right-3"].map((pos, idx) => (
             <span
@@ -171,6 +173,7 @@ function ProjectCard({
             opacity: hovered ? 1 : 0,
           }}
         />
+        <GrainEffect />
         {/* HUD corner brackets visible on hover */}
         {["top-2 left-2", "top-2 right-2", "bottom-2 left-2", "bottom-2 right-2"].map(
           (pos, idx) => (
