@@ -1,33 +1,46 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useId } from "react";
 
 export default function GrainOverlay() {
-  const turbRef = useRef<SVGFETurbulenceElement>(null);
+  const filterId = useId().replace(/:/g, "");
 
   useEffect(() => {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduced || !turbRef.current) return;
+    if (reduced) return;
 
-    const tick = () => {
-      turbRef.current?.setAttribute("seed", String(Math.floor(Math.random() * 200)));
+    const turb = document.querySelector<SVGFETurbulenceElement>(
+      `#grain-${filterId} feTurbulence`
+    );
+    if (!turb) return;
+
+    let rafId: number;
+    let lastTime = 0;
+    const INTERVAL = 80; // ~12fps
+
+    const animate = (timestamp: number) => {
+      if (timestamp - lastTime >= INTERVAL) {
+        turb.setAttribute("seed", String(Math.floor(Math.random() * 200)));
+        lastTime = timestamp;
+      }
+      rafId = requestAnimationFrame(animate);
     };
 
-    const id = setInterval(tick, 80); // ~12fps grain flicker
-    return () => clearInterval(id);
-  }, []);
+    rafId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(rafId);
+  }, [filterId]);
 
   return (
     <>
       {/* Animated SVG grain noise */}
       <svg
         aria-hidden="true"
-        className="pointer-events-none fixed inset-0 z-[9999] h-full w-full opacity-[0.045]"
+        className="pointer-events-none fixed inset-0 z-[9999] h-full w-full"
+        style={{ opacity: 0.055 }}
         xmlns="http://www.w3.org/2000/svg"
       >
-        <filter id="grain">
+        <filter id={`grain-${filterId}`}>
           <feTurbulence
-            ref={turbRef}
             type="fractalNoise"
             baseFrequency="0.65"
             numOctaves="3"
@@ -36,7 +49,7 @@ export default function GrainOverlay() {
           />
           <feColorMatrix type="saturate" values="0" />
         </filter>
-        <rect width="100%" height="100%" filter="url(#grain)" />
+        <rect width="100%" height="100%" filter={`url(#grain-${filterId})`} />
       </svg>
 
       {/* Scanlines */}
