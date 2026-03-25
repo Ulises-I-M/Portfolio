@@ -173,6 +173,14 @@ export default function Hero() {
           >
             CONTACT
           </a>
+          <a
+            href="/cv.pdf"
+            download
+            className="inline-flex items-center gap-2 border border-[#1e1e1e] px-6 py-3 font-mono text-xs tracking-[0.2em] text-[#555555] transition-all duration-200 hover:border-[#a8ff00] hover:text-[#a8ff00] cursor-pointer"
+            aria-label="Download CV"
+          >
+            CV.PDF <span aria-hidden="true">↓</span>
+          </a>
         </motion.div>
 
         {/* Social links with icons */}
