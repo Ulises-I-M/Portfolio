@@ -14,25 +14,24 @@ interface Module {
   name: string;
   pct: number;
   category: "FRONTEND" | "FRAMEWORKS" | "TOOLS";
-  color: string;
 }
 
 const MODULES: Module[] = [
   // FRONTEND
-  { id: "M.001", name: "HTML5",       pct: 92, category: "FRONTEND",   color: "#e34f26" },
-  { id: "M.002", name: "CSS3",        pct: 90, category: "FRONTEND",   color: "#264de4" },
-  { id: "M.003", name: "JavaScript",  pct: 85, category: "FRONTEND",   color: "#f7df1e" },
-  { id: "M.004", name: "TypeScript",  pct: 82, category: "FRONTEND",   color: "#3178c6" },
+  { id: "M.001", name: "HTML5",       pct: 92, category: "FRONTEND"   },
+  { id: "M.002", name: "CSS3",        pct: 90, category: "FRONTEND"   },
+  { id: "M.003", name: "JavaScript",  pct: 85, category: "FRONTEND"   },
+  { id: "M.004", name: "TypeScript",  pct: 82, category: "FRONTEND"   },
   // FRAMEWORKS
-  { id: "M.005", name: "React",       pct: 90, category: "FRAMEWORKS", color: "#61dafb" },
-  { id: "M.006", name: "Next.js",     pct: 80, category: "FRAMEWORKS", color: "#efefef" },
-  { id: "M.007", name: "Vite",        pct: 72, category: "FRAMEWORKS", color: "#646cff" },
+  { id: "M.005", name: "React",       pct: 90, category: "FRAMEWORKS" },
+  { id: "M.006", name: "Next.js",     pct: 80, category: "FRAMEWORKS" },
+  { id: "M.007", name: "Vite",        pct: 72, category: "FRAMEWORKS" },
   // TOOLS
-  { id: "M.008", name: "Figma",       pct: 78, category: "TOOLS",      color: "#f24e1e" },
-  { id: "M.009", name: "Git",         pct: 83, category: "TOOLS",      color: "#f05032" },
-  { id: "M.010", name: "Jira",        pct: 68, category: "TOOLS",      color: "#0052cc" },
-  { id: "M.011", name: "Confluence",  pct: 65, category: "TOOLS",      color: "#172b4d" },
-  { id: "M.012", name: "ThingsBoard", pct: 78, category: "TOOLS",      color: "#a8ff00" },
+  { id: "M.008", name: "Figma",       pct: 78, category: "TOOLS"      },
+  { id: "M.009", name: "Git",         pct: 83, category: "TOOLS"      },
+  { id: "M.010", name: "Jira",        pct: 68, category: "TOOLS"      },
+  { id: "M.011", name: "Confluence",  pct: 65, category: "TOOLS"      },
+  { id: "M.012", name: "ThingsBoard", pct: 78, category: "TOOLS"      },
 ];
 
 const CATEGORIES: Array<{ key: Module["category"]; label: string }> = [
@@ -48,11 +47,12 @@ function getLevel(pct: number): Level {
   return "JNR";
 }
 
+// All levels use the portfolio neon-green / mono palette — no per-tech colors
 const LEVEL_STYLE: Record<Level, { color: string; border: string }> = {
-  EXPERT: { color: "#a8ff00", border: "rgba(168,255,0,0.5)" },
-  ADV:    { color: "#a8ff00", border: "rgba(168,255,0,0.25)" },
-  PRO:    { color: "#555555", border: "#2a2a2a" },
-  JNR:    { color: "#333333", border: "#222222" },
+  EXPERT: { color: "#a8ff00",              border: "rgba(168,255,0,0.45)" },
+  ADV:    { color: "rgba(168,255,0,0.65)", border: "rgba(168,255,0,0.2)"  },
+  PRO:    { color: "#555555",              border: "#2a2a2a"               },
+  JNR:    { color: "#333333",              border: "#1e1e1e"               },
 };
 
 // ─── Animated bar ─────────────────────────────────────────────────────────────
@@ -78,17 +78,14 @@ function ModuleRow({ mod, index }: { mod: Module; index: number }) {
       </span>
 
       {/* Name */}
-      <span
-        className="font-mono text-[11px] tracking-[0.15em] font-bold truncate"
-        style={{ color: mod.color }}
-      >
+      <span className="font-mono text-[11px] tracking-[0.15em] font-bold text-[#efefef] truncate">
         {mod.name.toUpperCase()}
       </span>
 
       {/* Bar track */}
       <div
         className="relative h-[6px] overflow-hidden"
-        style={{ background: "rgba(255,255,255,0.04)" }}
+        style={{ background: "rgba(168,255,0,0.06)" }}
       >
         {/* Fill */}
         <motion.div
@@ -96,31 +93,31 @@ function ModuleRow({ mod, index }: { mod: Module; index: number }) {
           initial={{ width: 0 }}
           animate={inView ? { width: `${mod.pct}%` } : { width: 0 }}
           transition={{ duration: 1, delay: index * 0.06 + 0.15, ease: [0.25, 0.46, 0.45, 0.94] }}
-          style={{ background: mod.color, opacity: 0.85 }}
+          style={{ background: "#a8ff00", opacity: 0.8 }}
         />
         {/* CRT scanline overlay */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
             background:
-              "repeating-linear-gradient(to bottom, transparent 0px, transparent 1px, rgba(0,0,0,0.25) 1px, rgba(0,0,0,0.25) 2px)",
+              "repeating-linear-gradient(to bottom, transparent 0px, transparent 1px, rgba(0,0,0,0.3) 1px, rgba(0,0,0,0.3) 2px)",
           }}
         />
         {/* Glow tip */}
         <motion.div
-          className="absolute top-0 h-full w-2"
+          className="absolute top-0 h-full w-3"
           initial={{ left: 0, opacity: 0 }}
-          animate={inView ? { left: `${mod.pct - 2}%`, opacity: [0, 1, 0] } : {}}
+          animate={inView ? { left: `${mod.pct - 3}%`, opacity: [0, 1, 0] } : {}}
           transition={{ duration: 1, delay: index * 0.06 + 0.15 }}
-          style={{ background: `linear-gradient(to right, transparent, ${mod.color})`, filter: "blur(2px)" }}
+          style={{
+            background: "linear-gradient(to right, transparent, rgba(168,255,0,0.9))",
+            filter: "blur(2px)",
+          }}
         />
       </div>
 
       {/* Percentage */}
-      <span
-        className="font-mono text-[10px] text-right tabular-nums"
-        style={{ color: mod.color, opacity: 0.7 }}
-      >
+      <span className="font-mono text-[10px] text-right tabular-nums text-[#555555]">
         {inView ? `${mod.pct}%` : "---"}
       </span>
 
