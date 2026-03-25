@@ -3,31 +3,44 @@
 export default function GrainOverlay() {
   return (
     <>
-      {/* Animated grain noise — CSS steps() animation shifts the tiled
-          feTurbulence pattern to a new position each frame (~12fps).
-          stitchTiles="stitch" ensures seamless tiling at any offset. */}
+      {/* Retro green CRT noise — tiled feTurbulence tinted to #a8ff00,
+          CSS steps() animation pans the pattern to simulate film grain flicker */}
       <svg
         aria-hidden="true"
         className="pointer-events-none fixed z-[9999]"
         style={{
-          /* Oversized so translations don't reveal edges */
           top: "-30%",
           left: "-30%",
           width: "160%",
           height: "160%",
-          opacity: 0.12,
+          opacity: 0.18,
+          mixBlendMode: "screen",
           animation: "grain 0.8s steps(10, end) infinite",
         }}
         xmlns="http://www.w3.org/2000/svg"
       >
-        <filter id="grain">
+        <filter id="grain" colorInterpolationFilters="sRGB">
+          {/* Fine fractal noise — higher baseFrequency = finer grain pixels */}
           <feTurbulence
             type="fractalNoise"
-            baseFrequency="0.65"
-            numOctaves="3"
+            baseFrequency="0.75 0.75"
+            numOctaves="4"
             stitchTiles="stitch"
           />
-          <feColorMatrix type="saturate" values="0" />
+          {/*
+            feColorMatrix matrix:
+              - RGB fixed to #a8ff00 → (0.659, 1.0, 0.0)
+              - Alpha = 5 * A_in - 1.5  → high contrast: noise < 0.3 → transparent,
+                noise > 0.5 → fully visible green pixel
+            Result: sparse green grain dots on transparent background
+          */}
+          <feColorMatrix
+            type="matrix"
+            values="0 0 0 0 0.659
+                    0 0 0 0 1
+                    0 0 0 0 0
+                    0 0 0 5 -1.5"
+          />
         </filter>
         <rect width="100%" height="100%" filter="url(#grain)" />
       </svg>
