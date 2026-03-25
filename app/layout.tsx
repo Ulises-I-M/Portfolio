@@ -16,8 +16,16 @@ export const metadata: Metadata = {
   authors: [{ name: "Ulises Miranda" }],
   openGraph: {
     title: "Ulises Miranda — Frontend Developer",
-    description: "Portfolio de Ulises Miranda, Frontend Developer.",
+    description:
+      "Portfolio de Ulises Miranda, Frontend Developer especializado en React, Next.js y TypeScript. Buenos Aires, Argentina.",
     type: "website",
+    locale: "es_AR",
+    siteName: "Ulises Miranda Portfolio",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Ulises Miranda — Frontend Developer",
+    description: "Portfolio de Ulises Miranda, Frontend Developer especializado en React, Next.js y TypeScript.",
   },
 };
 

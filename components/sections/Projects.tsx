@@ -236,20 +236,16 @@ function ProjectCard({
 
 // ─── Projects Section ────────────────────────────────────────────────────────
 
-type Filter = "all" | "web" | "personal";
+// Collect unique tech tags from all projects
+const ALL_TAGS = ["ALL", ...Array.from(new Set(projects.flatMap((p) => p.tags)))];
 
 export default function Projects() {
-  const [filter, setFilter] = useState<Filter>("all");
+  const [activeTag, setActiveTag] = useState("ALL");
   const [selected, setSelected] = useState<Project | null>(null);
   const { tr, lang } = useLang();
 
-  const filters = [
-    { label: tr.projects.filterAll, value: "all" as Filter },
-    { label: tr.projects.filterWeb, value: "web" as Filter },
-    { label: tr.projects.filterPersonal, value: "personal" as Filter },
-  ];
-
-  const filtered = filter === "all" ? projects : projects.filter((p) => p.category === filter);
+  const filtered =
+    activeTag === "ALL" ? projects : projects.filter((p) => p.tags.includes(activeTag));
 
   return (
     <>
@@ -259,26 +255,26 @@ export default function Projects() {
         aria-label="Projects"
       >
         <div className="mx-auto max-w-7xl">
-          <RevealText>
-            <SectionLabel index="05" label={tr.sections.projects} className="mb-12" />
+          <RevealText scan>
+            <SectionLabel index="06" label={tr.sections.projects} className="mb-12" />
           </RevealText>
 
           <RevealText delay={0.1}>
-            <div className="flex items-center gap-1 mb-10" role="tablist" aria-label="Filter projects">
-              {filters.map((f) => (
+            <div className="flex flex-wrap items-center gap-2 mb-10" role="tablist" aria-label="Filter projects by technology">
+              {ALL_TAGS.map((tag) => (
                 <button
-                  key={f.value}
+                  key={tag}
                   role="tab"
-                  aria-selected={filter === f.value}
-                  onClick={() => setFilter(f.value)}
-                  className="px-5 py-2 font-mono text-[10px] tracking-[0.2em] transition-all duration-200 cursor-pointer border"
+                  aria-selected={activeTag === tag}
+                  onClick={() => setActiveTag(tag)}
+                  className="px-4 py-1.5 font-mono text-[10px] tracking-[0.2em] transition-all duration-200 cursor-pointer border"
                   style={{
-                    borderColor: filter === f.value ? "#a8ff00" : "#1e1e1e",
-                    color: filter === f.value ? "#a8ff00" : "#555555",
-                    background: filter === f.value ? "rgba(168,255,0,0.05)" : "transparent",
+                    borderColor: activeTag === tag ? "#a8ff00" : "#1e1e1e",
+                    color: activeTag === tag ? "#a8ff00" : "#555555",
+                    background: activeTag === tag ? "rgba(168,255,0,0.05)" : "transparent",
                   }}
                 >
-                  {f.label}
+                  {tag}
                 </button>
               ))}
               <span className="ml-auto font-mono text-[10px] text-[#555555] tracking-[0.1em]">
@@ -289,7 +285,7 @@ export default function Projects() {
 
           <AnimatePresence mode="wait">
             <motion.div
-              key={filter}
+              key={activeTag}
               className="grid grid-cols-1 sm:grid-cols-2 gap-6"
             >
               {filtered.map((project) => (

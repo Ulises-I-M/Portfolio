@@ -18,7 +18,7 @@ export default function About() {
       aria-label="About Ulises Miranda"
     >
       <div className="mx-auto max-w-7xl">
-        <RevealText>
+        <RevealText scan>
           <SectionLabel index="02" label={tr.sections.about} className="mb-12" />
         </RevealText>
 

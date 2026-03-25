@@ -3,6 +3,8 @@
 import { motion, useReducedMotion } from "framer-motion";
 import SocialIcon from "@/components/ui/SocialIcon";
 import Crosshair from "@/components/ui/Crosshair";
+import GlitchText from "@/components/ui/GlitchText";
+import Typewriter from "@/components/ui/Typewriter";
 import { personal, social } from "@/lib/data";
 import { useLang } from "@/context/LangContext";
 
@@ -123,7 +125,7 @@ export default function Hero() {
             className="block text-[#efefef]"
             style={{ fontSize: "clamp(2.8rem, 7vw, 6.5rem)", lineHeight: 1 }}
           >
-            <SplitText text="ULISES" />
+            <GlitchText text="ULISES" />
           </span>
           <span
             className="block"
@@ -134,18 +136,20 @@ export default function Hero() {
               textShadow: "0 0 40px rgba(168,255,0,0.3)",
             }}
           >
-            <SplitText text="MIRANDA" />
+            <GlitchText text="MIRANDA" />
           </span>
         </h1>
 
-        {/* Role + cursor */}
-        <motion.div {...fadeIn(0.7)} className="mt-6 flex items-center gap-2">
-          <span className="font-mono text-sm md:text-base tracking-[0.2em] text-[#555555] uppercase">
-            {personal.roleDisplay}
-          </span>
-          <span
-            className="blink inline-block h-4 w-[2px] bg-[#a8ff00]"
-            aria-hidden="true"
+        {/* Role typewriter */}
+        <motion.div {...fadeIn(0.7)} className="mt-6">
+          <Typewriter
+            phrases={[
+              "FRONTEND_DEVELOPER",
+              "REACT_ENGINEER",
+              "UI_ARCHITECT",
+              "AVAILABLE_FOR_HIRE",
+            ]}
+            className="font-mono text-sm md:text-base tracking-[0.2em] text-[#555555] uppercase"
           />
         </motion.div>
 

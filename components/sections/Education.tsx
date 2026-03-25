@@ -17,7 +17,7 @@ export default function Education() {
       aria-label="Education"
     >
       <div className="mx-auto max-w-7xl">
-        <RevealText>
+        <RevealText scan>
           <SectionLabel index="04" label={tr.sections.education} className="mb-12" />
         </RevealText>
 

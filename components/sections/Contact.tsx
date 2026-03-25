@@ -49,8 +49,8 @@ export default function Contact() {
       <Crosshair className="absolute top-16 right-16 opacity-20 hidden md:block" size={24} />
 
       <div className="mx-auto max-w-7xl">
-        <RevealText>
-          <SectionLabel index="06" label={tr.sections.contact} className="mb-12" />
+        <RevealText scan>
+          <SectionLabel index="07" label={tr.sections.contact} className="mb-12" />
         </RevealText>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
