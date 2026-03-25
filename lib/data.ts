@@ -145,6 +145,63 @@ export const projects: Project[] = [
   },
 ];
 
+export type EducationEntry = {
+  degree: string;
+  institution: string;
+  year: string;
+  type: "formal" | "course" | "self";
+  tags: string[];
+};
+
+// Update these with your real education/courses
+export const education: EducationEntry[] = [
+  {
+    degree: "Bachiller Técnico en Informática",
+    institution: "Actualizar institución",
+    year: "20XX",
+    type: "formal",
+    tags: ["Redes", "Sistemas", "Programación"],
+  },
+  {
+    degree: "React — De cero a experto",
+    institution: "Udemy",
+    year: "2023",
+    type: "course",
+    tags: ["React", "JavaScript", "Hooks", "Context"],
+  },
+  {
+    degree: "TypeScript Completo",
+    institution: "Udemy",
+    year: "2024",
+    type: "course",
+    tags: ["TypeScript", "Generics", "Types"],
+  },
+  {
+    degree: "Next.js — Apps Full Stack",
+    institution: "Udemy",
+    year: "2024",
+    type: "course",
+    tags: ["Next.js", "SSR", "API Routes"],
+  },
+];
+
+export type Testimonial = {
+  name: string;
+  role: string;
+  company: string;
+  text: string;
+};
+
+// Update with real recommendations (e.g. from LinkedIn)
+export const testimonials: Testimonial[] = [
+  {
+    name: "Actualizar nombre",
+    role: "Actualizar cargo",
+    company: "Sensary",
+    text: "Agregar aquí una recomendación real de un colega, manager o cliente. Podés pedirla en LinkedIn o directamente a alguien de Sensary.",
+  },
+];
+
 export const navLinks = [
   { label: "HOME", href: "#home" },
   { label: "ABOUT", href: "#about" },

@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import SocialIcon from "@/components/ui/SocialIcon";
 import Crosshair from "@/components/ui/Crosshair";
 import { personal, social } from "@/lib/data";
+import { useLang } from "@/context/LangContext";
 
 const stagger = {
   container: {
@@ -47,6 +48,7 @@ function SplitText({ text, className }: { text: string; className?: string }) {
 
 export default function Hero() {
   const prefersReducedMotion = useReducedMotion();
+  const { tr } = useLang();
 
   const fadeIn = (delay: number) => ({
     initial: prefersReducedMotion ? {} : { opacity: 0, y: 20 },
@@ -155,7 +157,7 @@ export default function Hero() {
           {...fadeIn(1.0)}
           className="font-mono text-sm leading-relaxed text-[#555555] max-w-md"
         >
-          {personal.bio}
+          {tr.hero.bio}
         </motion.p>
 
         {/* CTAs */}
@@ -165,13 +167,13 @@ export default function Hero() {
             className="inline-flex items-center gap-2 border border-[#a8ff00] px-6 py-3 font-mono text-xs tracking-[0.2em] text-[#a8ff00] transition-all duration-200 hover:bg-[#a8ff00] hover:text-[#0a0a0a] cursor-pointer focus-visible:outline focus-visible:outline-[#a8ff00]"
             aria-label="View my work"
           >
-            VIEW WORK <span aria-hidden="true">→</span>
+            {tr.hero.viewWork} <span aria-hidden="true">→</span>
           </a>
           <a
             href="#contact"
             className="inline-flex items-center gap-2 border border-[#1e1e1e] px-6 py-3 font-mono text-xs tracking-[0.2em] text-[#555555] transition-all duration-200 hover:border-[#a8ff00] hover:text-[#efefef] cursor-pointer"
           >
-            CONTACT
+            {tr.hero.contact}
           </a>
           <a
             href="/cv.pdf"
@@ -179,7 +181,7 @@ export default function Hero() {
             className="inline-flex items-center gap-2 border border-[#1e1e1e] px-6 py-3 font-mono text-xs tracking-[0.2em] text-[#555555] transition-all duration-200 hover:border-[#a8ff00] hover:text-[#a8ff00] cursor-pointer"
             aria-label="Download CV"
           >
-            CV.PDF <span aria-hidden="true">↓</span>
+            {tr.hero.cv} <span aria-hidden="true">↓</span>
           </a>
         </motion.div>
 

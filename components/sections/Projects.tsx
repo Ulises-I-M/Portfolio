@@ -6,17 +6,124 @@ import { motion, AnimatePresence } from "framer-motion";
 import SectionLabel from "@/components/ui/SectionLabel";
 import RevealText from "@/components/ui/RevealText";
 import { projects, type Project } from "@/lib/data";
+import { useLang } from "@/context/LangContext";
 
-const filters = [
-  { label: "ALL", value: "all" },
-  { label: "WEB", value: "web" },
-  { label: "PERSONAL", value: "personal" },
-] as const;
+// ─── Project Detail Modal ────────────────────────────────────────────────────
 
-type Filter = "all" | "web" | "personal";
+function ProjectModal({ project, onClose }: { project: Project; onClose: () => void }) {
+  const { tr } = useLang();
 
-function ProjectCard({ project }: { project: Project }) {
+  return (
+    <motion.div
+      key="modal-overlay"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      className="fixed inset-0 z-[300] flex items-center justify-center p-4 sm:p-8"
+      style={{ background: "rgba(0,0,0,0.85)", backdropFilter: "blur(4px)" }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 16, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 16, scale: 0.97 }}
+        transition={{ duration: 0.25 }}
+        className="relative w-full max-w-2xl bg-[#0a0a0a] border border-[#1e1e1e] overflow-hidden"
+        style={{ boxShadow: "0 0 40px rgba(168,255,0,0.08)" }}
+      >
+        {/* Image */}
+        <div className="relative aspect-video bg-[#111111]">
+          <Image
+            src={project.image}
+            alt={project.title}
+            fill
+            className="object-cover"
+            style={{ filter: "grayscale(0.2) contrast(1.05)" }}
+            sizes="(max-width: 768px) 100vw, 672px"
+          />
+          {/* Neon tint */}
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 pointer-events-none"
+            style={{ background: "linear-gradient(135deg, rgba(168,255,0,0.06) 0%, transparent 60%)" }}
+          />
+          {/* HUD corners */}
+          {["top-3 left-3", "top-3 right-3", "bottom-3 left-3", "bottom-3 right-3"].map((pos, idx) => (
+            <span
+              key={idx}
+              aria-hidden="true"
+              className={`absolute ${pos} w-4 h-4`}
+              style={{
+                borderColor: "#a8ff00",
+                borderStyle: "solid",
+                borderWidth:
+                  idx === 0 ? "1px 0 0 1px"
+                  : idx === 1 ? "1px 1px 0 0"
+                  : idx === 2 ? "0 0 1px 1px"
+                  : "0 1px 1px 0",
+                opacity: 0.7,
+              }}
+            />
+          ))}
+          {/* Close button */}
+          <button
+            onClick={onClose}
+            aria-label="Close modal"
+            className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center bg-[#0a0a0a]/80 border border-[#1e1e1e] font-mono text-xs text-[#555555] hover:border-[#a8ff00] hover:text-[#a8ff00] transition-all duration-200 cursor-pointer z-10"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Info */}
+        <div className="p-6">
+          <div className="flex items-start justify-between gap-4 mb-3">
+            <h3 className="font-mono font-bold text-lg text-[#efefef] tracking-tight uppercase">
+              {project.title}
+            </h3>
+            <a
+              href={project.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-shrink-0 border border-[#a8ff00] px-4 py-2 font-mono text-[10px] tracking-[0.2em] text-[#a8ff00] hover:bg-[#a8ff00] hover:text-[#0a0a0a] transition-all duration-200 cursor-pointer"
+            >
+              {tr.projects.visit}
+            </a>
+          </div>
+
+          <p className="font-mono text-sm text-[#555555] leading-loose mb-5">
+            {project.description}
+          </p>
+
+          <div className="flex flex-wrap gap-2">
+            {project.tags.map((tag) => (
+              <span
+                key={tag}
+                className="border border-[#a8ff00] px-2 py-0.5 font-mono text-[9px] tracking-[0.1em] text-[#a8ff00]"
+                style={{ opacity: 0.7 }}
+              >
+                {tag.toUpperCase()}
+              </span>
+            ))}
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ─── Project Card ────────────────────────────────────────────────────────────
+
+function ProjectCard({
+  project,
+  onSelect,
+}: {
+  project: Project;
+  onSelect: (p: Project) => void;
+}) {
   const [hovered, setHovered] = useState(false);
+  const { tr } = useLang();
 
   return (
     <motion.article
@@ -30,6 +137,7 @@ function ProjectCard({ project }: { project: Project }) {
       onMouseLeave={() => setHovered(false)}
       onFocusCapture={() => setHovered(true)}
       onBlurCapture={() => setHovered(false)}
+      onClick={() => onSelect(project)}
       style={{
         borderColor: hovered ? "#a8ff00" : "#1e1e1e",
         boxShadow: hovered ? "0 0 20px rgba(168,255,0,0.1)" : "none",
@@ -99,7 +207,7 @@ function ProjectCard({ project }: { project: Project }) {
             aria-label={`Open ${project.title}`}
             onClick={(e) => e.stopPropagation()}
           >
-            VISIT →
+            {tr.projects.visit}
           </a>
         </div>
         <p className="font-mono text-xs text-[#555555] leading-relaxed mb-4">
@@ -120,57 +228,78 @@ function ProjectCard({ project }: { project: Project }) {
   );
 }
 
+// ─── Projects Section ────────────────────────────────────────────────────────
+
+type Filter = "all" | "web" | "personal";
+
 export default function Projects() {
   const [filter, setFilter] = useState<Filter>("all");
+  const [selected, setSelected] = useState<Project | null>(null);
+  const { tr } = useLang();
+
+  const filters = [
+    { label: tr.projects.filterAll, value: "all" as Filter },
+    { label: tr.projects.filterWeb, value: "web" as Filter },
+    { label: tr.projects.filterPersonal, value: "personal" as Filter },
+  ];
 
   const filtered = filter === "all" ? projects : projects.filter((p) => p.category === filter);
 
   return (
-    <section
-      id="projects"
-      className="relative py-28 px-6 border-t border-[#1e1e1e]"
-      aria-label="Projects"
-    >
-      <div className="mx-auto max-w-7xl">
-        <RevealText>
-          <SectionLabel index="04" label="Projects" className="mb-12" />
-        </RevealText>
+    <>
+      <section
+        id="projects"
+        className="relative py-28 px-6 border-t border-[#1e1e1e]"
+        aria-label="Projects"
+      >
+        <div className="mx-auto max-w-7xl">
+          <RevealText>
+            <SectionLabel index="05" label={tr.sections.projects} className="mb-12" />
+          </RevealText>
 
-        <RevealText delay={0.1}>
-          <div className="flex items-center gap-1 mb-10" role="tablist" aria-label="Filter projects">
-            {filters.map((f) => (
-              <button
-                key={f.value}
-                role="tab"
-                aria-selected={filter === f.value}
-                onClick={() => setFilter(f.value)}
-                className="px-5 py-2 font-mono text-[10px] tracking-[0.2em] transition-all duration-200 cursor-pointer border"
-                style={{
-                  borderColor: filter === f.value ? "#a8ff00" : "#1e1e1e",
-                  color: filter === f.value ? "#a8ff00" : "#555555",
-                  background: filter === f.value ? "rgba(168,255,0,0.05)" : "transparent",
-                }}
-              >
-                {f.label}
-              </button>
-            ))}
-            <span className="ml-auto font-mono text-[10px] text-[#555555] tracking-[0.1em]">
-              {filtered.length} PROJECT{filtered.length !== 1 ? "S" : ""}
-            </span>
-          </div>
-        </RevealText>
+          <RevealText delay={0.1}>
+            <div className="flex items-center gap-1 mb-10" role="tablist" aria-label="Filter projects">
+              {filters.map((f) => (
+                <button
+                  key={f.value}
+                  role="tab"
+                  aria-selected={filter === f.value}
+                  onClick={() => setFilter(f.value)}
+                  className="px-5 py-2 font-mono text-[10px] tracking-[0.2em] transition-all duration-200 cursor-pointer border"
+                  style={{
+                    borderColor: filter === f.value ? "#a8ff00" : "#1e1e1e",
+                    color: filter === f.value ? "#a8ff00" : "#555555",
+                    background: filter === f.value ? "rgba(168,255,0,0.05)" : "transparent",
+                  }}
+                >
+                  {f.label}
+                </button>
+              ))}
+              <span className="ml-auto font-mono text-[10px] text-[#555555] tracking-[0.1em]">
+                {filtered.length} {filtered.length !== 1 ? tr.projects.projects : tr.projects.project}
+              </span>
+            </div>
+          </RevealText>
 
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={filter}
-            className="grid grid-cols-1 sm:grid-cols-2 gap-6"
-          >
-            {filtered.map((project) => (
-              <ProjectCard key={project.title} project={project} />
-            ))}
-          </motion.div>
-        </AnimatePresence>
-      </div>
-    </section>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={filter}
+              className="grid grid-cols-1 sm:grid-cols-2 gap-6"
+            >
+              {filtered.map((project) => (
+                <ProjectCard key={project.title} project={project} onSelect={setSelected} />
+              ))}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </section>
+
+      {/* Modal */}
+      <AnimatePresence>
+        {selected && (
+          <ProjectModal project={selected} onClose={() => setSelected(null)} />
+        )}
+      </AnimatePresence>
+    </>
   );
 }

@@ -6,9 +6,11 @@ import SectionLabel from "@/components/ui/SectionLabel";
 import HUDCorners from "@/components/ui/HUDCorners";
 import RevealText from "@/components/ui/RevealText";
 import { experience } from "@/lib/data";
+import { useLang } from "@/context/LangContext";
 
 export default function Experience() {
   const [openAchievement, setOpenAchievement] = useState<string | null>(null);
+  const { tr } = useLang();
 
   return (
     <section
@@ -18,7 +20,7 @@ export default function Experience() {
     >
       <div className="mx-auto max-w-7xl">
         <RevealText>
-          <SectionLabel index="03" label="Experience" className="mb-12" />
+          <SectionLabel index="03" label={tr.sections.experience} className="mb-12" />
         </RevealText>
 
         <div className="max-w-3xl">
@@ -65,7 +67,7 @@ export default function Experience() {
                 {exp.achievements && exp.achievements.length > 0 && (
                   <div>
                     <p className="font-mono text-[10px] tracking-[0.25em] text-[#555555] mb-4">
-                      // KEY PROJECTS & ACHIEVEMENTS
+                      {tr.experience.achievements}
                     </p>
                     <div className="space-y-2">
                       {exp.achievements.map((ach) => (

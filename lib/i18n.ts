@@ -1,0 +1,155 @@
+export type Lang = "en" | "es";
+
+export const t = {
+  en: {
+    nav: {
+      home: "HOME",
+      about: "ABOUT",
+      exp: "EXP",
+      work: "WORK",
+      contact: "CONTACT",
+    },
+    hero: {
+      bio: "I build performant web interfaces with a strong eye for design and detail. Passionate about UX/UI — I care deeply about how things look, feel, and flow.",
+      viewWork: "VIEW WORK",
+      contact: "CONTACT",
+      cv: "CV.PDF",
+    },
+    about: {
+      heading1: "FRONTEND",
+      heading2: "DEVELOPER",
+      bio1: "Frontend Developer with experience in React, TypeScript and Next.js. I work with IoT dashboards, e-commerce and high-impact landing pages. Passionate about UX/UI and user experience.",
+      bio2: "I specialize in building fast and accessible interfaces, with attention to visual detail and performance. Comfortable working in both design and technical implementation.",
+      uxLabel: "// UX / UI",
+      uxNote:
+        "I have a strong passion for UX/UI and visual design. I care about every detail: typography, spacing, hierarchy, micro-interactions. Code and design are not separate worlds — the best products live at that intersection.",
+      techStack: "// Tech Stack",
+    },
+    sections: {
+      about: "About",
+      experience: "Experience",
+      education: "Education",
+      projects: "Projects",
+      testimonials: "Testimonials",
+      contact: "Contact",
+    },
+    experience: {
+      achievements: "// KEY PROJECTS & ACHIEVEMENTS",
+    },
+    education: {
+      formal: "FORMAL",
+      course: "COURSE",
+      self: "SELF-TAUGHT",
+    },
+    projects: {
+      visit: "VISIT →",
+      close: "CLOSE",
+      filterAll: "ALL",
+      filterWeb: "WEB",
+      filterPersonal: "PERSONAL",
+      project: "PROJECT",
+      projects: "PROJECTS",
+    },
+    testimonials: {
+      from: "FROM",
+    },
+    contact: {
+      heading1: "LET'S BUILD",
+      heading2: "SOMETHING",
+      tagline:
+        "Available for freelance or full-time positions. If you have an interesting project or just want to chat, feel free to reach out.",
+      nameLabel: "Name",
+      emailLabel: "Email",
+      subjectLabel: "Subject",
+      messageLabel: "Message",
+      namePlaceholder: "[ NAME ]",
+      emailPlaceholder: "[ EMAIL ]",
+      subjectPlaceholder: "[ SUBJECT ]",
+      messagePlaceholder: "[ MESSAGE ]",
+      send: "SEND →",
+      sending: "SENDING...",
+      successTitle: "MESSAGE SENT",
+      successSub: "I'll get back to you within 24hs.",
+      error: "ERROR: Could not send. Try again.",
+    },
+    terminal: {
+      hint: "Press [~] to open terminal",
+    },
+  },
+
+  es: {
+    nav: {
+      home: "INICIO",
+      about: "SOBRE MÍ",
+      exp: "EXP",
+      work: "TRABAJO",
+      contact: "CONTACTO",
+    },
+    hero: {
+      bio: "Desarrollo interfaces web de alto rendimiento con fuerte ojo para el diseño y el detalle. Apasionado por el UX/UI — me importa cómo se ve, se siente y fluye.",
+      viewWork: "VER TRABAJO",
+      contact: "CONTACTO",
+      cv: "CV.PDF",
+    },
+    about: {
+      heading1: "DESARROLLADOR",
+      heading2: "FRONTEND",
+      bio1: "Desarrollador Frontend con experiencia en React, TypeScript y Next.js. Trabajo con dashboards IoT, e-commerce y landing pages de alto impacto. Apasionado por el diseño UX/UI y la experiencia del usuario.",
+      bio2: "Me especializo en construir interfaces rápidas y accesibles, con atención al detalle visual y al rendimiento. Trabajo cómodo tanto en el diseño como en la implementación técnica.",
+      uxLabel: "// UX / UI",
+      uxNote:
+        "Tengo una fuerte pasión por el diseño UX/UI y el diseño visual en general. Me preocupo por cada detalle: tipografía, espaciado, jerarquía, micro-interacciones. El código y el diseño no son mundos separados — los mejores productos viven en esa intersección.",
+      techStack: "// Tech Stack",
+    },
+    sections: {
+      about: "Sobre Mí",
+      experience: "Experiencia",
+      education: "Educación",
+      projects: "Proyectos",
+      testimonials: "Testimonios",
+      contact: "Contacto",
+    },
+    experience: {
+      achievements: "// PROYECTOS Y LOGROS CLAVE",
+    },
+    education: {
+      formal: "FORMAL",
+      course: "CURSO",
+      self: "AUTODIDACTA",
+    },
+    projects: {
+      visit: "VISITAR →",
+      close: "CERRAR",
+      filterAll: "TODO",
+      filterWeb: "WEB",
+      filterPersonal: "PERSONAL",
+      project: "PROYECTO",
+      projects: "PROYECTOS",
+    },
+    testimonials: {
+      from: "DE",
+    },
+    contact: {
+      heading1: "INICIEMOS",
+      heading2: "UN PROYECTO",
+      tagline:
+        "Disponible para trabajo freelance o posiciones full-time. Si tenés un proyecto interesante o querés charlar, no dudes en escribirme.",
+      nameLabel: "Nombre",
+      emailLabel: "Email",
+      subjectLabel: "Asunto",
+      messageLabel: "Mensaje",
+      namePlaceholder: "[ NOMBRE ]",
+      emailPlaceholder: "[ EMAIL ]",
+      subjectPlaceholder: "[ ASUNTO ]",
+      messagePlaceholder: "[ MENSAJE ]",
+      send: "ENVIAR →",
+      sending: "ENVIANDO...",
+      successTitle: "MENSAJE ENVIADO",
+      successSub: "Te respondo en menos de 24hs.",
+      error: "ERROR: No se pudo enviar. Intentá de nuevo.",
+    },
+    terminal: {
+      hint: "Presioná [~] para abrir la terminal",
+    },
+  },
+};

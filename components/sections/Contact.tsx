@@ -7,9 +7,11 @@ import HUDCorners from "@/components/ui/HUDCorners";
 import RevealText from "@/components/ui/RevealText";
 import Crosshair from "@/components/ui/Crosshair";
 import { personal, social } from "@/lib/data";
+import { useLang } from "@/context/LangContext";
 
 export default function Contact() {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const { tr } = useLang();
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -48,7 +50,7 @@ export default function Contact() {
 
       <div className="mx-auto max-w-7xl">
         <RevealText>
-          <SectionLabel index="05" label="Contact" className="mb-12" />
+          <SectionLabel index="07" label={tr.sections.contact} className="mb-12" />
         </RevealText>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
@@ -58,12 +60,11 @@ export default function Contact() {
               className="font-mono font-bold text-[#efefef] mb-6 leading-tight"
               style={{ fontSize: "clamp(1.5rem, 3vw, 2.5rem)" }}
             >
-              <span className="text-[#a8ff00]">✦</span> INICIEMOS<br />
-              UN PROYECTO
+              <span className="text-[#a8ff00]">✦</span> {tr.contact.heading1}<br />
+              {tr.contact.heading2}
             </h2>
             <p className="font-mono text-sm leading-loose text-[#555555] mb-10 max-w-md">
-              Disponible para trabajo freelance o posiciones full-time. Si tienes un proyecto
-              interesante o quieres charlar, no dudes en escribirme.
+              {tr.contact.tagline}
             </p>
 
             {/* Contact info rows */}
@@ -126,10 +127,10 @@ export default function Contact() {
                 <div className="flex flex-col items-center justify-center min-h-[300px] gap-4 text-center">
                   <span className="text-4xl text-[#a8ff00]" aria-hidden="true">✦</span>
                   <p className="font-mono text-sm text-[#efefef] tracking-[0.1em]">
-                    MENSAJE ENVIADO
+                    {tr.contact.successTitle}
                   </p>
                   <p className="font-mono text-xs text-[#555555]">
-                    Te respondo en menos de 24hs.
+                    {tr.contact.successSub}
                   </p>
                 </div>
               ) : (
@@ -140,47 +141,47 @@ export default function Contact() {
 
                   <div className="space-y-4 mb-4">
                     <div>
-                      <label htmlFor="name" className="sr-only">Name</label>
+                      <label htmlFor="name" className="sr-only">{tr.contact.nameLabel}</label>
                       <input
                         id="name"
                         name="name"
                         type="text"
                         required
-                        placeholder="[ NAME ]"
+                        placeholder={tr.contact.namePlaceholder}
                         className={inputClass}
                         aria-required="true"
                       />
                     </div>
                     <div>
-                      <label htmlFor="email" className="sr-only">Email</label>
+                      <label htmlFor="email" className="sr-only">{tr.contact.emailLabel}</label>
                       <input
                         id="email"
                         name="email"
                         type="email"
                         required
-                        placeholder="[ EMAIL ]"
+                        placeholder={tr.contact.emailPlaceholder}
                         className={inputClass}
                         aria-required="true"
                       />
                     </div>
                     <div>
-                      <label htmlFor="subject" className="sr-only">Subject</label>
+                      <label htmlFor="subject" className="sr-only">{tr.contact.subjectLabel}</label>
                       <input
                         id="subject"
                         name="subject"
                         type="text"
-                        placeholder="[ SUBJECT ]"
+                        placeholder={tr.contact.subjectPlaceholder}
                         className={inputClass}
                       />
                     </div>
                     <div>
-                      <label htmlFor="message" className="sr-only">Message</label>
+                      <label htmlFor="message" className="sr-only">{tr.contact.messageLabel}</label>
                       <textarea
                         id="message"
                         name="message"
                         required
                         rows={5}
-                        placeholder="[ MESSAGE ]"
+                        placeholder={tr.contact.messagePlaceholder}
                         className={`${inputClass} resize-none`}
                         aria-required="true"
                       />
@@ -192,7 +193,7 @@ export default function Contact() {
                       role="alert"
                       className="font-mono text-xs text-red-400 mb-4 tracking-[0.1em]"
                     >
-                      ERROR: Could not send. Try again.
+                      {tr.contact.error}
                     </p>
                   )}
 
@@ -202,7 +203,7 @@ export default function Contact() {
                     className="w-full border border-[#a8ff00] px-6 py-3 font-mono text-xs tracking-[0.2em] text-[#a8ff00] transition-all duration-200 hover:bg-[#a8ff00] hover:text-[#0a0a0a] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                     aria-busy={status === "loading"}
                   >
-                    {status === "loading" ? "SENDING..." : "SEND →"}
+                    {status === "loading" ? tr.contact.sending : tr.contact.send}
                   </button>
                 </form>
               )}

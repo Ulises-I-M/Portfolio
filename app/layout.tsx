@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { LangProvider } from "@/context/LangContext";
 import GrainOverlay from "@/components/ui/GrainOverlay";
+import ScrollProgress from "@/components/ui/ScrollProgress";
+import BackToTop from "@/components/ui/BackToTop";
+import CustomCursor from "@/components/ui/CustomCursor";
+import Terminal from "@/components/ui/Terminal";
 import Navbar from "@/components/layout/Navbar";
 
 export const metadata: Metadata = {
@@ -31,10 +36,19 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-full bg-[#0a0a0a] text-[#efefef] antialiased" style={{ fontFamily: "'Space Mono', ui-monospace, monospace" }}>
-        <GrainOverlay />
-        <Navbar />
-        {children}
+      <body
+        className="min-h-full bg-[#0a0a0a] text-[#efefef] antialiased"
+        style={{ fontFamily: "'Space Mono', ui-monospace, monospace" }}
+      >
+        <LangProvider>
+          <GrainOverlay />
+          <ScrollProgress />
+          <CustomCursor />
+          <Navbar />
+          {children}
+          <BackToTop />
+          <Terminal />
+        </LangProvider>
       </body>
     </html>
   );
