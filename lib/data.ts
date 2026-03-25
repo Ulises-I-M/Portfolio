@@ -70,9 +70,9 @@ export type ExperienceEntry = {
 export const experience: ExperienceEntry[] = [
   {
     role: "Desarrollador Frontend",
-    company: "Sensary",
-    period: "Jul 2024 — Apr 2025",
-    periodCode: "2024.07 — 2025.04",
+    company: "Senzary LLC",
+    period: "Jul 2024 — Present",
+    periodCode: "2024.07 — PRESENT",
     description:
       "Developed and maintained IoT dashboards using ThingsBoard for enterprise clients in the energy, aviation, and industrial sectors. Responsible for the full frontend of custom real-time widgets, data visualization interfaces, and alerting systems.",
     descriptionEs:
