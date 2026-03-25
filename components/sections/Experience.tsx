@@ -87,7 +87,7 @@ export default function Experience() {
                       <hr className="neon-rule mb-6" />
 
                       {/* Description */}
-                      <p className="font-mono text-sm leading-loose text-[#555555] mb-6">
+                      <p className="font-mono text-sm leading-loose text-[#aaaaaa] mb-6">
                         {lang === "es" && exp.descriptionEs ? exp.descriptionEs : exp.description}
                       </p>
 
@@ -161,7 +161,7 @@ export default function Experience() {
                                         className="border border-t-0 px-4 py-4"
                                         style={{ borderColor: "rgba(168,255,0,0.2)" }}
                                       >
-                                        <p className="font-mono text-xs leading-loose text-[#555555]">
+                                        <p className="font-mono text-xs leading-loose text-[#aaaaaa]">
                                           {lang === "es" && ach.descriptionEs ? ach.descriptionEs : ach.description}
                                         </p>
                                       </div>

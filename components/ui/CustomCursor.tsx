@@ -10,6 +10,7 @@ export default function CustomCursor() {
   useEffect(() => {
     if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
 
+    document.documentElement.classList.add("custom-cursor-active");
     document.documentElement.style.cursor = "none";
 
     const INTERACTIVE =
@@ -45,6 +46,7 @@ export default function CustomCursor() {
     return () => {
       window.removeEventListener("mousemove", move);
       window.removeEventListener("mouseover", onOver);
+      document.documentElement.classList.remove("custom-cursor-active");
       document.documentElement.style.cursor = "";
     };
   }, []);

@@ -56,7 +56,7 @@ export default function About() {
               </div>
               <div>
                 <span className="text-[#555555] block">EXP</span>
-                <span className="text-[#a8ff00]">1+ YRS</span>
+                <span className="text-[#a8ff00]">2+ YRS</span>
               </div>
               <div>
                 <span className="text-[#555555] block">FOCUS</span>
@@ -78,13 +78,13 @@ export default function About() {
             </RevealText>
 
             <RevealText delay={0.3}>
-              <p className="font-mono text-sm leading-loose text-[#555555] mb-6 max-w-lg">
+              <p className="font-mono text-sm leading-loose text-[#aaaaaa] mb-6 max-w-lg">
                 {tr.about.bio1}
               </p>
             </RevealText>
 
             <RevealText delay={0.4}>
-              <p className="font-mono text-sm leading-loose text-[#555555] mb-6 max-w-lg">
+              <p className="font-mono text-sm leading-loose text-[#aaaaaa] mb-6 max-w-lg">
                 {tr.about.bio2}
               </p>
             </RevealText>
@@ -94,7 +94,7 @@ export default function About() {
                 <p className="font-mono text-[10px] tracking-[0.2em] text-[#a8ff00] mb-1">
                   {tr.about.uxLabel}
                 </p>
-                <p className="font-mono text-sm leading-loose text-[#555555]">
+                <p className="font-mono text-sm leading-loose text-[#aaaaaa]">
                   {tr.about.uxNote}
                 </p>
               </div>

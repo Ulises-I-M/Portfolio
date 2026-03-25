@@ -92,6 +92,13 @@ body {
   100% { transform: scaleX(1); opacity: 0; }
 }
 
+/* Hide native cursor everywhere when custom cursor is active.
+   Overrides cursor: pointer on buttons/links which would otherwise win. */
+html.custom-cursor-active,
+html.custom-cursor-active * {
+  cursor: none !important;
+}
+
 /* Focus states */
 *:focus-visible {
   outline: 1px solid #a8ff00;

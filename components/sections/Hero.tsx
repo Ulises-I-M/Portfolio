@@ -8,46 +8,6 @@ import Typewriter from "@/components/ui/Typewriter";
 import { personal, social } from "@/lib/data";
 import { useLang } from "@/context/LangContext";
 
-const stagger = {
-  container: {
-    hidden: {},
-    show: { transition: { staggerChildren: 0.08 } },
-  },
-  letter: {
-    hidden: { opacity: 0, y: 40 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number] } },
-  },
-};
-
-function SplitText({ text, className }: { text: string; className?: string }) {
-  const prefersReducedMotion = useReducedMotion();
-
-  if (prefersReducedMotion) {
-    return <span className={className}>{text}</span>;
-  }
-
-  return (
-    <motion.span
-      className={`inline-flex flex-wrap ${className ?? ""}`}
-      variants={stagger.container}
-      initial="hidden"
-      animate="show"
-      aria-label={text}
-    >
-      {text.split("").map((char, i) => (
-        <motion.span
-          key={i}
-          variants={stagger.letter}
-          aria-hidden="true"
-          className={char === " " ? "w-[0.4em]" : ""}
-        >
-          {char === " " ? "\u00A0" : char}
-        </motion.span>
-      ))}
-    </motion.span>
-  );
-}
-
 export default function Hero() {
   const prefersReducedMotion = useReducedMotion();
   const { tr } = useLang();
@@ -105,7 +65,7 @@ export default function Hero() {
 
       {/* HUD data labels — bottom left */}
       <div className="absolute bottom-16 left-8 hidden md:flex flex-col gap-1 font-mono text-[10px] text-[#555555] tracking-[0.15em]">
-        <span>YRS_EXP: 1+</span>
+        <span>YRS_EXP: 2+</span>
         <span>PROJECTS: 4+</span>
       </div>
 
@@ -159,7 +119,7 @@ export default function Hero() {
         {/* Bio short */}
         <motion.p
           {...fadeIn(1.0)}
-          className="font-mono text-sm leading-relaxed text-[#555555] max-w-md"
+          className="font-mono text-sm leading-relaxed text-[#aaaaaa] max-w-md"
         >
           {tr.hero.bio}
         </motion.p>

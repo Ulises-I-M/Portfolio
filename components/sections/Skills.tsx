@@ -245,7 +245,7 @@ export default function Skills() {
         {/* Stats strip */}
         <RevealText delay={0.2}>
           <div className="mt-20 grid grid-cols-2 sm:grid-cols-4 gap-10 border-t border-[#1e1e1e] pt-14">
-            <StatItem value={1}  label="Years experience" />
+            <StatItem value={2}  label="Years experience" />
             <StatItem value={4}  label="Projects shipped" />
             <StatItem value={3}  label="Enterprise clients" />
             <StatItem value={12} label="Technologies" />

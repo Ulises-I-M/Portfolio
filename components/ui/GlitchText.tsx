@@ -1,9 +1,26 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 
 const CHARS = "!<>-_\\/[]{}=+*^?#@%$&";
+
+const containerVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.08 } },
+};
+
+const letterVariants = {
+  hidden: { opacity: 0, y: 40 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.5,
+      ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number],
+    },
+  },
+};
 
 interface Props {
   text: string;
@@ -12,44 +29,44 @@ interface Props {
 }
 
 /**
- * Renders text that randomly scrambles (glitches) then resolves back.
- * Auto-triggers every 5-9s and also on hover.
+ * Animates each letter in with a stagger on mount (SplitText effect),
+ * then periodically scrambles and resolves the characters (glitch effect).
+ * Also glitches on hover.
  */
 export default function GlitchText({ text, className, style }: Props) {
   const prefersReducedMotion = useReducedMotion();
-  const [display, setDisplay] = useState(text);
+  // chars tracks the displayed characters — may differ from text during glitch
+  const [chars, setChars] = useState<string[]>(text.split(""));
+  const [mounted, setMounted] = useState(false);
   const activeRef = useRef(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const glitch = useCallback(() => {
-    if (activeRef.current || prefersReducedMotion) return;
+    if (activeRef.current || prefersReducedMotion || !mounted) return;
     activeRef.current = true;
     let iter = 0;
     const total = text.length * 3;
     clearInterval(intervalRef.current!);
     intervalRef.current = setInterval(() => {
-      setDisplay(
-        text
-          .split("")
-          .map((ch, i) => {
-            if (ch === " ") return " ";
-            if (i < iter / 3) return ch;
-            return CHARS[Math.floor(Math.random() * CHARS.length)];
-          })
-          .join("")
+      setChars(
+        text.split("").map((ch, i) => {
+          if (ch === " ") return " ";
+          if (i < iter / 3) return ch;
+          return CHARS[Math.floor(Math.random() * CHARS.length)];
+        })
       );
       iter++;
       if (iter > total) {
         clearInterval(intervalRef.current!);
-        setDisplay(text);
+        setChars(text.split(""));
         activeRef.current = false;
       }
     }, 35);
-  }, [text, prefersReducedMotion]);
+  }, [text, prefersReducedMotion, mounted]);
 
-  // Auto-glitch every 5-9s
+  // Auto-glitch every 5-9s (only after entry animation completes)
   useEffect(() => {
-    if (prefersReducedMotion) return;
+    if (prefersReducedMotion || !mounted) return;
     let timeout: ReturnType<typeof setTimeout>;
     const schedule = () => {
       timeout = setTimeout(
@@ -62,16 +79,38 @@ export default function GlitchText({ text, className, style }: Props) {
       clearTimeout(timeout);
       clearInterval(intervalRef.current!);
     };
-  }, [glitch, prefersReducedMotion]);
+  }, [glitch, prefersReducedMotion, mounted]);
+
+  if (prefersReducedMotion) {
+    return (
+      <span className={className} style={style} aria-label={text}>
+        {text}
+      </span>
+    );
+  }
 
   return (
-    <span
-      className={className}
-      style={style}
-      onMouseEnter={glitch}
+    <motion.span
+      className={`inline-flex flex-wrap ${className ?? ""}`}
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
       aria-label={text}
+      onMouseEnter={glitch}
+      // Mark as mounted once all letters have finished their entry animation
+      onAnimationComplete={() => setMounted(true)}
     >
-      {display}
-    </span>
+      {chars.map((char, i) => (
+        <motion.span
+          key={i}
+          variants={letterVariants}
+          aria-hidden="true"
+          className={char === " " ? "w-[0.4em]" : ""}
+          style={style}
+        >
+          {char === " " ? "\u00A0" : char}
+        </motion.span>
+      ))}
+    </motion.span>
   );
 }
