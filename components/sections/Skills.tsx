@@ -5,7 +5,7 @@ import { motion, useInView } from "framer-motion";
 import SectionLabel from "@/components/ui/SectionLabel";
 import RevealText from "@/components/ui/RevealText";
 import PanelFrame from "@/components/ui/PanelFrame";
-import DialGauge from "@/components/ui/DialGauge";
+import HUDStatCard from "@/components/ui/HUDStatCard";
 
 // ─── Module data ──────────────────────────────────────────────────────────────
 
@@ -83,30 +83,25 @@ function ModuleRow({ mod, index }: { mod: Module; index: number }) {
         {mod.name.toUpperCase()}
       </span>
 
-      {/* Bar track — with diagonal hatch background */}
-      <div
-        className="relative overflow-hidden hatch"
-        style={{ background: "rgba(168,255,0,0.04)", height: 8 }}
-      >
-        {/* Parallelogram fill — skewX creates angled leading/trailing edges */}
-        <motion.div
-          className="absolute inset-y-0 left-[-8px]"
-          initial={{ width: 0 }}
-          animate={inView ? { width: `calc(${mod.pct}% + 8px)` } : { width: 0 }}
-          transition={{ duration: 1, delay: index * 0.06 + 0.15, ease: [0.25, 0.46, 0.45, 0.94] }}
-          style={{
-            background: "#a8ff00",
-            opacity: 0.85,
-            transform: "skewX(-12deg)",
-            transformOrigin: "left center",
-          }}
-        />
-        {/* CRT scanline overlay */}
+      {/* Segmented bar track */}
+      <div className="relative overflow-hidden" style={{ height: 8 }}>
+        {/* Track — repeating segments (unfilled) */}
         <div
-          className="absolute inset-0 pointer-events-none"
+          className="absolute inset-0"
           style={{
             background:
-              "repeating-linear-gradient(to bottom, transparent 0px, transparent 1px, rgba(0,0,0,0.25) 1px, rgba(0,0,0,0.25) 2px)",
+              "repeating-linear-gradient(to right, rgba(168,255,0,0.08) 0px, rgba(168,255,0,0.08) 6px, transparent 6px, transparent 9px)",
+          }}
+        />
+        {/* Fill — same segment pattern, animated width */}
+        <motion.div
+          className="absolute inset-y-0 left-0"
+          initial={{ width: 0 }}
+          animate={inView ? { width: `${mod.pct}%` } : { width: 0 }}
+          transition={{ duration: 1, delay: index * 0.06 + 0.15, ease: [0.25, 0.46, 0.45, 0.94] }}
+          style={{
+            background:
+              "repeating-linear-gradient(to right, rgba(168,255,0,0.88) 0px, rgba(168,255,0,0.88) 6px, transparent 6px, transparent 9px)",
           }}
         />
         {/* Glow tip */}
@@ -118,7 +113,6 @@ function ModuleRow({ mod, index }: { mod: Module; index: number }) {
           style={{
             background: "linear-gradient(to right, transparent, rgba(168,255,0,0.9))",
             filter: "blur(2px)",
-            transform: "skewX(-12deg)",
           }}
         />
       </div>
@@ -205,11 +199,11 @@ export default function Skills() {
             <p className="font-mono text-[9px] tracking-[0.25em] text-[#333333] mb-6">
               <span className="text-[#a8ff00]">&gt;</span> SYS.STATS // DIAL_READOUT
             </p>
-            <div className="flex flex-wrap justify-between gap-6 max-w-2xl">
-              <DialGauge value={75}  displayValue="2+"  label="Years Exp."       size={90} />
-              <DialGauge value={85}  displayValue="4+"  label="Projects"          size={90} />
-              <DialGauge value={65}  displayValue="3+"  label="Clients"           size={90} />
-              <DialGauge value={92}  displayValue="12+" label="Technologies"      size={90} />
+            <div className="flex flex-wrap gap-4">
+              <HUDStatCard value="2+"  label="YEARS EXP"    pct={75} unit="YRS"  size={90} />
+              <HUDStatCard value="4+"  label="PROJECTS"     pct={85} unit="PROJ" size={90} />
+              <HUDStatCard value="3+"  label="CLIENTS"      pct={65} unit="CLT"  size={90} />
+              <HUDStatCard value="12+" label="TECHNOLOGIES" pct={92} unit="TECH" size={90} />
             </div>
           </div>
         </RevealText>
