@@ -85,7 +85,12 @@ export default function CyberDivider({ label, className = "" }: CyberDividerProp
 
       {/* Data coordinate */}
       <span className="font-mono text-[7px] tracking-[0.15em] text-[#222222] flex-shrink-0">
-        {`0x${Math.floor(Math.random() * 0xFFFF).toString(16).padStart(4, "0").toUpperCase()}`}
+        {`0x${(label ?? "00")
+          .split("")
+          .reduce((acc, c) => (acc * 31 + c.charCodeAt(0)) & 0xFFFF, 0xA3F0)
+          .toString(16)
+          .toUpperCase()
+          .padStart(4, "0")}`}
       </span>
     </div>
   );
