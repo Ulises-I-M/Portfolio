@@ -155,11 +155,13 @@ function ProjectCard({
           src={project.image}
           alt={project.title}
           fill
-          className="object-cover transition-all duration-500"
+          className="object-cover transition-all duration-700"
           style={{
             filter: hovered
               ? "grayscale(0) contrast(1.05)"
               : "grayscale(0.8) contrast(1)",
+            animation: hovered ? "ken-burns 8s ease-in-out infinite" : "none",
+            transformOrigin: "center center",
           }}
           sizes="(max-width: 768px) 100vw, 50vw"
         />
@@ -216,7 +218,7 @@ function ProjectCard({
             {tr.projects.visit}
           </a>
         </div>
-        <p className="font-mono text-xs text-[#555555] leading-relaxed mb-4">
+        <p className="font-mono text-xs text-[#aaaaaa] leading-relaxed mb-4">
           {lang === "es" && project.descriptionEs ? project.descriptionEs : project.description}
         </p>
         <div className="flex flex-wrap gap-2">

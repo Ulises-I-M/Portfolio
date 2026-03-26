@@ -85,6 +85,14 @@ body {
   to   { background-position: 0 200px }
 }
 
+/* Ken Burns — slow zoom + pan used on project card image hover */
+@keyframes ken-burns {
+  0%   { transform: scale(1)    translateX(0%)   translateY(0%); }
+  33%  { transform: scale(1.07) translateX(-2%)  translateY(-1%); }
+  66%  { transform: scale(1.05) translateX(2%)   translateY(1%); }
+  100% { transform: scale(1)    translateX(0%)   translateY(0%); }
+}
+
 /* Section scan reveal — a neon line sweeps down before content fades in */
 @keyframes scan-sweep {
   0%   { transform: scaleX(0); opacity: 1; }

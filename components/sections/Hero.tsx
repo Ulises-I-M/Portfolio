@@ -1,29 +1,54 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { useRef } from "react";
+import {
+  motion,
+  useReducedMotion,
+  useScroll,
+  useTransform,
+  useMotionTemplate,
+} from "framer-motion";
 import SocialIcon from "@/components/ui/SocialIcon";
 import Crosshair from "@/components/ui/Crosshair";
 import GlitchText from "@/components/ui/GlitchText";
 import Typewriter from "@/components/ui/Typewriter";
+import ParticleCanvas from "@/components/ui/ParticleCanvas";
 import { personal, social } from "@/lib/data";
 import { useLang } from "@/context/LangContext";
 
 export default function Hero() {
   const prefersReducedMotion = useReducedMotion();
   const { tr } = useLang();
+  const sectionRef = useRef<HTMLElement>(null);
+
+  // Chromatic aberration: grows as the user scrolls out of the hero
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start start", "end start"],
+  });
+  const aberration = useTransform(scrollYProgress, [0, 0.5], [0, 10]);
+  const textShadow = useMotionTemplate`${aberration}px 0 rgba(255,0,100,0.75), -${aberration}px 0 rgba(0,230,255,0.75)`;
 
   const fadeIn = (delay: number) => ({
     initial: prefersReducedMotion ? {} : { opacity: 0, y: 20 },
     animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.6, delay, ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number] },
+    transition: {
+      duration: 0.6,
+      delay,
+      ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number],
+    },
   });
 
   return (
     <section
+      ref={sectionRef}
       id="home"
       className="relative flex min-h-screen items-center overflow-hidden bg-grid"
       aria-label="Hero — Ulises Miranda"
     >
+      {/* Particle spiderweb background */}
+      <ParticleCanvas />
+
       {/* HUD corner crosshairs */}
       <Crosshair className="absolute top-8 left-8 opacity-40" size={20} />
       <Crosshair className="absolute top-8 right-8 opacity-40" size={20} />
@@ -34,18 +59,25 @@ export default function Hero() {
       <div
         aria-hidden="true"
         className="absolute left-[15%] top-0 bottom-0 w-px opacity-10"
-        style={{ background: "linear-gradient(to bottom, transparent, #a8ff00 30%, #a8ff00 70%, transparent)" }}
+        style={{
+          background:
+            "linear-gradient(to bottom, transparent, #a8ff00 30%, #a8ff00 70%, transparent)",
+        }}
       />
 
       {/* Floating ambient glow */}
       <motion.div
         aria-hidden="true"
         className="absolute top-1/3 left-1/4 w-96 h-96 rounded-full pointer-events-none"
-        style={{ background: "radial-gradient(circle, rgba(168,255,0,0.04) 0%, transparent 70%)" }}
-        animate={prefersReducedMotion ? {} : {
-          scale: [1, 1.15, 1],
-          opacity: [0.5, 1, 0.5],
+        style={{
+          background:
+            "radial-gradient(circle, rgba(168,255,0,0.04) 0%, transparent 70%)",
         }}
+        animate={
+          prefersReducedMotion
+            ? {}
+            : { scale: [1, 1.15, 1], opacity: [0.5, 1, 0.5] }
+        }
         transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
       />
 
@@ -70,7 +102,7 @@ export default function Hero() {
       </div>
 
       {/* Main content */}
-      <div className="relative mx-auto w-full max-w-7xl px-6 pt-28 pb-20">
+      <div className="relative mx-auto w-full max-w-7xl px-6 pt-28 pb-20" style={{ zIndex: 1 }}>
         {/* Section counter */}
         <motion.p
           {...fadeIn(0.1)}
@@ -79,26 +111,31 @@ export default function Hero() {
           <span className="text-[#a8ff00]">01</span> — INIT
         </motion.p>
 
-        {/* Big display name */}
-        <h1 className="font-mono font-bold leading-none tracking-tight mb-2" aria-label={personal.nameDisplay}>
-          <span
-            className="block text-[#efefef]"
-            style={{ fontSize: "clamp(2.8rem, 7vw, 6.5rem)", lineHeight: 1 }}
+        {/* Big display name — chromatic aberration applied here */}
+        <motion.div style={prefersReducedMotion ? {} : { textShadow }}>
+          <h1
+            className="font-mono font-bold leading-none tracking-tight mb-2"
+            aria-label={personal.nameDisplay}
           >
-            <GlitchText text="ULISES" />
-          </span>
-          <span
-            className="block"
-            style={{
-              fontSize: "clamp(2.8rem, 7vw, 6.5rem)",
-              lineHeight: 1,
-              color: "#a8ff00",
-              textShadow: "0 0 40px rgba(168,255,0,0.3)",
-            }}
-          >
-            <GlitchText text="MIRANDA" />
-          </span>
-        </h1>
+            <span
+              className="block text-[#efefef]"
+              style={{ fontSize: "clamp(2.8rem, 7vw, 6.5rem)", lineHeight: 1 }}
+            >
+              <GlitchText text="ULISES" />
+            </span>
+            <span
+              className="block"
+              style={{
+                fontSize: "clamp(2.8rem, 7vw, 6.5rem)",
+                lineHeight: 1,
+                color: "#a8ff00",
+                textShadow: "0 0 40px rgba(168,255,0,0.3)",
+              }}
+            >
+              <GlitchText text="MIRANDA" />
+            </span>
+          </h1>
+        </motion.div>
 
         {/* Role typewriter */}
         <motion.div {...fadeIn(0.7)} className="mt-6">
@@ -125,7 +162,10 @@ export default function Hero() {
         </motion.p>
 
         {/* CTAs */}
-        <motion.div {...fadeIn(1.1)} className="mt-10 flex flex-wrap items-center gap-4">
+        <motion.div
+          {...fadeIn(1.1)}
+          className="mt-10 flex flex-wrap items-center gap-4"
+        >
           <a
             href="#projects"
             className="inline-flex items-center gap-2 border border-[#a8ff00] px-6 py-3 font-mono text-xs tracking-[0.2em] text-[#a8ff00] transition-all duration-200 hover:bg-[#a8ff00] hover:text-[#0a0a0a] cursor-pointer focus-visible:outline focus-visible:outline-[#a8ff00]"
@@ -149,8 +189,11 @@ export default function Hero() {
           </a>
         </motion.div>
 
-        {/* Social links with icons */}
-        <motion.div {...fadeIn(1.2)} className="mt-12 flex items-center gap-6">
+        {/* Social links */}
+        <motion.div
+          {...fadeIn(1.2)}
+          className="mt-12 flex items-center gap-6"
+        >
           {social.map((s) => (
             <a
               key={s.label}
@@ -176,8 +219,11 @@ export default function Hero() {
         {...fadeIn(1.4)}
         className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
         aria-hidden="true"
+        style={{ zIndex: 1 }}
       >
-        <span className="font-mono text-[9px] tracking-[0.25em] text-[#555555]">SCROLL</span>
+        <span className="font-mono text-[9px] tracking-[0.25em] text-[#555555]">
+          SCROLL
+        </span>
         <motion.div
           className="h-6 w-px bg-[#a8ff00] origin-top"
           animate={prefersReducedMotion ? {} : { scaleY: [1, 0.3, 1] }}
