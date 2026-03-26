@@ -7,6 +7,7 @@ import RevealText from "@/components/ui/RevealText";
 import GrainEffect from "@/components/ui/GrainEffect";
 import CircuitPath from "@/components/ui/CircuitPath";
 import NestedSquares from "@/components/ui/NestedSquares";
+import GateReveal from "@/components/ui/GateReveal";
 import { personal, skills } from "@/lib/data";
 import { useLang } from "@/context/LangContext";
 
@@ -42,33 +43,37 @@ export default function About() {
           {/* Image column */}
           <RevealText direction="left" delay={0.1}>
             <HUDCorners className="inline-block" size={18} ticks label="PROFILE.IMG">
-              <div className="relative overflow-hidden" style={{ padding: "10px" }}>
-                <Image
-                  src="/images/about_hero.png"
-                  alt="Ulises Miranda"
-                  width={480}
-                  height={560}
-                  priority
-                  loading="eager"
-                  className="block w-full object-cover"
-                  style={{ filter: "grayscale(0.3) contrast(1.05)" }}
-                />
-                {/* Neon overlay tint */}
-                <div
-                  aria-hidden="true"
-                  className="absolute inset-0 pointer-events-none"
-                  style={{
-                    background:
-                      "linear-gradient(135deg, rgba(168,255,0,0.06) 0%, transparent 60%)",
-                  }}
-                />
-                {/* Diagonal hatch texture */}
-                <div
-                  aria-hidden="true"
-                  className="absolute inset-0 pointer-events-none hatch"
-                  style={{ opacity: 0.5 }}
-                />
-                <GrainEffect />
+              <div style={{ padding: "10px" }}>
+                <GateReveal>
+                  <div className="relative overflow-hidden">
+                    <Image
+                      src="/images/about_hero.png"
+                      alt="Ulises Miranda"
+                      width={480}
+                      height={560}
+                      priority
+                      loading="eager"
+                      className="block w-full object-cover"
+                      style={{ filter: "grayscale(0.3) contrast(1.05)" }}
+                    />
+                    {/* Neon overlay tint */}
+                    <div
+                      aria-hidden="true"
+                      className="absolute inset-0 pointer-events-none"
+                      style={{
+                        background:
+                          "linear-gradient(135deg, rgba(168,255,0,0.06) 0%, transparent 60%)",
+                      }}
+                    />
+                    {/* Diagonal hatch texture */}
+                    <div
+                      aria-hidden="true"
+                      className="absolute inset-0 pointer-events-none hatch"
+                      style={{ opacity: 0.5 }}
+                    />
+                    <GrainEffect />
+                  </div>
+                </GateReveal>
               </div>
             </HUDCorners>
 

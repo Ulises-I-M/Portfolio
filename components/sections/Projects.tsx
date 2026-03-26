@@ -7,6 +7,7 @@ import SectionLabel from "@/components/ui/SectionLabel";
 import RevealText from "@/components/ui/RevealText";
 import GrainEffect from "@/components/ui/GrainEffect";
 import { projects, type Project } from "@/lib/data";
+import CyberImageFrame from "@/components/ui/CyberImageFrame";
 import { useLang } from "@/context/LangContext";
 import type { Lang } from "@/lib/i18n";
 
@@ -149,62 +150,41 @@ function ProjectCard({
       }}
     >
       {/* Image */}
-      <div className="relative aspect-video overflow-hidden bg-[#111111]">
-        <Image
-          src={project.image}
-          alt={project.title}
-          fill
-          className="object-cover transition-all duration-700"
-          style={{
-            filter: hovered
-              ? "grayscale(0) contrast(1.05)"
-              : "grayscale(0.8) contrast(1)",
-            animation: hovered ? "ken-burns 8s ease-in-out infinite" : "none",
-            transformOrigin: "center center",
-          }}
-          sizes="(max-width: 768px) 100vw, 50vw"
-        />
-        {/* Neon tint on hover */}
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 pointer-events-none transition-opacity duration-300"
-          style={{
-            background:
-              "linear-gradient(135deg, rgba(168,255,0,0.08) 0%, transparent 60%)",
-            opacity: hovered ? 1 : 0,
-          }}
-        />
-        {/* Diagonal hatch overlay — always present, visible on hover */}
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 pointer-events-none transition-opacity duration-300 hatch-dense"
-          style={{ opacity: hovered ? 0.6 : 0.2 }}
-        />
-        <GrainEffect />
-        {/* HUD corner brackets visible on hover */}
-        {["top-2 left-2", "top-2 right-2", "bottom-2 left-2", "bottom-2 right-2"].map(
-          (pos, idx) => (
-            <span
-              key={idx}
-              aria-hidden="true"
-              className={`absolute ${pos} w-3 h-3 transition-opacity duration-300`}
-              style={{
-                borderColor: "#a8ff00",
-                borderStyle: "solid",
-                borderWidth:
-                  idx === 0
-                    ? "1px 0 0 1px"
-                    : idx === 1
-                      ? "1px 1px 0 0"
-                      : idx === 2
-                        ? "0 0 1px 1px"
-                        : "0 1px 1px 0",
-                opacity: hovered ? 0.8 : 0,
-              }}
-            />
-          )
-        )}
-      </div>
+      <CyberImageFrame label={`PRJ.${project.title.toUpperCase().replace(/\s/g, "_").slice(0, 8)}`}>
+        <div className="relative aspect-video overflow-hidden bg-[#111111]">
+          <Image
+            src={project.image}
+            alt={project.title}
+            fill
+            className="object-cover transition-all duration-700"
+            style={{
+              filter: hovered
+                ? "grayscale(0) contrast(1.05)"
+                : "grayscale(0.8) contrast(1)",
+              animation: hovered ? "ken-burns 8s ease-in-out infinite" : "none",
+              transformOrigin: "center center",
+            }}
+            sizes="(max-width: 768px) 100vw, 50vw"
+          />
+          {/* Neon tint on hover */}
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 pointer-events-none transition-opacity duration-300"
+            style={{
+              background:
+                "linear-gradient(135deg, rgba(168,255,0,0.08) 0%, transparent 60%)",
+              opacity: hovered ? 1 : 0,
+            }}
+          />
+          {/* Diagonal hatch overlay — always present, visible on hover */}
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 pointer-events-none transition-opacity duration-300 hatch-dense"
+            style={{ opacity: hovered ? 0.6 : 0.2 }}
+          />
+          <GrainEffect />
+        </div>
+      </CyberImageFrame>
 
       {/* Info */}
       <div className="p-5">
