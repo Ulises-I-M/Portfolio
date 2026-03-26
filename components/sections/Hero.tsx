@@ -13,10 +13,11 @@ import Crosshair from "@/components/ui/Crosshair";
 import GlitchText from "@/components/ui/GlitchText";
 import Typewriter from "@/components/ui/Typewriter";
 import ParticleCanvas from "@/components/ui/ParticleCanvas";
-import ArcGauge from "@/components/ui/ArcGauge";
+import SerratedRingGauge from "@/components/ui/SerratedRingGauge";
 import ChevronCluster from "@/components/ui/ChevronCluster";
 import CircuitPath from "@/components/ui/CircuitPath";
 import WarningBadge from "@/components/ui/WarningBadge";
+import BarcodeIndicator from "@/components/ui/BarcodeIndicator";
 import { personal, social } from "@/lib/data";
 import { useLang } from "@/context/LangContext";
 
@@ -107,24 +108,26 @@ export default function Hero() {
         </motion.span>
       </div>
 
-      {/* Arc gauges — bottom right (desktop) */}
+      {/* Serrated ring gauges — bottom right (desktop) */}
       <div
-        className="absolute bottom-16 right-8 hidden md:flex items-end gap-6"
+        className="absolute bottom-12 right-8 hidden md:flex items-end gap-4"
         aria-hidden="true"
       >
-        <ArcGauge value={75} size={72} centerText="2+" subText="YRS" label="EXPERIENCE" />
-        <ArcGauge value={85} size={72} centerText="4+" subText="PROJ" label="PROJECTS" />
+        <SerratedRingGauge value={75} size={88} centerText="2+" subText="YRS" label="EXPERIENCE" teeth={32} />
+        <SerratedRingGauge value={85} size={88} centerText="4+" subText="PROJ" label="PROJECTS" teeth={32} />
       </div>
 
-      {/* HUD data labels — bottom left */}
-      <div className="absolute bottom-16 left-8 hidden md:flex flex-col gap-1 font-mono text-[10px] text-[#555555] tracking-[0.15em]">
+      {/* HUD data labels + barcode readout — bottom left */}
+      <div className="absolute bottom-14 left-8 hidden md:flex flex-col gap-2 font-mono text-[10px] text-[#555555] tracking-[0.15em]">
+        {/* Vertical barcode spectrum */}
+        <BarcodeIndicator bars={24} maxHeight={32} />
         <span className="text-[#222222]">LAT: -34.6037</span>
         <span className="text-[#222222]">LNG: -58.3816</span>
-        <div className="flex items-center gap-2 mt-1">
+        <div className="flex items-center gap-2">
           <span className="w-1 h-1 rounded-full bg-[#a8ff00] hud-pulse" />
           <span className="text-[#333333]">CONNECTED</span>
         </div>
-        <span className="text-[#222222] mt-1">0x00FF.INIT</span>
+        <span className="text-[#222222]">0x00FF.INIT</span>
       </div>
 
       {/* Main content */}

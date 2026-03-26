@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
 import SectionLabel from "@/components/ui/SectionLabel";
 import RevealText from "@/components/ui/RevealText";
 import PanelFrame from "@/components/ui/PanelFrame";
-import BarcodeIndicator from "@/components/ui/BarcodeIndicator";
+import DialGauge from "@/components/ui/DialGauge";
 
 // ─── Module data ──────────────────────────────────────────────────────────────
 
@@ -85,16 +85,21 @@ function ModuleRow({ mod, index }: { mod: Module; index: number }) {
 
       {/* Bar track — with diagonal hatch background */}
       <div
-        className="relative h-[6px] overflow-hidden hatch"
-        style={{ background: "rgba(168,255,0,0.04)" }}
+        className="relative overflow-hidden hatch"
+        style={{ background: "rgba(168,255,0,0.04)", height: 8 }}
       >
-        {/* Fill */}
+        {/* Parallelogram fill — skewX creates angled leading/trailing edges */}
         <motion.div
-          className="absolute inset-y-0 left-0 h-full"
+          className="absolute inset-y-0 left-[-8px]"
           initial={{ width: 0 }}
-          animate={inView ? { width: `${mod.pct}%` } : { width: 0 }}
+          animate={inView ? { width: `calc(${mod.pct}% + 8px)` } : { width: 0 }}
           transition={{ duration: 1, delay: index * 0.06 + 0.15, ease: [0.25, 0.46, 0.45, 0.94] }}
-          style={{ background: "#a8ff00", opacity: 0.85 }}
+          style={{
+            background: "#a8ff00",
+            opacity: 0.85,
+            transform: "skewX(-12deg)",
+            transformOrigin: "left center",
+          }}
         />
         {/* CRT scanline overlay */}
         <div
@@ -106,13 +111,14 @@ function ModuleRow({ mod, index }: { mod: Module; index: number }) {
         />
         {/* Glow tip */}
         <motion.div
-          className="absolute top-0 h-full w-3"
+          className="absolute top-0 h-full w-4"
           initial={{ left: 0, opacity: 0 }}
-          animate={inView ? { left: `${mod.pct - 3}%`, opacity: [0, 1, 0] } : {}}
+          animate={inView ? { left: `${mod.pct - 4}%`, opacity: [0, 1, 0] } : {}}
           transition={{ duration: 1, delay: index * 0.06 + 0.15 }}
           style={{
             background: "linear-gradient(to right, transparent, rgba(168,255,0,0.9))",
             filter: "blur(2px)",
+            transform: "skewX(-12deg)",
           }}
         />
       </div>
@@ -133,46 +139,7 @@ function ModuleRow({ mod, index }: { mod: Module; index: number }) {
   );
 }
 
-// ─── Animated counter ─────────────────────────────────────────────────────────
 
-function useCounter(target: number, duration = 1400) {
-  const [count, setCount] = useState(0);
-  const ref = useRef<HTMLElement>(null);
-  const inView = useInView(ref, { once: true });
-
-  useEffect(() => {
-    if (!inView) return;
-    const start = performance.now();
-    const tick = (now: number) => {
-      const t = Math.min((now - start) / duration, 1);
-      setCount(Math.floor((1 - Math.pow(1 - t, 3)) * target));
-      if (t < 1) requestAnimationFrame(tick);
-      else setCount(target);
-    };
-    requestAnimationFrame(tick);
-  }, [inView, target, duration]);
-
-  return { count, ref };
-}
-
-function StatItem({ value, suffix = "+", label, bars = 12 }: { value: number; suffix?: string; label: string; bars?: number }) {
-  const { count, ref } = useCounter(value);
-  return (
-    <div className="flex flex-col items-center gap-3">
-      <BarcodeIndicator bars={bars} maxHeight={20} />
-      <span
-        ref={ref as React.RefObject<HTMLSpanElement>}
-        className="font-mono text-4xl font-bold text-[#a8ff00]"
-        style={{ textShadow: "0 0 20px rgba(168,255,0,0.4)" }}
-      >
-        {count}{suffix}
-      </span>
-      <span className="font-mono text-[10px] tracking-[0.2em] text-[#555555] uppercase text-center">
-        {label}
-      </span>
-    </div>
-  );
-}
 
 // ─── Section ──────────────────────────────────────────────────────────────────
 
@@ -232,13 +199,18 @@ export default function Skills() {
           <span className="text-[#a8ff00]">OK</span>
         </motion.div>
 
-        {/* Stats strip with barcode indicators */}
+        {/* Stats strip — dial gauges row */}
         <RevealText delay={0.2}>
-          <div className="mt-20 grid grid-cols-2 sm:grid-cols-4 gap-10 border-t border-[#1e1e1e] pt-14">
-            <StatItem value={2}  label="Years experience" bars={10} />
-            <StatItem value={4}  label="Projects shipped"  bars={14} />
-            <StatItem value={3}  label="Enterprise clients" bars={12} />
-            <StatItem value={12} label="Technologies"       bars={16} />
+          <div className="mt-20 border-t border-[#1e1e1e] pt-10">
+            <p className="font-mono text-[9px] tracking-[0.25em] text-[#333333] mb-6">
+              <span className="text-[#a8ff00]">&gt;</span> SYS.STATS // DIAL_READOUT
+            </p>
+            <div className="flex flex-wrap justify-between gap-6 max-w-2xl">
+              <DialGauge value={75}  displayValue="2+"  label="Years Exp."       size={90} />
+              <DialGauge value={85}  displayValue="4+"  label="Projects"          size={90} />
+              <DialGauge value={65}  displayValue="3+"  label="Clients"           size={90} />
+              <DialGauge value={92}  displayValue="12+" label="Technologies"      size={90} />
+            </div>
           </div>
         </RevealText>
       </div>

@@ -6,6 +6,7 @@ import HUDCorners from "@/components/ui/HUDCorners";
 import RevealText from "@/components/ui/RevealText";
 import GrainEffect from "@/components/ui/GrainEffect";
 import CircuitPath from "@/components/ui/CircuitPath";
+import NestedSquares from "@/components/ui/NestedSquares";
 import { personal, skills } from "@/lib/data";
 import { useLang } from "@/context/LangContext";
 
@@ -24,6 +25,13 @@ export default function About() {
         width={320}
         height={180}
         className="absolute bottom-12 right-8 opacity-50 hidden lg:block"
+      />
+      {/* Nested squares — top left corner accent */}
+      <NestedSquares
+        size={72}
+        layers={3}
+        rotate
+        className="absolute top-10 left-6 opacity-30 hidden lg:block"
       />
       <div className="mx-auto max-w-7xl">
         <RevealText scan>

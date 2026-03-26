@@ -7,6 +7,7 @@ import HUDCorners from "@/components/ui/HUDCorners";
 import RevealText from "@/components/ui/RevealText";
 import Crosshair from "@/components/ui/Crosshair";
 import ChevronCluster from "@/components/ui/ChevronCluster";
+import NestedSquares from "@/components/ui/NestedSquares";
 import { personal, social } from "@/lib/data";
 import { useLang } from "@/context/LangContext";
 
@@ -48,6 +49,13 @@ export default function Contact() {
     >
       {/* Decorative crosshair */}
       <Crosshair className="absolute top-16 right-16 opacity-20 hidden md:block" size={24} />
+      {/* Nested squares — bottom left */}
+      <NestedSquares
+        size={80}
+        layers={3}
+        rotate
+        className="absolute bottom-12 left-8 opacity-20 hidden lg:block"
+      />
 
       <div className="mx-auto max-w-7xl">
         <RevealText scan>
