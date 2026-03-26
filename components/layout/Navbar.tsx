@@ -41,17 +41,27 @@ export default function Navbar() {
         className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4"
         aria-label="Main navigation"
       >
-        {/* Logo */}
+        {/* Logo with status dot */}
         <a
           href="#home"
-          className="font-mono text-sm tracking-[0.15em] text-[#a8ff00] hover:opacity-80 transition-opacity"
+          className="flex items-center gap-2 font-mono text-sm tracking-[0.15em] text-[#a8ff00] hover:opacity-80 transition-opacity"
           aria-label="Ulises Miranda — back to top"
         >
-          <span className="text-[#555555]">&gt;</span> UM
+          {/* Status dot */}
+          <span
+            className="w-1.5 h-1.5 rounded-full bg-[#a8ff00] hud-pulse flex-shrink-0"
+            aria-hidden="true"
+          />
+          <span className="text-[#333333]">&gt;</span> UM
         </a>
 
-        {/* Desktop links + lang toggle */}
+        {/* Desktop links + status + lang toggle */}
         <div className="hidden md:flex items-center gap-8">
+          {/* System coordinates */}
+          <span className="font-mono text-[8px] tracking-[0.2em] text-[#222222]" aria-hidden="true">
+            SYS.ONLINE
+          </span>
+
           <ul className="flex items-center gap-8">
             {navLinks.map((link) => {
               const sectionId = link.href.replace("#", "");
@@ -60,9 +70,17 @@ export default function Navbar() {
                 <li key={link.href}>
                   <a
                     href={link.href}
-                    className="relative font-mono text-xs tracking-[0.2em] transition-colors duration-200 cursor-pointer"
+                    className="relative font-mono text-xs tracking-[0.2em] transition-colors duration-200 cursor-pointer flex items-center gap-1.5"
                     style={{ color: isActive ? "#a8ff00" : "#555555" }}
                   >
+                    {/* Active indicator dot */}
+                    {isActive && (
+                      <span
+                        className="w-1 h-1 rounded-full bg-[#a8ff00] flex-shrink-0"
+                        style={{ boxShadow: "0 0 4px rgba(168,255,0,0.6)" }}
+                        aria-hidden="true"
+                      />
+                    )}
                     {link.label}
                     {isActive && !prefersReducedMotion && (
                       <motion.span
@@ -76,6 +94,9 @@ export default function Navbar() {
               );
             })}
           </ul>
+
+          {/* Divider tick */}
+          <span className="w-px h-4 bg-[#1e1e1e]" aria-hidden="true" />
 
           {/* Language toggle */}
           <button
@@ -134,13 +155,17 @@ export default function Navbar() {
                 <a
                   href={link.href}
                   onClick={() => setMenuOpen(false)}
-                  className="font-mono text-sm tracking-[0.2em] text-[#efefef] hover:text-[#a8ff00] transition-colors cursor-pointer"
+                  className="font-mono text-sm tracking-[0.2em] text-[#efefef] hover:text-[#a8ff00] transition-colors cursor-pointer flex items-center gap-2"
                 >
+                  <span className="w-1 h-1 rounded-full bg-[#333333]" aria-hidden="true" />
                   {link.label}
                 </a>
               </li>
             ))}
           </ul>
+          <div className="mt-4 pt-4 border-t border-[#1e1e1e]">
+            <span className="font-mono text-[8px] tracking-[0.2em] text-[#222222]">SYS.ONLINE // PORTFOLIO v2.0</span>
+          </div>
         </div>
       )}
     </header>

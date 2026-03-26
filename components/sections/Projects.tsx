@@ -253,7 +253,7 @@ export default function Projects() {
     <>
       <section
         id="projects"
-        className="relative py-28 px-6 border-t border-[#1e1e1e]"
+        className="relative py-28 px-6"
         aria-label="Projects"
       >
         <div className="mx-auto max-w-7xl">

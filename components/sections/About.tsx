@@ -14,7 +14,7 @@ export default function About() {
   return (
     <section
       id="about"
-      className="relative py-28 px-6 border-t border-[#1e1e1e]"
+      className="relative py-28 px-6"
       aria-label="About Ulises Miranda"
     >
       <div className="mx-auto max-w-7xl">
@@ -25,7 +25,7 @@ export default function About() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
           {/* Image column */}
           <RevealText direction="left" delay={0.1}>
-            <HUDCorners className="inline-block" size={18}>
+            <HUDCorners className="inline-block" size={18} ticks label="PROFILE.IMG">
               <div className="relative overflow-hidden" style={{ padding: "10px" }}>
                 <Image
                   src="/images/about_hero.png"

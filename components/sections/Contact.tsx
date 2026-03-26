@@ -42,7 +42,7 @@ export default function Contact() {
   return (
     <section
       id="contact"
-      className="relative py-28 px-6 border-t border-[#1e1e1e]"
+      className="relative py-28 px-6 bg-cyber-grid"
       aria-label="Contact"
     >
       {/* Decorative crosshair */}
@@ -122,7 +122,7 @@ export default function Contact() {
 
           {/* Right — form */}
           <RevealText delay={0.2}>
-            <HUDCorners className="p-8" size={16}>
+            <HUDCorners className="p-8" size={16} ticks label="MSG.INPUT">
               {status === "success" ? (
                 <div className="flex flex-col items-center justify-center min-h-[300px] gap-4 text-center">
                   <span className="text-4xl text-[#a8ff00]" aria-hidden="true">✦</span>

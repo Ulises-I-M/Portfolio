@@ -181,7 +181,7 @@ export default function Skills() {
   return (
     <section
       id="skills"
-      className="relative py-28 px-6 border-t border-[#1e1e1e]"
+      className="relative py-28 px-6 bg-cyber-grid"
       aria-label="Skills and statistics"
     >
       <div className="mx-auto max-w-7xl">

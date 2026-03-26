@@ -107,6 +107,73 @@ html.custom-cursor-active * {
   cursor: none !important;
 }
 
+/* ─── Cybernetic HUD utilities ─────────────────────────────────────────────── */
+
+/* Pulsing dot indicator */
+@keyframes hud-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 4px rgba(168,255,0,0.8); }
+  50% { opacity: 0.3; box-shadow: 0 0 2px rgba(168,255,0,0.3); }
+}
+.hud-pulse {
+  animation: hud-pulse 2s ease-in-out infinite;
+}
+
+/* Data stream scroll — vertical text ticker */
+@keyframes data-stream {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-50%); }
+}
+
+/* Circuit node glow */
+@keyframes circuit-glow {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.4; }
+}
+
+/* Horizontal sweep line */
+@keyframes hud-sweep {
+  0%   { left: 0; opacity: 1; }
+  80%  { opacity: 0.6; }
+  100% { left: 100%; opacity: 0; }
+}
+
+/* Edge tick marks for cyber frames */
+.cyber-tick {
+  position: absolute;
+  background: #a8ff00;
+  opacity: 0.25;
+}
+.cyber-tick-h { width: 6px; height: 1px; }
+.cyber-tick-v { width: 1px; height: 6px; }
+
+/* Cyber border glow on hover */
+.cyber-border-glow {
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+.cyber-border-glow:hover {
+  border-color: rgba(168, 255, 0, 0.4) !important;
+  box-shadow: 0 0 20px rgba(168, 255, 0, 0.06), inset 0 0 20px rgba(168, 255, 0, 0.02);
+}
+
+/* Section cyber grid — denser than bg-grid, with circuit nodes */
+.bg-cyber-grid {
+  background-image:
+    radial-gradient(circle, rgba(168,255,0,0.06) 1px, transparent 1px),
+    linear-gradient(rgba(168,255,0,0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(168,255,0,0.02) 1px, transparent 1px);
+  background-size: 32px 32px, 32px 32px, 32px 32px;
+}
+
+/* Data ticker side rail */
+.data-ticker-rail {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  color: #333333;
+  font-family: "Space Mono", monospace;
+}
+
 /* Focus states */
 *:focus-visible {
   outline: 1px solid #a8ff00;

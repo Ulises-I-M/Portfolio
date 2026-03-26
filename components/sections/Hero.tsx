@@ -99,6 +99,17 @@ export default function Hero() {
       <div className="absolute bottom-16 left-8 hidden md:flex flex-col gap-1 font-mono text-[10px] text-[#555555] tracking-[0.15em]">
         <span>YRS_EXP: 2+</span>
         <span>PROJECTS: 4+</span>
+        <span className="text-[#222222] mt-2">0x00FF.INIT</span>
+      </div>
+
+      {/* Bottom right HUD coordinates */}
+      <div className="absolute bottom-16 right-8 hidden md:flex flex-col items-end gap-1 font-mono text-[8px] text-[#222222] tracking-[0.2em]" aria-hidden="true">
+        <span>LAT: -34.6037</span>
+        <span>LNG: -58.3816</span>
+        <div className="flex items-center gap-2 mt-1">
+          <span className="w-1 h-1 rounded-full bg-[#a8ff00] hud-pulse" />
+          <span className="text-[#333333]">CONNECTED</span>
+        </div>
       </div>
 
       {/* Main content */}
@@ -106,9 +117,13 @@ export default function Hero() {
         {/* Section counter */}
         <motion.p
           {...fadeIn(0.1)}
-          className="mb-6 font-mono text-xs tracking-[0.25em] text-[#555555]"
+          className="mb-6 font-mono text-xs tracking-[0.25em] text-[#555555] flex items-center gap-2"
         >
-          <span className="text-[#a8ff00]">01</span> — INIT
+          <span className="w-1.5 h-1.5 rounded-full bg-[#a8ff00] hud-pulse" aria-hidden="true" />
+          <span className="text-[#333333]">[</span>
+          <span className="text-[#a8ff00]">01</span>
+          <span className="text-[#333333]">]</span>
+          <span className="text-[#222222]">——</span> INIT
         </motion.p>
 
         {/* Big display name — chromatic aberration applied here */}

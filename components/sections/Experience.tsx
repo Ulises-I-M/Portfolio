@@ -15,7 +15,7 @@ export default function Experience() {
   return (
     <section
       id="experience"
-      className="relative py-28 px-6 border-t border-[#1e1e1e]"
+      className="relative py-28 px-6"
       aria-label="Work experience"
     >
       <div className="mx-auto max-w-7xl">
@@ -57,16 +57,7 @@ export default function Experience() {
                     />
 
                     {/* Card */}
-                    <div
-                      className="border border-[#1e1e1e] p-8 transition-colors duration-300 hover:border-[#a8ff00]/30"
-                      style={{ boxShadow: "none" }}
-                      onMouseEnter={(e) => {
-                        (e.currentTarget as HTMLElement).style.boxShadow = "0 0 24px rgba(168,255,0,0.05)";
-                      }}
-                      onMouseLeave={(e) => {
-                        (e.currentTarget as HTMLElement).style.boxShadow = "none";
-                      }}
-                    >
+                    <div className="border border-[#1e1e1e] p-8 cyber-border-glow">
                       {/* Header row */}
                       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
                         <div>

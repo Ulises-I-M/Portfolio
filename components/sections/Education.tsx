@@ -13,7 +13,7 @@ export default function Education() {
   return (
     <section
       id="education"
-      className="relative py-28 px-6 border-t border-[#1e1e1e]"
+      className="relative py-28 px-6"
       aria-label="Education"
     >
       <div className="mx-auto max-w-7xl">
@@ -25,8 +25,7 @@ export default function Education() {
           {education.map((entry, i) => (
             <RevealText key={i} delay={0.1 + i * 0.05}>
               <div
-                className="group border border-[#1e1e1e] p-6 transition-all duration-200 hover:border-[#a8ff00]"
-                style={{ transition: "border-color 0.25s" }}
+                className="group border border-[#1e1e1e] p-6 cyber-border-glow"
               >
                 {/* Type badge */}
                 <div className="flex items-center justify-between mb-4">

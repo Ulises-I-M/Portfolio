@@ -6,6 +6,7 @@ import ScrollProgress from "@/components/ui/ScrollProgress";
 import BackToTop from "@/components/ui/BackToTop";
 import CustomCursor from "@/components/ui/CustomCursor";
 import Terminal from "@/components/ui/Terminal";
+import DataTicker from "@/components/ui/DataTicker";
 import Navbar from "@/components/layout/Navbar";
 
 export const metadata: Metadata = {
@@ -55,6 +56,7 @@ export default function RootLayout({
           <Navbar />
           {children}
           <BackToTop />
+          <DataTicker />
           <Terminal />
         </LangProvider>
       </body>
