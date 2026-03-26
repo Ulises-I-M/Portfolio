@@ -18,24 +18,25 @@ const randomByte = () =>
   Array.from({ length: 8 }, () => (Math.random() > 0.5 ? "1" : "0")).join("");
 
 const buildBlock = (W: number, H: number): Block => {
-  const lineCount = 3 + Math.floor(Math.random() * 5);
+  const lineCount = 1 + Math.floor(Math.random() * 3); // smaller: 1–3 lines
   const lines = Array.from({ length: lineCount }, () => {
-    const bytes = 1 + Math.floor(Math.random() * 3);
+    const bytes = 1 + Math.floor(Math.random() * 2); // 1–2 bytes only
     return Array.from({ length: bytes }, randomByte).join("  ");
   });
   return {
-    x: Math.random() * (W - 160) + 20,
+    x: Math.random() * (W - 140) + 20,
     y: Math.random() * (H - lineCount * 16 - 20) + 10,
     lines,
     alpha: 0,
     state: "in",
     tick: 0,
-    holdFor: 60 + Math.floor(Math.random() * 120),
+    holdFor: 80 + Math.floor(Math.random() * 160), // hold longer before fading
   };
 };
 
-const MAX_BLOCKS = 9;
-const FADE_FRAMES = 20;
+const MAX_BLOCKS = 6;
+const FADE_FRAMES = 30;
+const MAX_ALPHA   = 0.13; // very subtle — texture only
 
 export default function BinaryCascadeCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -66,7 +67,7 @@ export default function BinaryCascadeCanvas() {
       spawnTimer--;
       if (spawnTimer <= 0 && blocks.length < MAX_BLOCKS) {
         blocks.push(buildBlock(width, height));
-        spawnTimer = 18 + Math.floor(Math.random() * 40);
+        spawnTimer = 40 + Math.floor(Math.random() * 80);
       }
 
       // Draw & update each block
@@ -74,23 +75,14 @@ export default function BinaryCascadeCanvas() {
         b.tick++;
 
         if (b.state === "in") {
-          b.alpha = Math.min(1, b.tick / FADE_FRAMES);
+          b.alpha = Math.min(MAX_ALPHA, (b.tick / FADE_FRAMES) * MAX_ALPHA);
           if (b.tick >= FADE_FRAMES) { b.state = "hold"; b.tick = 0; }
         } else if (b.state === "hold") {
-          b.alpha = 1;
-          // Randomly mutate one character to simulate live data
-          if (Math.random() < 0.03) {
-            const li = Math.floor(Math.random() * b.lines.length);
-            const chars = b.lines[li].split("");
-            const ci = Math.floor(Math.random() * chars.length);
-            if (chars[ci] === "0") chars[ci] = "1";
-            else if (chars[ci] === "1") chars[ci] = "0";
-            b.lines[li] = chars.join("");
-          }
+          b.alpha = MAX_ALPHA;
           if (b.tick >= b.holdFor) { b.state = "out"; b.tick = 0; }
         } else {
-          b.alpha = Math.max(0, 1 - b.tick / FADE_FRAMES);
-          if (b.tick >= FADE_FRAMES) return false; // remove
+          b.alpha = Math.max(0, MAX_ALPHA - (b.tick / FADE_FRAMES) * MAX_ALPHA);
+          if (b.tick >= FADE_FRAMES) return false;
         }
 
         const LINE_H = 15;
@@ -98,29 +90,9 @@ export default function BinaryCascadeCanvas() {
         ctx.textAlign = "left";
 
         b.lines.forEach((line, i) => {
-          // Dim all lines slightly except a "cursor" line that cycles
-          const isCursor = (b.state === "hold") &&
-            (Math.floor(b.tick / 8) % b.lines.length === i);
-          const lineAlpha = b.alpha * (isCursor ? 0.95 : 0.38);
-
-          ctx.fillStyle = `rgba(168,255,0,${lineAlpha.toFixed(3)})`;
+          ctx.fillStyle = `rgba(168,255,0,${b.alpha.toFixed(3)})`;
           ctx.fillText(line, b.x, b.y + i * LINE_H);
         });
-
-        // Bracket decoration around the block
-        const bW = Math.max(...b.lines.map((l) => ctx.measureText(l).width) );
-        const bH = b.lines.length * LINE_H;
-        const alpha = b.alpha * 0.18;
-        ctx.strokeStyle = `rgba(168,255,0,${alpha.toFixed(3)})`;
-        ctx.lineWidth = 0.6;
-        // top-left corner
-        ctx.beginPath();
-        ctx.moveTo(b.x - 4, b.y - 12 + 6); ctx.lineTo(b.x - 4, b.y - 12); ctx.lineTo(b.x - 4 + 6, b.y - 12);
-        ctx.stroke();
-        // bottom-right corner
-        ctx.beginPath();
-        ctx.moveTo(b.x + bW + 4 - 6, b.y + bH); ctx.lineTo(b.x + bW + 4, b.y + bH); ctx.lineTo(b.x + bW + 4, b.y + bH - 6);
-        ctx.stroke();
 
         return true;
       });
