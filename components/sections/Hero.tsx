@@ -12,7 +12,7 @@ import SocialIcon from "@/components/ui/SocialIcon";
 import Crosshair from "@/components/ui/Crosshair";
 import GlitchText from "@/components/ui/GlitchText";
 import Typewriter from "@/components/ui/Typewriter";
-import HexGridCanvas from "@/components/ui/HexGridCanvas";
+import CircuitPulseCanvas from "@/components/ui/CircuitPulseCanvas";
 import SerratedRingGauge from "@/components/ui/SerratedRingGauge";
 import ChevronCluster from "@/components/ui/ChevronCluster";
 import CircuitPath from "@/components/ui/CircuitPath";
@@ -51,8 +51,8 @@ export default function Hero() {
       className="relative flex min-h-screen items-center overflow-hidden bg-grid"
       aria-label="Hero — Ulises Miranda"
     >
-      {/* Hex-grid cybernetic background */}
-      <HexGridCanvas />
+      {/* Circuit pulse background */}
+      <CircuitPulseCanvas />
 
       {/* Circuit path decoration — top-right */}
       <CircuitPath
