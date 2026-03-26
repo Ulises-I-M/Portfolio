@@ -6,8 +6,9 @@ import { useReducedMotion } from "framer-motion";
 const CELL  = 55;   // world-space cell size
 const COLS  = 26;   // grid columns
 const ROWS  = 32;   // grid rows (extra rows for scroll wrap)
-const FOV   = 420;  // perspective focal length
-const CAM_Z = 280;  // camera Z distance
+const FOV   = 480;  // perspective focal length
+const CAM_Z = 220;  // camera Z distance
+const CAM_Y = 90;   // camera elevation (higher = more top-down)
 const SCROLL_SPEED = 0.18; // world units per frame
 
 /** Sum-of-sines height approximation (no external noise lib needed) */
@@ -25,7 +26,7 @@ const project = (
   const scale = FOV / (wz + CAM_Z);
   return {
     sx: W / 2 + wx * scale,
-    sy: H * 0.60 - wy * scale, // horizon at 60% height
+    sy: H * 0.42 + (wy - CAM_Y) * scale, // horizon at 42%, camera elevated
     scale,
   };
 };
