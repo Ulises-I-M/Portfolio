@@ -38,6 +38,9 @@ export default function SerratedRingGauge({
   const cx = size / 2;
   const cy = size / 2;
 
+  // Round to 4 dp to prevent SSR/client floating-point hydration mismatch
+  const r4 = (n: number) => Math.round(n * 10000) / 10000;
+
   // Radii
   const outerR = size / 2 - 2;       // outer tip of teeth
   const innerTeethR = outerR - 5;    // base of teeth
@@ -53,9 +56,9 @@ export default function SerratedRingGauge({
       const angC = (((i * 2) + 2) / (teeth * 2)) * Math.PI * 2 - Math.PI / 2;
       // Inner → outer → inner
       points.push(
-        `${cx + Math.cos(angA) * innerTeethR},${cy + Math.sin(angA) * innerTeethR}`,
-        `${cx + Math.cos(angB) * outerR},${cy + Math.sin(angB) * outerR}`,
-        `${cx + Math.cos(angC) * innerTeethR},${cy + Math.sin(angC) * innerTeethR}`,
+        `${r4(cx + Math.cos(angA) * innerTeethR)},${r4(cy + Math.sin(angA) * innerTeethR)}`,
+        `${r4(cx + Math.cos(angB) * outerR)},${r4(cy + Math.sin(angB) * outerR)}`,
+        `${r4(cx + Math.cos(angC) * innerTeethR)},${r4(cy + Math.sin(angC) * innerTeethR)}`,
       );
     }
     return `M ${points.join(" L ")} Z`;
@@ -146,10 +149,10 @@ export default function SerratedRingGauge({
             return (
               <line
                 key={i}
-                x1={cx + Math.cos(rad) * r1}
-                y1={cy + Math.sin(rad) * r1}
-                x2={cx + Math.cos(rad) * r2}
-                y2={cy + Math.sin(rad) * r2}
+                x1={r4(cx + Math.cos(rad) * r1)}
+                y1={r4(cy + Math.sin(rad) * r1)}
+                x2={r4(cx + Math.cos(rad) * r2)}
+                y2={r4(cy + Math.sin(rad) * r2)}
                 stroke={`rgba(168,255,0,0.25)`}
                 strokeWidth={1}
               />
