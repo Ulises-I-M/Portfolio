@@ -48,6 +48,8 @@ export default function About() {
                   alt="Ulises Miranda"
                   width={480}
                   height={560}
+                  priority
+                  loading="eager"
                   className="block w-full object-cover"
                   style={{ filter: "grayscale(0.3) contrast(1.05)" }}
                 />
