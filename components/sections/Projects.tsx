@@ -137,16 +137,15 @@ function ProjectCard({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
       transition={{ duration: 0.4 }}
-      className="group relative overflow-hidden border border-[#1e1e1e] cursor-pointer"
+      className="group relative overflow-hidden border border-[#1e1e1e] cursor-pointer chamfered chamfered-glow"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onFocusCapture={() => setHovered(true)}
       onBlurCapture={() => setHovered(false)}
       onClick={() => onSelect(project)}
       style={{
-        borderColor: hovered ? "#a8ff00" : "#1e1e1e",
-        boxShadow: hovered ? "0 0 20px rgba(168,255,0,0.1)" : "none",
-        transition: "border-color 0.25s, box-shadow 0.25s",
+        borderColor: hovered ? "rgba(168,255,0,0.4)" : "#1e1e1e",
+        transition: "border-color 0.25s",
       }}
     >
       {/* Image */}
@@ -174,6 +173,12 @@ function ProjectCard({
               "linear-gradient(135deg, rgba(168,255,0,0.08) 0%, transparent 60%)",
             opacity: hovered ? 1 : 0,
           }}
+        />
+        {/* Diagonal hatch overlay — always present, visible on hover */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 pointer-events-none transition-opacity duration-300 hatch-dense"
+          style={{ opacity: hovered ? 0.6 : 0.2 }}
         />
         <GrainEffect />
         {/* HUD corner brackets visible on hover */}

@@ -13,6 +13,10 @@ import Crosshair from "@/components/ui/Crosshair";
 import GlitchText from "@/components/ui/GlitchText";
 import Typewriter from "@/components/ui/Typewriter";
 import ParticleCanvas from "@/components/ui/ParticleCanvas";
+import ArcGauge from "@/components/ui/ArcGauge";
+import ChevronCluster from "@/components/ui/ChevronCluster";
+import CircuitPath from "@/components/ui/CircuitPath";
+import WarningBadge from "@/components/ui/WarningBadge";
 import { personal, social } from "@/lib/data";
 import { useLang } from "@/context/LangContext";
 
@@ -48,6 +52,14 @@ export default function Hero() {
     >
       {/* Particle spiderweb background */}
       <ParticleCanvas />
+
+      {/* Circuit path decoration — top-right */}
+      <CircuitPath
+        variant="hero"
+        width={320}
+        height={220}
+        className="absolute top-16 right-24 opacity-60 hidden lg:block"
+      />
 
       {/* HUD corner crosshairs */}
       <Crosshair className="absolute top-8 left-8 opacity-40" size={20} />
@@ -95,21 +107,24 @@ export default function Hero() {
         </motion.span>
       </div>
 
-      {/* HUD data labels — bottom left */}
-      <div className="absolute bottom-16 left-8 hidden md:flex flex-col gap-1 font-mono text-[10px] text-[#555555] tracking-[0.15em]">
-        <span>YRS_EXP: 2+</span>
-        <span>PROJECTS: 4+</span>
-        <span className="text-[#222222] mt-2">0x00FF.INIT</span>
+      {/* Arc gauges — bottom right (desktop) */}
+      <div
+        className="absolute bottom-16 right-8 hidden md:flex items-end gap-6"
+        aria-hidden="true"
+      >
+        <ArcGauge value={75} size={72} centerText="2+" subText="YRS" label="EXPERIENCE" />
+        <ArcGauge value={85} size={72} centerText="4+" subText="PROJ" label="PROJECTS" />
       </div>
 
-      {/* Bottom right HUD coordinates */}
-      <div className="absolute bottom-16 right-8 hidden md:flex flex-col items-end gap-1 font-mono text-[8px] text-[#222222] tracking-[0.2em]" aria-hidden="true">
-        <span>LAT: -34.6037</span>
-        <span>LNG: -58.3816</span>
+      {/* HUD data labels — bottom left */}
+      <div className="absolute bottom-16 left-8 hidden md:flex flex-col gap-1 font-mono text-[10px] text-[#555555] tracking-[0.15em]">
+        <span className="text-[#222222]">LAT: -34.6037</span>
+        <span className="text-[#222222]">LNG: -58.3816</span>
         <div className="flex items-center gap-2 mt-1">
           <span className="w-1 h-1 rounded-full bg-[#a8ff00] hud-pulse" />
           <span className="text-[#333333]">CONNECTED</span>
         </div>
+        <span className="text-[#222222] mt-1">0x00FF.INIT</span>
       </div>
 
       {/* Main content */}
@@ -152,8 +167,8 @@ export default function Hero() {
           </h1>
         </motion.div>
 
-        {/* Role typewriter */}
-        <motion.div {...fadeIn(0.7)} className="mt-6">
+        {/* Role typewriter + warning badge */}
+        <motion.div {...fadeIn(0.7)} className="mt-6 flex items-center gap-4 flex-wrap">
           <Typewriter
             phrases={[
               "FRONTEND_DEVELOPER",
@@ -163,6 +178,7 @@ export default function Hero() {
             ]}
             className="font-mono text-sm md:text-base tracking-[0.2em] text-[#555555] uppercase"
           />
+          <WarningBadge label="AVAILABLE" level="ok" pulse />
         </motion.div>
 
         {/* Divider */}
@@ -176,28 +192,29 @@ export default function Hero() {
           {tr.hero.bio}
         </motion.p>
 
-        {/* CTAs */}
+        {/* CTAs — chamfered corners */}
         <motion.div
           {...fadeIn(1.1)}
           className="mt-10 flex flex-wrap items-center gap-4"
         >
           <a
             href="#projects"
-            className="inline-flex items-center gap-2 border border-[#a8ff00] px-6 py-3 font-mono text-xs tracking-[0.2em] text-[#a8ff00] transition-all duration-200 hover:bg-[#a8ff00] hover:text-[#0a0a0a] cursor-pointer focus-visible:outline focus-visible:outline-[#a8ff00]"
+            className="inline-flex items-center gap-3 border border-[#a8ff00] px-6 py-3 font-mono text-xs tracking-[0.2em] text-[#a8ff00] transition-all duration-200 hover:bg-[#a8ff00] hover:text-[#0a0a0a] cursor-pointer focus-visible:outline focus-visible:outline-[#a8ff00] chamfered-sm"
             aria-label="View my work"
           >
-            {tr.hero.viewWork} <span aria-hidden="true">→</span>
+            {tr.hero.viewWork}
+            <ChevronCluster count={3} size={8} />
           </a>
           <a
             href="#contact"
-            className="inline-flex items-center gap-2 border border-[#1e1e1e] px-6 py-3 font-mono text-xs tracking-[0.2em] text-[#555555] transition-all duration-200 hover:border-[#a8ff00] hover:text-[#efefef] cursor-pointer"
+            className="inline-flex items-center gap-2 border border-[#1e1e1e] px-6 py-3 font-mono text-xs tracking-[0.2em] text-[#555555] transition-all duration-200 hover:border-[#a8ff00] hover:text-[#efefef] cursor-pointer chamfered-sm chamfered-glow"
           >
             {tr.hero.contact}
           </a>
           <a
             href="/cv.pdf"
             download
-            className="inline-flex items-center gap-2 border border-[#1e1e1e] px-6 py-3 font-mono text-xs tracking-[0.2em] text-[#555555] transition-all duration-200 hover:border-[#a8ff00] hover:text-[#a8ff00] cursor-pointer"
+            className="inline-flex items-center gap-2 border border-[#1e1e1e] px-6 py-3 font-mono text-xs tracking-[0.2em] text-[#555555] transition-all duration-200 hover:border-[#a8ff00] hover:text-[#a8ff00] cursor-pointer chamfered-sm chamfered-glow"
             aria-label="Download CV"
           >
             {tr.hero.cv} <span aria-hidden="true">↓</span>

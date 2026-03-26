@@ -2,6 +2,8 @@
 
 import SectionLabel from "@/components/ui/SectionLabel";
 import RevealText from "@/components/ui/RevealText";
+import PanelFrame from "@/components/ui/PanelFrame";
+import ChevronCluster from "@/components/ui/ChevronCluster";
 import { education } from "@/lib/data";
 import { useLang } from "@/context/LangContext";
 
@@ -21,34 +23,26 @@ export default function Education() {
           <SectionLabel index="04" label={tr.sections.education} className="mb-12" />
         </RevealText>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 max-w-4xl">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-4xl">
           {education.map((entry, i) => (
             <RevealText key={i} delay={0.1 + i * 0.05}>
-              <div
-                className="group border border-[#1e1e1e] p-6 cyber-border-glow"
+              <PanelFrame
+                label={`EDU.${String(i + 1).padStart(2, "0")}`}
+                status={entry.year}
+                className="group chamfered chamfered-glow h-full"
               >
                 {/* Type badge */}
                 <div className="flex items-center justify-between mb-4">
                   <span
-                    className="font-mono text-[9px] tracking-[0.2em] px-2 py-0.5 border"
+                    className="font-mono text-[9px] tracking-[0.2em] px-2 py-0.5 border chamfered-sm"
                     style={{
-                      borderColor:
-                        entry.type === "formal"
-                          ? "#a8ff00"
-                          : entry.type === "course"
-                          ? "#555555"
-                          : "#333333",
-                      color:
-                        entry.type === "formal"
-                          ? "#a8ff00"
-                          : "#555555",
+                      borderColor: entry.type === "formal" ? "#a8ff00" : entry.type === "course" ? "#555555" : "#333333",
+                      color: entry.type === "formal" ? "#a8ff00" : "#555555",
                     }}
                   >
                     {tr.education[entry.type].toUpperCase()}
                   </span>
-                  <span className="font-mono text-[10px] tracking-[0.15em] text-[#555555]">
-                    {entry.year}
-                  </span>
+                  <ChevronCluster count={2} size={7} />
                 </div>
 
                 {/* Degree */}
@@ -66,13 +60,13 @@ export default function Education() {
                   {entry.tags.map((tag) => (
                     <span
                       key={tag}
-                      className="border border-[#1e1e1e] px-2 py-0.5 font-mono text-[9px] tracking-[0.1em] text-[#555555]"
+                      className="border border-[#1e1e1e] px-2 py-0.5 font-mono text-[9px] tracking-[0.1em] text-[#555555] chamfered-sm"
                     >
                       {tag.toUpperCase()}
                     </span>
                   ))}
                 </div>
-              </div>
+              </PanelFrame>
             </RevealText>
           ))}
         </div>

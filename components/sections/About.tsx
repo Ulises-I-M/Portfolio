@@ -5,6 +5,7 @@ import SectionLabel from "@/components/ui/SectionLabel";
 import HUDCorners from "@/components/ui/HUDCorners";
 import RevealText from "@/components/ui/RevealText";
 import GrainEffect from "@/components/ui/GrainEffect";
+import CircuitPath from "@/components/ui/CircuitPath";
 import { personal, skills } from "@/lib/data";
 import { useLang } from "@/context/LangContext";
 
@@ -14,9 +15,16 @@ export default function About() {
   return (
     <section
       id="about"
-      className="relative py-28 px-6"
+      className="relative py-28 px-6 overflow-hidden"
       aria-label="About Ulises Miranda"
     >
+      {/* Circuit path decoration — bottom right */}
+      <CircuitPath
+        variant="about"
+        width={320}
+        height={180}
+        className="absolute bottom-12 right-8 opacity-50 hidden lg:block"
+      />
       <div className="mx-auto max-w-7xl">
         <RevealText scan>
           <SectionLabel index="02" label={tr.sections.about} className="mb-12" />
@@ -43,6 +51,12 @@ export default function About() {
                     background:
                       "linear-gradient(135deg, rgba(168,255,0,0.06) 0%, transparent 60%)",
                   }}
+                />
+                {/* Diagonal hatch texture */}
+                <div
+                  aria-hidden="true"
+                  className="absolute inset-0 pointer-events-none hatch"
+                  style={{ opacity: 0.5 }}
                 />
                 <GrainEffect />
               </div>

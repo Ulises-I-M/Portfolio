@@ -6,6 +6,7 @@ import SectionLabel from "@/components/ui/SectionLabel";
 import HUDCorners from "@/components/ui/HUDCorners";
 import RevealText from "@/components/ui/RevealText";
 import Crosshair from "@/components/ui/Crosshair";
+import ChevronCluster from "@/components/ui/ChevronCluster";
 import { personal, social } from "@/lib/data";
 import { useLang } from "@/context/LangContext";
 
@@ -200,10 +201,11 @@ export default function Contact() {
                   <button
                     type="submit"
                     disabled={status === "loading"}
-                    className="w-full border border-[#a8ff00] px-6 py-3 font-mono text-xs tracking-[0.2em] text-[#a8ff00] transition-all duration-200 hover:bg-[#a8ff00] hover:text-[#0a0a0a] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                    className="w-full border border-[#a8ff00] px-6 py-3 font-mono text-xs tracking-[0.2em] text-[#a8ff00] transition-all duration-200 hover:bg-[#a8ff00] hover:text-[#0a0a0a] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer chamfered-sm chamfered-glow flex items-center justify-center gap-3"
                     aria-busy={status === "loading"}
                   >
                     {status === "loading" ? tr.contact.sending : tr.contact.send}
+                    {status !== "loading" && <ChevronCluster count={3} size={7} />}
                   </button>
                 </form>
               )}

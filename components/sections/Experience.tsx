@@ -5,6 +5,8 @@ import { motion, AnimatePresence, useInView } from "framer-motion";
 import { useRef } from "react";
 import SectionLabel from "@/components/ui/SectionLabel";
 import RevealText from "@/components/ui/RevealText";
+import PanelFrame from "@/components/ui/PanelFrame";
+import ChevronCluster from "@/components/ui/ChevronCluster";
 import { experience } from "@/lib/data";
 import { useLang } from "@/context/LangContext";
 
@@ -56,16 +58,17 @@ export default function Experience() {
                       }}
                     />
 
-                    {/* Card */}
-                    <div className="border border-[#1e1e1e] p-8 cyber-border-glow">
+                    {/* Card — wrapped in PanelFrame */}
+                    <PanelFrame label={`EXP.${String(i + 1).padStart(2, "0")}`} status={exp.periodCode}>
                       {/* Header row */}
                       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
                         <div>
                           <h3 className="font-mono font-bold text-[#efefef] text-lg tracking-tight mb-1">
                             {exp.role.toUpperCase()}
                           </h3>
-                          <p className="font-mono text-sm text-[#a8ff00] tracking-[0.15em]">
+                          <p className="font-mono text-sm text-[#a8ff00] tracking-[0.15em] flex items-center gap-2">
                             @ {exp.company.toUpperCase()}
+                            <ChevronCluster count={3} size={7} />
                           </p>
                         </div>
                         <div className="font-mono text-[10px] tracking-[0.2em] text-[#555555] sm:text-right">
@@ -82,12 +85,12 @@ export default function Experience() {
                         {lang === "es" && exp.descriptionEs ? exp.descriptionEs : exp.description}
                       </p>
 
-                      {/* Tags */}
+                      {/* Tags — chamfered */}
                       <div className="flex flex-wrap gap-2 mb-8">
                         {exp.tags.map((tag) => (
                           <span
                             key={tag}
-                            className="border border-[#1e1e1e] px-3 py-1 font-mono text-[10px] tracking-[0.15em] text-[#555555]"
+                            className="border border-[#1e1e1e] px-3 py-1 font-mono text-[10px] tracking-[0.15em] text-[#555555] chamfered-sm"
                           >
                             {tag.toUpperCase()}
                           </span>
@@ -109,7 +112,7 @@ export default function Experience() {
                                       openAchievement === ach.client ? null : ach.client
                                     )
                                   }
-                                  className="w-full flex items-center justify-between gap-3 border border-[#1e1e1e] px-4 py-3 font-mono text-xs tracking-[0.1em] text-[#efefef] transition-all duration-200 hover:border-[#a8ff00] hover:text-[#a8ff00] cursor-pointer text-left"
+                                  className="w-full flex items-center justify-between gap-3 border border-[#1e1e1e] px-4 py-3 font-mono text-xs tracking-[0.1em] text-[#efefef] transition-all duration-200 hover:border-[#a8ff00] hover:text-[#a8ff00] cursor-pointer text-left chamfered-sm chamfered-glow"
                                   style={{
                                     borderColor: openAchievement === ach.client ? "#a8ff00" : "#1e1e1e",
                                     color: openAchievement === ach.client ? "#a8ff00" : "#efefef",
@@ -164,7 +167,7 @@ export default function Experience() {
                           </div>
                         </div>
                       )}
-                    </div>
+                    </PanelFrame>
                   </div>
                 </RevealText>
               );

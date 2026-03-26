@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { motion, useInView } from "framer-motion";
 import SectionLabel from "@/components/ui/SectionLabel";
 import RevealText from "@/components/ui/RevealText";
+import PanelFrame from "@/components/ui/PanelFrame";
+import BarcodeIndicator from "@/components/ui/BarcodeIndicator";
 
 // ─── Module data ──────────────────────────────────────────────────────────────
 
@@ -34,10 +36,10 @@ const MODULES: Module[] = [
   { id: "M.012", name: "ThingsBoard", pct: 78, category: "TOOLS"      },
 ];
 
-const CATEGORIES: Array<{ key: Module["category"]; label: string }> = [
-  { key: "FRONTEND",   label: "PKG: FRONTEND" },
-  { key: "FRAMEWORKS", label: "PKG: FRAMEWORKS" },
-  { key: "TOOLS",      label: "PKG: TOOLS" },
+const CATEGORIES: Array<{ key: Module["category"]; label: string; status: string }> = [
+  { key: "FRONTEND",   label: "PKG: FRONTEND",   status: "4 MODULES" },
+  { key: "FRAMEWORKS", label: "PKG: FRAMEWORKS",  status: "3 MODULES" },
+  { key: "TOOLS",      label: "PKG: TOOLS",       status: "5 MODULES" },
 ];
 
 function getLevel(pct: number): Level {
@@ -47,7 +49,6 @@ function getLevel(pct: number): Level {
   return "JNR";
 }
 
-// All levels use the portfolio neon-green / mono palette — no per-tech colors
 const LEVEL_STYLE: Record<Level, { color: string; border: string }> = {
   EXPERT: { color: "#a8ff00",              border: "rgba(168,255,0,0.45)" },
   ADV:    { color: "rgba(168,255,0,0.65)", border: "rgba(168,255,0,0.2)"  },
@@ -55,7 +56,7 @@ const LEVEL_STYLE: Record<Level, { color: string; border: string }> = {
   JNR:    { color: "#333333",              border: "#1e1e1e"               },
 };
 
-// ─── Animated bar ─────────────────────────────────────────────────────────────
+// ─── Module bar row ────────────────────────────────────────────────────────────
 
 function ModuleRow({ mod, index }: { mod: Module; index: number }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -82,10 +83,10 @@ function ModuleRow({ mod, index }: { mod: Module; index: number }) {
         {mod.name.toUpperCase()}
       </span>
 
-      {/* Bar track */}
+      {/* Bar track — with diagonal hatch background */}
       <div
-        className="relative h-[6px] overflow-hidden"
-        style={{ background: "rgba(168,255,0,0.06)" }}
+        className="relative h-[6px] overflow-hidden hatch"
+        style={{ background: "rgba(168,255,0,0.04)" }}
       >
         {/* Fill */}
         <motion.div
@@ -93,14 +94,14 @@ function ModuleRow({ mod, index }: { mod: Module; index: number }) {
           initial={{ width: 0 }}
           animate={inView ? { width: `${mod.pct}%` } : { width: 0 }}
           transition={{ duration: 1, delay: index * 0.06 + 0.15, ease: [0.25, 0.46, 0.45, 0.94] }}
-          style={{ background: "#a8ff00", opacity: 0.8 }}
+          style={{ background: "#a8ff00", opacity: 0.85 }}
         />
         {/* CRT scanline overlay */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
             background:
-              "repeating-linear-gradient(to bottom, transparent 0px, transparent 1px, rgba(0,0,0,0.3) 1px, rgba(0,0,0,0.3) 2px)",
+              "repeating-linear-gradient(to bottom, transparent 0px, transparent 1px, rgba(0,0,0,0.25) 1px, rgba(0,0,0,0.25) 2px)",
           }}
         />
         {/* Glow tip */}
@@ -121,9 +122,9 @@ function ModuleRow({ mod, index }: { mod: Module; index: number }) {
         {inView ? `${mod.pct}%` : "---"}
       </span>
 
-      {/* Level badge */}
+      {/* Level badge — chamfered */}
       <span
-        className="font-mono text-[9px] tracking-[0.1em] text-center px-1.5 py-0.5 border"
+        className="font-mono text-[9px] tracking-[0.1em] text-center px-1.5 py-0.5 border chamfered-sm"
         style={{ color: ls.color, borderColor: ls.border }}
       >
         {level}
@@ -154,10 +155,11 @@ function useCounter(target: number, duration = 1400) {
   return { count, ref };
 }
 
-function StatItem({ value, suffix = "+", label }: { value: number; suffix?: string; label: string }) {
+function StatItem({ value, suffix = "+", label, bars = 12 }: { value: number; suffix?: string; label: string; bars?: number }) {
   const { count, ref } = useCounter(value);
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className="flex flex-col items-center gap-3">
+      <BarcodeIndicator bars={bars} maxHeight={20} />
       <span
         ref={ref as React.RefObject<HTMLSpanElement>}
         className="font-mono text-4xl font-bold text-[#a8ff00]"
@@ -202,35 +204,23 @@ export default function Skills() {
           </div>
         </RevealText>
 
-        {/* Module groups */}
-        <div ref={sectionRef} className="max-w-2xl space-y-10">
+        {/* Module groups — each wrapped in PanelFrame */}
+        <div ref={sectionRef} className="max-w-2xl space-y-8">
           {CATEGORIES.map((cat) => {
             const mods = MODULES.filter((m) => m.category === cat.key);
             return (
-              <div key={cat.key}>
-                {/* Category header */}
-                <div className="flex items-center gap-3 mb-5">
-                  <span className="font-mono text-[10px] tracking-[0.25em] text-[#a8ff00]">
-                    ──
-                  </span>
-                  <span className="font-mono text-[10px] tracking-[0.25em] text-[#555555]">
-                    {cat.label}
-                  </span>
-                  <div className="flex-1 h-px" style={{ background: "#1e1e1e" }} />
-                </div>
-
-                {/* Module rows */}
-                <div className="space-y-3">
+              <PanelFrame key={cat.key} label={cat.label} status={cat.status}>
+                <div className="space-y-3 pt-2">
                   {mods.map((mod, i) => (
                     <ModuleRow key={mod.id} mod={mod} index={i} />
                   ))}
                 </div>
-              </div>
+              </PanelFrame>
             );
           })}
         </div>
 
-        {/* Scan complete indicator */}
+        {/* Scan complete */}
         <motion.div
           className="mt-8 font-mono text-[10px] tracking-[0.15em] max-w-2xl"
           initial={{ opacity: 0 }}
@@ -242,13 +232,13 @@ export default function Skills() {
           <span className="text-[#a8ff00]">OK</span>
         </motion.div>
 
-        {/* Stats strip */}
+        {/* Stats strip with barcode indicators */}
         <RevealText delay={0.2}>
           <div className="mt-20 grid grid-cols-2 sm:grid-cols-4 gap-10 border-t border-[#1e1e1e] pt-14">
-            <StatItem value={2}  label="Years experience" />
-            <StatItem value={4}  label="Projects shipped" />
-            <StatItem value={3}  label="Enterprise clients" />
-            <StatItem value={12} label="Technologies" />
+            <StatItem value={2}  label="Years experience" bars={10} />
+            <StatItem value={4}  label="Projects shipped"  bars={14} />
+            <StatItem value={3}  label="Enterprise clients" bars={12} />
+            <StatItem value={12} label="Technologies"       bars={16} />
           </div>
         </RevealText>
       </div>
