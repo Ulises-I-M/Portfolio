@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef } from "react";
-import { motion, useInView } from "framer-motion";
+import { useRef, useEffect, useState } from "react";
+import { useInView, useAnimate, useReducedMotion } from "framer-motion";
+import { motion } from "framer-motion";
 
 interface GateRevealProps {
   children: React.ReactNode;
@@ -10,89 +11,196 @@ interface GateRevealProps {
 }
 
 /**
- * Futuristic blast-door gate that covers content on mount,
- * then slides the two panels outward when the element enters view,
- * revealing whatever is underneath.
+ * Futuristic blast-door gate — 4-phase cinematic reveal:
+ *   Phase 0 (0–0.5s)  : Progress bars fill on each panel
+ *   Phase 1 (0.5s)    : Seam flashes, status → "ACCESS GRANTED"
+ *   Phase 2 (0.57–1.3s): Panels translate outward (real sliding doors)
+ *   Phase 3 (1.3s+)   : Scan line sweeps top→bottom over revealed image
  */
 export default function GateReveal({
   children,
   className = "",
   label = "PROFILE.IMG",
 }: GateRevealProps) {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-5%" });
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inView = useInView(containerRef, { once: true, margin: "-5%" });
+  const prefersReduced = useReducedMotion();
+  const [overlayScope, animate] = useAnimate();
+  const [status, setStatus] = useState<"AUTHENTICATING" | "ACCESS GRANTED">(
+    "AUTHENTICATING"
+  );
+  const [scanActive, setScanActive] = useState(false);
+  const didRun = useRef(false);
 
-  // Tick positions along the inner (seam) edge of each panel
-  const seamTicks = [15, 30, 45, 55, 70, 85];
+  useEffect(() => {
+    if (!inView || prefersReduced || didRun.current) return;
+    didRun.current = true;
 
-  const panelBase: React.CSSProperties = {
-    position: "absolute",
-    top: 0,
-    bottom: 0,
-    background: "#080808",
-    overflow: "hidden",
+    async function run() {
+      // ── Phase 0: progress bars fill ──────────────────────────────────────
+      await animate(
+        ".gate-progress",
+        { scaleX: 1 },
+        { duration: 0.5, ease: "linear" }
+      );
+
+      // ── Phase 1: seam flash + status change ───────────────────────────────
+      animate(
+        ".gate-seam",
+        {
+          width: 8,
+          opacity: 1,
+          boxShadow:
+            "0 0 20px rgba(168,255,0,1), 0 0 50px rgba(168,255,0,0.6)",
+        },
+        { duration: 0.07 }
+      );
+      await new Promise<void>((r) => setTimeout(r, 80));
+      setStatus("ACCESS GRANTED");
+
+      // ── Phase 2: panels slide out + seam fades ────────────────────────────
+      animate(".gate-seam", { opacity: 0, width: 2 }, { duration: 0.25 });
+      animate(
+        ".gate-panel-l",
+        { x: "-100%" },
+        { duration: 0.75, ease: [0.32, 0, 0.67, 0] }
+      );
+      await animate(
+        ".gate-panel-r",
+        { x: "100%" },
+        { duration: 0.75, ease: [0.32, 0, 0.67, 0] }
+      );
+
+      // ── Phase 3: scan line ────────────────────────────────────────────────
+      setScanActive(true);
+    }
+
+    run();
+  }, [inView, prefersReduced, animate]);
+
+  // Skip all animation if user prefers reduced motion
+  if (prefersReduced) {
+    return <div className={`relative ${className}`}>{children}</div>;
+  }
+
+  // ── Shared styles ──────────────────────────────────────────────────────────
+  const hazardBand: React.CSSProperties = {
+    height: 20,
+    backgroundImage:
+      "repeating-linear-gradient(45deg, rgba(168,255,0,0.13) 0, rgba(168,255,0,0.13) 4px, transparent 4px, transparent 10px)",
   };
 
-  const warningStripes: React.CSSProperties = {
+  const dotGrid: React.CSSProperties = {
     position: "absolute",
     inset: 0,
     backgroundImage:
-      "repeating-linear-gradient(135deg, transparent 0px, transparent 10px, rgba(168,255,0,0.025) 10px, rgba(168,255,0,0.025) 11px)",
+      "radial-gradient(circle, rgba(168,255,0,0.07) 1px, transparent 1px)",
+    backgroundSize: "16px 16px",
   };
 
+  const seamTicks = [10, 20, 30, 40, 50, 60, 70, 80, 90];
+
+  const statusColor =
+    status === "ACCESS GRANTED"
+      ? "rgba(168,255,0,0.75)"
+      : "rgba(168,255,0,0.4)";
+
   return (
-    <div ref={ref} className={`relative overflow-hidden ${className}`}>
+    <div ref={containerRef} className={`relative overflow-hidden ${className}`}>
+      {/* ── Revealed content ── */}
       {children}
+
+      {/* ── Phase 3: post-reveal scan line ── */}
+      {scanActive && (
+        <motion.div
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            top: 0,
+            height: 3,
+            background:
+              "linear-gradient(to bottom, rgba(168,255,0,0.6), rgba(168,255,0,0.1))",
+            filter: "blur(1px)",
+            zIndex: 5,
+            pointerEvents: "none",
+          }}
+          initial={{ y: 0, opacity: 0.8 }}
+          animate={{ y: "100%", opacity: 0 }}
+          transition={{ duration: 0.5, ease: "linear" }}
+        />
+      )}
 
       {/* ── Gate overlay ── */}
       <div
+        ref={overlayScope}
         aria-hidden="true"
         className="absolute inset-0 pointer-events-none"
         style={{ zIndex: 4 }}
       >
-        {/* Left panel */}
-        <motion.div
+        {/* ── LEFT PANEL ── */}
+        <div
+          className="gate-panel-l"
           style={{
-            ...panelBase,
+            position: "absolute",
+            top: 0,
+            bottom: 0,
             left: 0,
             width: "50%",
-            transformOrigin: "left center",
-            borderRight: "1px solid rgba(168,255,0,0.12)",
+            background: "#080808",
+            overflow: "hidden",
+            borderRight: "1px solid rgba(168,255,0,0.2)",
           }}
-          initial={{ scaleX: 1 }}
-          animate={inView ? { scaleX: 0 } : { scaleX: 1 }}
-          transition={{ duration: 0.75, delay: 0.35, ease: [0.65, 0, 0.35, 1] }}
         >
-          {/* Diagonal warning fill */}
-          <div style={warningStripes} />
+          {/* Dot grid background */}
+          <div style={dotGrid} />
 
-          {/* Top-left corner bracket */}
+          {/* Hazard bands */}
+          <div
+            style={{
+              ...hazardBand,
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+            }}
+          />
+          <div
+            style={{
+              ...hazardBand,
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              right: 0,
+            }}
+          />
+
+          {/* Corner brackets */}
           <span
             style={{
               position: "absolute",
               top: 8,
               left: 8,
-              width: 14,
-              height: 14,
-              borderTop: "1.5px solid rgba(168,255,0,0.5)",
-              borderLeft: "1.5px solid rgba(168,255,0,0.5)",
+              width: 16,
+              height: 16,
+              borderTop: "1.5px solid rgba(168,255,0,0.55)",
+              borderLeft: "1.5px solid rgba(168,255,0,0.55)",
             }}
           />
-
-          {/* Bottom-left corner bracket */}
           <span
             style={{
               position: "absolute",
               bottom: 8,
               left: 8,
-              width: 14,
-              height: 14,
-              borderBottom: "1.5px solid rgba(168,255,0,0.5)",
-              borderLeft: "1.5px solid rgba(168,255,0,0.5)",
+              width: 16,
+              height: 16,
+              borderBottom: "1.5px solid rgba(168,255,0,0.55)",
+              borderLeft: "1.5px solid rgba(168,255,0,0.55)",
             }}
           />
 
-          {/* Seam-side tick marks */}
+          {/* Seam tick marks */}
           {seamTicks.map((pct) => (
             <span
               key={`lt${pct}`}
@@ -100,105 +208,169 @@ export default function GateReveal({
                 position: "absolute",
                 right: 0,
                 top: `${pct}%`,
-                width: 6,
+                width: 8,
                 height: 1,
-                background: "rgba(168,255,0,0.35)",
+                background: "rgba(168,255,0,0.5)",
                 transform: "translateY(-50%)",
               }}
             />
           ))}
 
-          {/* Status label — centered horizontally */}
+          {/* Panel ID */}
           <span
             style={{
               position: "absolute",
-              bottom: 12,
-              right: 12,
+              top: 26,
+              left: "50%",
+              transform: "translateX(-50%)",
+              fontFamily: "monospace",
+              fontSize: 7,
+              letterSpacing: "0.22em",
+              color: "rgba(168,255,0,0.35)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            GATE-L
+          </span>
+
+          {/* Hex coord */}
+          <span
+            style={{
+              position: "absolute",
+              top: 10,
+              left: 28,
+              fontFamily: "monospace",
+              fontSize: 7,
+              letterSpacing: "0.1em",
+              color: "rgba(168,255,0,0.25)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            0x4A2F
+          </span>
+
+          {/* Progress bar track */}
+          <div
+            style={{
+              position: "absolute",
+              top: "42%",
+              left: 16,
+              right: 16,
+              height: 2,
+              background: "rgba(168,255,0,0.1)",
+              transform: "translateY(-50%)",
+            }}
+          >
+            <div
+              className="gate-progress"
+              style={{
+                position: "absolute",
+                inset: 0,
+                background: "rgba(168,255,0,0.65)",
+                boxShadow: "0 0 5px rgba(168,255,0,0.5)",
+                transformOrigin: "left center",
+                transform: "scaleX(0)",
+              }}
+            />
+          </div>
+
+          {/* Status text */}
+          <span
+            style={{
+              position: "absolute",
+              bottom: 26,
+              left: "50%",
+              transform: "translateX(-50%)",
+              fontFamily: "monospace",
+              fontSize: 7,
+              letterSpacing: "0.15em",
+              color: statusColor,
+              whiteSpace: "nowrap",
+              transition: "color 0.15s",
+            }}
+          >
+            {status === "AUTHENTICATING" ? "AUTHENTICATING..." : "ACCESS GRANTED"}
+          </span>
+
+          {/* Bottom label */}
+          <span
+            style={{
+              position: "absolute",
+              bottom: 10,
+              left: 12,
               fontFamily: "monospace",
               fontSize: 7,
               letterSpacing: "0.18em",
-              color: "rgba(168,255,0,0.4)",
-              lineHeight: 1,
+              color: "rgba(168,255,0,0.28)",
               whiteSpace: "nowrap",
             }}
           >
             {label}
           </span>
+        </div>
 
-          {/* Blinking status dot */}
-          <motion.span
-            style={{
-              position: "absolute",
-              top: 12,
-              right: 12,
-              width: 4,
-              height: 4,
-              borderRadius: "50%",
-              background: "#a8ff00",
-              boxShadow: "0 0 6px rgba(168,255,0,0.8)",
-            }}
-            animate={inView ? {} : { opacity: [1, 0.2, 1] }}
-            transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
-          />
-
-          {/* Horizontal scan decoration */}
-          <div
-            style={{
-              position: "absolute",
-              top: "50%",
-              left: 0,
-              right: 0,
-              height: 1,
-              background:
-                "linear-gradient(to right, transparent, rgba(168,255,0,0.08) 40%, rgba(168,255,0,0.12) 60%, transparent)",
-              transform: "translateY(-50%)",
-            }}
-          />
-        </motion.div>
-
-        {/* Right panel */}
-        <motion.div
+        {/* ── RIGHT PANEL ── */}
+        <div
+          className="gate-panel-r"
           style={{
-            ...panelBase,
+            position: "absolute",
+            top: 0,
+            bottom: 0,
             right: 0,
             width: "50%",
-            transformOrigin: "right center",
-            borderLeft: "1px solid rgba(168,255,0,0.12)",
+            background: "#080808",
+            overflow: "hidden",
+            borderLeft: "1px solid rgba(168,255,0,0.2)",
           }}
-          initial={{ scaleX: 1 }}
-          animate={inView ? { scaleX: 0 } : { scaleX: 1 }}
-          transition={{ duration: 0.75, delay: 0.35, ease: [0.65, 0, 0.35, 1] }}
         >
-          {/* Diagonal warning fill */}
-          <div style={warningStripes} />
+          {/* Dot grid background */}
+          <div style={dotGrid} />
 
-          {/* Top-right corner bracket */}
+          {/* Hazard bands */}
+          <div
+            style={{
+              ...hazardBand,
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+            }}
+          />
+          <div
+            style={{
+              ...hazardBand,
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              right: 0,
+            }}
+          />
+
+          {/* Corner brackets */}
           <span
             style={{
               position: "absolute",
               top: 8,
               right: 8,
-              width: 14,
-              height: 14,
-              borderTop: "1.5px solid rgba(168,255,0,0.5)",
-              borderRight: "1.5px solid rgba(168,255,0,0.5)",
+              width: 16,
+              height: 16,
+              borderTop: "1.5px solid rgba(168,255,0,0.55)",
+              borderRight: "1.5px solid rgba(168,255,0,0.55)",
             }}
           />
-
-          {/* Bottom-right corner bracket */}
           <span
             style={{
               position: "absolute",
               bottom: 8,
               right: 8,
-              width: 14,
-              height: 14,
-              borderBottom: "1.5px solid rgba(168,255,0,0.5)",
-              borderRight: "1.5px solid rgba(168,255,0,0.5)",
+              width: 16,
+              height: 16,
+              borderBottom: "1.5px solid rgba(168,255,0,0.55)",
+              borderRight: "1.5px solid rgba(168,255,0,0.55)",
             }}
           />
 
-          {/* Seam-side tick marks */}
+          {/* Seam tick marks */}
           {seamTicks.map((pct) => (
             <span
               key={`rt${pct}`}
@@ -206,48 +378,110 @@ export default function GateReveal({
                 position: "absolute",
                 left: 0,
                 top: `${pct}%`,
-                width: 6,
+                width: 8,
                 height: 1,
-                background: "rgba(168,255,0,0.35)",
+                background: "rgba(168,255,0,0.5)",
                 transform: "translateY(-50%)",
               }}
             />
           ))}
 
-          {/* Auth text */}
+          {/* Panel ID */}
           <span
             style={{
               position: "absolute",
-              bottom: 12,
-              left: 12,
+              top: 26,
+              left: "50%",
+              transform: "translateX(-50%)",
               fontFamily: "monospace",
               fontSize: 7,
-              letterSpacing: "0.18em",
-              color: "rgba(168,255,0,0.4)",
-              lineHeight: 1,
+              letterSpacing: "0.22em",
+              color: "rgba(168,255,0,0.35)",
               whiteSpace: "nowrap",
             }}
           >
-            AUTHENTICATING
+            GATE-R
           </span>
 
-          {/* Horizontal scan decoration */}
+          {/* Hex coord */}
+          <span
+            style={{
+              position: "absolute",
+              top: 10,
+              right: 28,
+              fontFamily: "monospace",
+              fontSize: 7,
+              letterSpacing: "0.1em",
+              color: "rgba(168,255,0,0.25)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            0xB7E1
+          </span>
+
+          {/* Progress bar track */}
           <div
             style={{
               position: "absolute",
-              top: "50%",
-              left: 0,
-              right: 0,
-              height: 1,
-              background:
-                "linear-gradient(to left, transparent, rgba(168,255,0,0.08) 40%, rgba(168,255,0,0.12) 60%, transparent)",
+              top: "42%",
+              left: 16,
+              right: 16,
+              height: 2,
+              background: "rgba(168,255,0,0.1)",
               transform: "translateY(-50%)",
             }}
-          />
-        </motion.div>
+          >
+            <div
+              className="gate-progress"
+              style={{
+                position: "absolute",
+                inset: 0,
+                background: "rgba(168,255,0,0.65)",
+                boxShadow: "0 0 5px rgba(168,255,0,0.5)",
+                transformOrigin: "left center",
+                transform: "scaleX(0)",
+              }}
+            />
+          </div>
 
-        {/* Center seam glow — flares then fades as the gate opens */}
-        <motion.div
+          {/* Status text */}
+          <span
+            style={{
+              position: "absolute",
+              bottom: 26,
+              left: "50%",
+              transform: "translateX(-50%)",
+              fontFamily: "monospace",
+              fontSize: 7,
+              letterSpacing: "0.15em",
+              color: statusColor,
+              whiteSpace: "nowrap",
+              transition: "color 0.15s",
+            }}
+          >
+            {status === "AUTHENTICATING" ? "AUTHENTICATING..." : "ACCESS GRANTED"}
+          </span>
+
+          {/* Bottom label */}
+          <span
+            style={{
+              position: "absolute",
+              bottom: 10,
+              right: 12,
+              fontFamily: "monospace",
+              fontSize: 7,
+              letterSpacing: "0.18em",
+              color: "rgba(168,255,0,0.28)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            SYS.AUTH
+          </span>
+        </div>
+
+        {/* ── CENTER SEAM GLOW ── */}
+        <div
+          className="gate-seam"
           style={{
             position: "absolute",
             top: 0,
@@ -255,11 +489,10 @@ export default function GateReveal({
             left: "calc(50% - 1px)",
             width: 2,
             background: "#a8ff00",
-            boxShadow: "0 0 8px rgba(168,255,0,0.9), 0 0 20px rgba(168,255,0,0.4)",
+            opacity: 0.5,
+            boxShadow:
+              "0 0 8px rgba(168,255,0,0.7), 0 0 20px rgba(168,255,0,0.3)",
           }}
-          initial={{ opacity: 0.6 }}
-          animate={inView ? { opacity: [0.6, 1, 0] } : { opacity: 0.6 }}
-          transition={{ duration: 0.9, delay: 0.3, ease: "easeOut" }}
         />
       </div>
     </div>
