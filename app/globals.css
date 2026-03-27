@@ -206,6 +206,20 @@ html.custom-cursor-active * {
     0 calc(100% - 16px)
   );
 }
+/* All 4 corners chamfered at 16px — used by HUD card frame */
+.chamfered-all {
+  clip-path: polygon(
+    16px 0,
+    calc(100% - 16px) 0,
+    100% 16px,
+    100% calc(100% - 16px),
+    calc(100% - 16px) 100%,
+    16px 100%,
+    0 calc(100% - 16px),
+    0 16px
+  );
+}
+
 /* Use drop-shadow instead of box-shadow — works with clip-path */
 .chamfered-glow {
   transition: filter 0.3s, border-color 0.3s;

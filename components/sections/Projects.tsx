@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import SectionLabel from "@/components/ui/SectionLabel";
 import RevealText from "@/components/ui/RevealText";
 import GrainEffect from "@/components/ui/GrainEffect";
+import HUDCardFrame from "@/components/ui/HUDCardFrame";
 import { projects, type Project } from "@/lib/data";
 import { useLang } from "@/context/LangContext";
 import type { Lang } from "@/lib/i18n";
@@ -118,9 +119,6 @@ function ProjectModal({ project, onClose, lang }: { project: Project; onClose: (
 
 // ─── Project Card ────────────────────────────────────────────────────────────
 
-// Diagonal length of a 16×16 chamfer cut: √(16²+16²) ≈ 22.6 → 24px with buffer
-const CHAMFER = 16;
-
 function ProjectCard({
   project,
   index,
@@ -162,51 +160,14 @@ function ProjectCard({
       onFocusCapture={() => setHovered(true)}
       onBlurCapture={() => setHovered(false)}
     >
-      {/* ── Chamfer accent — top-right diagonal ─── */}
-      <span
-        aria-hidden="true"
-        style={{
-          position: "absolute",
-          // center the span on the midpoint of the chamfer cut: (right:8, top:8)
-          top: 7,
-          right: -4,
-          width: CHAMFER * 1.5,
-          height: 1.5,
-          transformOrigin: "center",
-          transform: "rotate(45deg)",
-          background: `rgba(168,255,0,${hovered ? 0.75 : 0.3})`,
-          boxShadow: hovered ? "0 0 4px rgba(168,255,0,0.6)" : "none",
-          transition: "background 0.3s, box-shadow 0.3s",
-          pointerEvents: "none",
-          zIndex: 20,
-        }}
-      />
-      {/* ── Chamfer accent — bottom-left diagonal ─── */}
-      <span
-        aria-hidden="true"
-        style={{
-          position: "absolute",
-          bottom: 7,
-          left: -4,
-          width: CHAMFER * 1.5,
-          height: 1.5,
-          transformOrigin: "center",
-          transform: "rotate(45deg)",
-          background: `rgba(168,255,0,${hovered ? 0.75 : 0.3})`,
-          boxShadow: hovered ? "0 0 4px rgba(168,255,0,0.6)" : "none",
-          transition: "background 0.3s, box-shadow 0.3s",
-          pointerEvents: "none",
-          zIndex: 20,
-        }}
-      />
+      {/* ── SVG HUD frame (drawn outside the clipped article) ─────────────── */}
+      <HUDCardFrame hovered={hovered} />
 
-      {/* ── Card body — clipped to chamfered-lg shape ─────────────────────── */}
+      {/* ── Card body — clipped to chamfered-all shape ────────────────────── */}
       <article
-        className="relative overflow-hidden border cursor-pointer chamfered-lg"
+        className="relative overflow-hidden cursor-pointer chamfered-all"
         onClick={() => onSelect(project)}
         style={{
-          borderColor: hovered ? "rgba(168,255,0,0.35)" : "#1e1e1e",
-          transition: "border-color 0.3s",
           filter: hovered
             ? "drop-shadow(0 0 14px rgba(168,255,0,0.12))"
             : "none",
