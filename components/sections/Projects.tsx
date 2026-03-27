@@ -7,7 +7,6 @@ import SectionLabel from "@/components/ui/SectionLabel";
 import RevealText from "@/components/ui/RevealText";
 import GrainEffect from "@/components/ui/GrainEffect";
 import { projects, type Project } from "@/lib/data";
-import CyberImageFrame from "@/components/ui/CyberImageFrame";
 import { useLang } from "@/context/LangContext";
 import type { Lang } from "@/lib/i18n";
 
@@ -121,15 +120,34 @@ function ProjectModal({ project, onClose, lang }: { project: Project; onClose: (
 
 function ProjectCard({
   project,
+  index,
   onSelect,
   lang,
 }: {
   project: Project;
+  index: number;
   onSelect: (p: Project) => void;
   lang: Lang;
 }) {
   const [hovered, setHovered] = useState(false);
   const { tr } = useLang();
+
+  // ── Derived dossier metadata ──────────────────────────────────────────────
+  const idx = String(index + 1).padStart(3, "0");
+  const typeTag = (project.tags[0] ?? "WEB")
+    .toUpperCase()
+    .replace(/\s+/g, ".")
+    .slice(0, 10);
+  const hexId = `0x${project.title
+    .split("")
+    .reduce((acc, c) => acc + c.charCodeAt(0), 0)
+    .toString(16)
+    .toUpperCase()
+    .padStart(4, "0")}`;
+
+  // ── Transition helpers ────────────────────────────────────────────────────
+  const t = "transition: all 0.3s";
+  void t; // used inline via style
 
   return (
     <motion.article
@@ -138,56 +156,186 @@ function ProjectCard({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
       transition={{ duration: 0.4 }}
-      className="group relative overflow-hidden border border-[#1e1e1e] cursor-pointer chamfered chamfered-glow"
+      className="group relative overflow-hidden border cursor-pointer chamfered"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onFocusCapture={() => setHovered(true)}
       onBlurCapture={() => setHovered(false)}
       onClick={() => onSelect(project)}
       style={{
-        borderColor: hovered ? "rgba(168,255,0,0.4)" : "#1e1e1e",
-        transition: "border-color 0.25s",
+        borderColor: hovered ? "rgba(168,255,0,0.35)" : "#1e1e1e",
+        transition: "border-color 0.3s",
+        filter: hovered
+          ? "drop-shadow(0 0 12px rgba(168,255,0,0.1))"
+          : "drop-shadow(0 0 0px transparent)",
       }}
     >
-      {/* Image */}
-      <CyberImageFrame label={`PRJ.${project.title.toUpperCase().replace(/\s/g, "_").slice(0, 8)}`}>
-        <div className="relative aspect-video overflow-hidden bg-[#111111]">
-          <Image
-            src={project.image}
-            alt={project.title}
-            fill
-            className="object-cover transition-all duration-700"
-            style={{
-              filter: hovered
-                ? "grayscale(0) contrast(1.05)"
-                : "grayscale(0.8) contrast(1)",
-              animation: hovered ? "ken-burns 8s ease-in-out infinite" : "none",
-              transformOrigin: "center center",
-            }}
-            sizes="(max-width: 768px) 100vw, 50vw"
-          />
-          {/* Neon tint on hover */}
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 pointer-events-none transition-opacity duration-300"
-            style={{
-              background:
-                "linear-gradient(135deg, rgba(168,255,0,0.08) 0%, transparent 60%)",
-              opacity: hovered ? 1 : 0,
-            }}
-          />
-          {/* Diagonal hatch overlay — always present, visible on hover */}
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 pointer-events-none transition-opacity duration-300 hatch-dense"
-            style={{ opacity: hovered ? 0.6 : 0.2 }}
-          />
-          <GrainEffect />
-        </div>
-      </CyberImageFrame>
+      {/* ── Left accent line ─────────────────────────────────────────────── */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          bottom: 0,
+          width: 2,
+          zIndex: 10,
+          background: hovered ? "#a8ff00" : "rgba(168,255,0,0.18)",
+          boxShadow: hovered
+            ? "0 0 8px rgba(168,255,0,0.6), 0 0 20px rgba(168,255,0,0.2)"
+            : "none",
+          transition: "background 0.3s, box-shadow 0.3s",
+        }}
+      />
 
-      {/* Info */}
-      <div className="p-5">
+      {/* ── Header strip ─────────────────────────────────────────────────── */}
+      <div
+        aria-hidden="true"
+        style={{
+          background: "#0d0d0d",
+          borderBottom: `1px solid ${hovered ? "rgba(168,255,0,0.15)" : "rgba(168,255,0,0.06)"}`,
+          height: 28,
+          display: "flex",
+          alignItems: "center",
+          paddingLeft: 14,
+          paddingRight: 12,
+          gap: 8,
+          transition: "border-color 0.3s",
+        }}
+      >
+        {/* Index */}
+        <span
+          style={{
+            fontFamily: "monospace",
+            fontSize: 7,
+            letterSpacing: "0.22em",
+            color: hovered ? "rgba(168,255,0,0.7)" : "rgba(168,255,0,0.4)",
+            flexShrink: 0,
+            transition: "color 0.3s",
+          }}
+        >
+          PRJ-{idx}
+        </span>
+
+        {/* Separator rule */}
+        <span
+          style={{
+            flex: 1,
+            height: 1,
+            background: hovered
+              ? "rgba(168,255,0,0.12)"
+              : "rgba(168,255,0,0.05)",
+            transition: "background 0.3s",
+          }}
+        />
+
+        {/* Type badge */}
+        <span
+          style={{
+            fontFamily: "monospace",
+            fontSize: 7,
+            letterSpacing: "0.14em",
+            color: hovered ? "rgba(168,255,0,0.6)" : "rgba(168,255,0,0.28)",
+            flexShrink: 0,
+            border: `1px solid ${hovered ? "rgba(168,255,0,0.3)" : "rgba(168,255,0,0.1)"}`,
+            padding: "1px 6px",
+            transition: "color 0.3s, border-color 0.3s",
+          }}
+        >
+          {typeTag}
+        </span>
+
+        {/* Status dot */}
+        <span
+          style={{
+            width: 5,
+            height: 5,
+            borderRadius: "50%",
+            flexShrink: 0,
+            background: hovered ? "#a8ff00" : "rgba(168,255,0,0.35)",
+            boxShadow: hovered
+              ? "0 0 6px rgba(168,255,0,0.9)"
+              : "0 0 3px rgba(168,255,0,0.25)",
+            animation: "hud-pulse 2s ease-in-out infinite",
+            transition: "background 0.3s, box-shadow 0.3s",
+          }}
+        />
+      </div>
+
+      {/* ── Image ────────────────────────────────────────────────────────── */}
+      <div className="relative aspect-video overflow-hidden bg-[#111111]">
+        <Image
+          src={project.image}
+          alt={project.title}
+          fill
+          className="object-cover transition-all duration-700"
+          style={{
+            filter: hovered
+              ? "grayscale(0) contrast(1.05)"
+              : "grayscale(0.75) contrast(1)",
+            animation: hovered ? "ken-burns 8s ease-in-out infinite" : "none",
+            transformOrigin: "center center",
+          }}
+          sizes="(max-width: 768px) 100vw, 50vw"
+        />
+        {/* Neon tint on hover */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 pointer-events-none transition-opacity duration-300"
+          style={{
+            background:
+              "linear-gradient(135deg, rgba(168,255,0,0.07) 0%, transparent 55%)",
+            opacity: hovered ? 1 : 0,
+          }}
+        />
+        {/* Hatch overlay */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 pointer-events-none transition-opacity duration-300 hatch-dense"
+          style={{ opacity: hovered ? 0.5 : 0.15 }}
+        />
+        <GrainEffect />
+
+        {/* Image corner brackets — visible on hover */}
+        {([
+          { t: 8, l: 8, bw: "1px 0 0 1px" },
+          { t: 8, r: 8, bw: "1px 1px 0 0" },
+          { b: 8, l: 8, bw: "0 0 1px 1px" },
+          { b: 8, r: 8, bw: "0 1px 1px 0" },
+        ] as const).map((c, i) => (
+          <span
+            key={i}
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              width: 10,
+              height: 10,
+              ...(("t" in c) ? { top: c.t } : { bottom: c.b }),
+              ...(("l" in c) ? { left: c.l } : { right: c.r }),
+              borderColor: "#a8ff00",
+              borderStyle: "solid",
+              borderWidth: c.bw,
+              opacity: hovered ? 0.7 : 0,
+              transition: "opacity 0.3s",
+            }}
+          />
+        ))}
+      </div>
+
+      {/* ── Neon separator ───────────────────────────────────────────────── */}
+      <div
+        aria-hidden="true"
+        style={{
+          height: 1,
+          background: hovered
+            ? "rgba(168,255,0,0.12)"
+            : "rgba(168,255,0,0.04)",
+          transition: "background 0.3s",
+        }}
+      />
+
+      {/* ── Info ─────────────────────────────────────────────────────────── */}
+      <div style={{ padding: "16px 20px 12px 20px" }}>
         <div className="flex items-start justify-between gap-2 mb-2">
           <h3 className="font-mono font-bold text-sm text-[#efefef] tracking-tight uppercase">
             {project.title}
@@ -203,8 +351,10 @@ function ProjectCard({
             {tr.projects.visit}
           </a>
         </div>
-        <p className="font-mono text-xs text-[#aaaaaa] leading-relaxed mb-4">
-          {lang === "es" && project.descriptionEs ? project.descriptionEs : project.description}
+        <p className="font-mono text-xs text-[#888888] leading-relaxed mb-4">
+          {lang === "es" && project.descriptionEs
+            ? project.descriptionEs
+            : project.description}
         </p>
         <div className="flex flex-wrap gap-2">
           {project.tags.map((tag) => (
@@ -216,6 +366,44 @@ function ProjectCard({
             </span>
           ))}
         </div>
+      </div>
+
+      {/* ── Footer strip ─────────────────────────────────────────────────── */}
+      <div
+        aria-hidden="true"
+        style={{
+          background: "#0d0d0d",
+          borderTop: `1px solid ${hovered ? "rgba(168,255,0,0.12)" : "rgba(168,255,0,0.05)"}`,
+          height: 26,
+          display: "flex",
+          alignItems: "center",
+          paddingLeft: 14,
+          paddingRight: 12,
+          justifyContent: "space-between",
+          transition: "border-color 0.3s",
+        }}
+      >
+        <span
+          style={{
+            fontFamily: "monospace",
+            fontSize: 7,
+            letterSpacing: "0.12em",
+            color: "rgba(168,255,0,0.25)",
+          }}
+        >
+          {hexId}
+        </span>
+        <span
+          style={{
+            fontFamily: "monospace",
+            fontSize: 7,
+            letterSpacing: "0.16em",
+            color: hovered ? "rgba(168,255,0,0.6)" : "rgba(168,255,0,0.2)",
+            transition: "color 0.3s",
+          }}
+        >
+          STATUS: ONLINE
+        </span>
       </div>
     </motion.article>
   );
@@ -276,7 +464,13 @@ export default function Projects() {
               className="grid grid-cols-1 sm:grid-cols-2 gap-6"
             >
               {filtered.map((project) => (
-                <ProjectCard key={project.title} project={project} onSelect={setSelected} lang={lang} />
+                <ProjectCard
+                  key={project.title}
+                  project={project}
+                  index={projects.indexOf(project)}
+                  onSelect={setSelected}
+                  lang={lang}
+                />
               ))}
             </motion.div>
           </AnimatePresence>
