@@ -62,20 +62,36 @@ export default function Hero() {
         className="absolute top-16 right-24 opacity-60 hidden lg:block"
       />
 
-      {/* HUD corner crosshairs */}
-      <Crosshair className="absolute top-8 left-8 opacity-40" size={20} />
-      <Crosshair className="absolute top-8 right-8 opacity-40" size={20} />
-      <Crosshair className="absolute bottom-8 left-8 opacity-40" size={20} />
-      <Crosshair className="absolute bottom-8 right-8 opacity-40" size={20} />
+      {/* HUD corner crosshairs — staggered fade in */}
+      {([
+        { pos: "top-8 left-8",     delay: 0.08 },
+        { pos: "top-8 right-8",    delay: 0.12 },
+        { pos: "bottom-8 left-8",  delay: 0.16 },
+        { pos: "bottom-8 right-8", delay: 0.20 },
+      ] as const).map(({ pos, delay }) => (
+        <motion.div
+          key={pos}
+          aria-hidden="true"
+          initial={prefersReducedMotion ? {} : { opacity: 0 }}
+          animate={{ opacity: 0.4 }}
+          transition={{ duration: 0.5, delay }}
+          className={`absolute ${pos}`}
+        >
+          <Crosshair size={20} />
+        </motion.div>
+      ))}
 
       {/* Vertical neon line */}
-      <div
+      <motion.div
         aria-hidden="true"
-        className="absolute left-[15%] top-0 bottom-0 w-px opacity-10"
+        className="absolute left-[15%] top-0 bottom-0 w-px"
         style={{
           background:
             "linear-gradient(to bottom, transparent, #a8ff00 30%, #a8ff00 70%, transparent)",
         }}
+        initial={prefersReducedMotion ? {} : { opacity: 0 }}
+        animate={{ opacity: 0.1 }}
+        transition={{ duration: 0.8, delay: 0 }}
       />
 
       {/* Floating ambient glow */}
@@ -86,6 +102,7 @@ export default function Hero() {
           background:
             "radial-gradient(circle, rgba(168,255,0,0.04) 0%, transparent 70%)",
         }}
+        initial={prefersReducedMotion ? {} : { opacity: 0 }}
         animate={
           prefersReducedMotion
             ? {}
@@ -95,7 +112,12 @@ export default function Hero() {
       />
 
       {/* HUD data labels — top right */}
-      <div className="absolute top-24 right-8 hidden md:flex flex-col items-end gap-1 font-mono text-[10px] text-[#555555] tracking-[0.15em]">
+      <motion.div
+        initial={prefersReducedMotion ? {} : { opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.5, delay: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
+        className="absolute top-24 right-8 hidden md:flex flex-col items-end gap-1 font-mono text-[10px] text-[#555555] tracking-[0.15em]"
+      >
         <span>LOC: {personal.locationCode}</span>
         <span>{tr.hero.hudStack}</span>
         <span>{tr.hero.hudRole}</span>
@@ -106,19 +128,25 @@ export default function Hero() {
         >
           {tr.hero.hudStatus}
         </motion.span>
-      </div>
+      </motion.div>
 
       {/* Serrated ring gauges — bottom right (desktop) */}
-      <div
+      <motion.div
+        {...fadeIn(0.3)}
         className="absolute bottom-12 right-8 hidden md:flex items-end gap-4"
         aria-hidden="true"
       >
         <SerratedRingGauge value={75} size={88} centerText="2+" subText="YRS" label="EXPERIENCE" teeth={32} />
         <SerratedRingGauge value={85} size={88} centerText="4+" subText="PROJ" label="PROJECTS" teeth={32} />
-      </div>
+      </motion.div>
 
       {/* HUD data labels + barcode readout — bottom left */}
-      <div className="absolute bottom-14 left-8 hidden md:flex flex-col gap-2 font-mono text-[10px] text-[#555555] tracking-[0.15em]">
+      <motion.div
+        initial={prefersReducedMotion ? {} : { opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.5, delay: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+        className="absolute bottom-14 left-8 hidden md:flex flex-col gap-2 font-mono text-[10px] text-[#555555] tracking-[0.15em]"
+      >
         {/* Vertical barcode spectrum */}
         <BarcodeIndicator bars={24} maxHeight={32} />
         <span className="text-[#222222]">LAT: -34.6037</span>
@@ -128,7 +156,7 @@ export default function Hero() {
           <span className="text-[#333333]">CONNECTED</span>
         </div>
         <span className="text-[#222222]">0x00FF.INIT</span>
-      </div>
+      </motion.div>
 
       {/* Main content */}
       <div className="relative mx-auto w-full max-w-7xl px-6 pt-28 pb-20" style={{ zIndex: 1 }}>
@@ -145,7 +173,7 @@ export default function Hero() {
         </motion.p>
 
         {/* Big display name — chromatic aberration applied here */}
-        <motion.div style={prefersReducedMotion ? {} : { textShadow }}>
+        <motion.div {...fadeIn(0.2)} style={prefersReducedMotion ? {} : { textShadow }}>
           <h1
             className="font-mono font-bold leading-none tracking-tight mb-2"
             aria-label={personal.nameDisplay}
