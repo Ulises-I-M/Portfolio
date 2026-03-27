@@ -540,7 +540,7 @@ export default function Projects() {
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTag}
-              className="grid grid-cols-1 sm:grid-cols-2 gap-6"
+              className="grid grid-cols-1 sm:grid-cols-2 gap-10"
             >
               {filtered.map((project) => (
                 <ProjectCard
