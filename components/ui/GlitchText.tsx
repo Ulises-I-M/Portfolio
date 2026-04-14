@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
+import { useLowPower } from "@/hooks/useLowPower";
 
 const CHARS = "!<>-_\\/[]{}=+*^?#@%$&";
 
@@ -35,6 +36,7 @@ interface Props {
  */
 export default function GlitchText({ text, className, style }: Props) {
   const prefersReducedMotion = useReducedMotion();
+  const lowPower = useLowPower();
   // chars tracks the displayed characters — may differ from text during glitch
   const [chars, setChars] = useState<string[]>(text.split(""));
   const [mounted, setMounted] = useState(false);
@@ -42,7 +44,7 @@ export default function GlitchText({ text, className, style }: Props) {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const glitch = useCallback(() => {
-    if (activeRef.current || prefersReducedMotion || !mounted) return;
+    if (activeRef.current || prefersReducedMotion || lowPower || !mounted) return;
     activeRef.current = true;
     let iter = 0;
     const total = text.length * 3;
@@ -64,9 +66,9 @@ export default function GlitchText({ text, className, style }: Props) {
     }, 35);
   }, [text, prefersReducedMotion, mounted]);
 
-  // Auto-glitch every 5-9s (only after entry animation completes)
+  // Auto-glitch every 5-9s (only after entry animation completes; skipped on low-power)
   useEffect(() => {
-    if (prefersReducedMotion || !mounted) return;
+    if (prefersReducedMotion || lowPower || !mounted) return;
     let timeout: ReturnType<typeof setTimeout>;
     const schedule = () => {
       timeout = setTimeout(
@@ -79,7 +81,7 @@ export default function GlitchText({ text, className, style }: Props) {
       clearTimeout(timeout);
       clearInterval(intervalRef.current!);
     };
-  }, [glitch, prefersReducedMotion, mounted]);
+  }, [glitch, prefersReducedMotion, lowPower, mounted]);
 
   if (prefersReducedMotion) {
     return (

@@ -285,3 +285,16 @@ html.custom-cursor-active * {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Touch/mobile: slow down continuous pulse animations to reduce compositor work */
+@media (hover: none) {
+  .hud-pulse {
+    animation-duration: 4s;
+  }
+  .blink {
+    animation-duration: 1.5s;
+  }
+  .bg-grid {
+    background-size: 64px 64px;
+  }
+}
