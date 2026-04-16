@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import Script from "next/script";
 import { LangProvider } from "@/context/LangContext";
 import GrainOverlay from "@/components/ui/GrainOverlay";
 import ScrollProgress from "@/components/ui/ScrollProgress";
@@ -46,13 +47,18 @@ export default function RootLayout({
           rel="stylesheet"
         />
         {/* Mark returning visitors before React hydrates — eliminates black flash */}
-        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
-        <script dangerouslySetInnerHTML={{ __html: `try{if(sessionStorage.getItem('booted'))document.documentElement.dataset.booted='1'}catch(e){}` }} />
       </head>
       <body
         className="min-h-full bg-[#0a0a0a] text-[#efefef] antialiased"
         style={{ fontFamily: "'Space Mono', ui-monospace, monospace" }}
       >
+        <Script
+          id="boot-detect"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `try{if(sessionStorage.getItem('booted'))document.documentElement.dataset.booted='1'}catch(e){}`,
+          }}
+        />
         <LangProvider>
           {/* Global overlays — always present, outside boot gate */}
           <GrainOverlay />
