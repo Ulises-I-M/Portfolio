@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Script from "next/script";
 import { LangProvider } from "@/context/LangContext";
 import GrainOverlay from "@/components/ui/GrainOverlay";
 import CRTOverlay from "@/components/ui/CRTOverlay";
@@ -47,19 +46,21 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap"
           rel="stylesheet"
         />
-        {/* Mark returning visitors before React hydrates — eliminates black flash */}
+        {/* Mark returning visitors before React hydrates — eliminates boot flash.
+            Raw <script> in <head> executes synchronously before <body> parses,
+            which is the correct App Router pattern (next/script beforeInteractive
+            is Pages Router only and triggers a React 18 warning in App Router). */}
+        {/* eslint-disable-next-line @next/next/no-before-interactive-script-outside-document */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{if(sessionStorage.getItem('booted'))document.documentElement.dataset.booted='1'}catch(e){}`,
+          }}
+        />
       </head>
       <body
         className="min-h-full bg-[#0a0a0a] text-[#efefef] antialiased"
         style={{ fontFamily: "'Space Mono', ui-monospace, monospace" }}
       >
-        <Script
-          id="boot-detect"
-          strategy="beforeInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `try{if(sessionStorage.getItem('booted'))document.documentElement.dataset.booted='1'}catch(e){}`,
-          }}
-        />
         <LangProvider>
           {/* Global overlays — always present, outside boot gate */}
           <GrainOverlay />
