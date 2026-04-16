@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useMotionValue, useSpring, useReducedMotion } from "framer-motion";
 import SectionLabel from "@/components/ui/SectionLabel";
 import RevealText from "@/components/ui/RevealText";
 import GrainEffect from "@/components/ui/GrainEffect";
 import HUDCardFrame from "@/components/ui/HUDCardFrame";
+import { useLowPower } from "@/hooks/useLowPower";
 import { projects, type Project } from "@/lib/data";
 import { useLang } from "@/context/LangContext";
 import type { Lang } from "@/lib/i18n";
@@ -132,6 +133,31 @@ function ProjectCard({
 }) {
   const [hovered, setHovered] = useState(false);
   const { tr } = useLang();
+  const prefersReducedMotion = useReducedMotion();
+  const lowPower = useLowPower();
+
+  // ── 3D tilt ────────────────────────────────────────────────────────────────
+  const cardRef = useRef<HTMLDivElement>(null);
+  const rotX    = useMotionValue(0);
+  const rotY    = useMotionValue(0);
+  const springRotX = useSpring(rotX, { stiffness: 160, damping: 20 });
+  const springRotY = useSpring(rotY, { stiffness: 160, damping: 20 });
+
+  const onMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (prefersReducedMotion || lowPower) return;
+    const el = cardRef.current;
+    if (!el) return;
+    const { left, top, width, height } = el.getBoundingClientRect();
+    const dx = ((e.clientX - left) / width  - 0.5) * 2; // –1 → 1
+    const dy = ((e.clientY - top)  / height - 0.5) * 2;
+    rotX.set(-dy * 5); // max ±5 °
+    rotY.set( dx * 5);
+  };
+
+  const onMouseLeaveCard = () => {
+    rotX.set(0);
+    rotY.set(0);
+  };
 
   // ── Derived dossier metadata ──────────────────────────────────────────────
   const idx = String(index + 1).padStart(3, "0");
@@ -149,14 +175,21 @@ function ProjectCard({
   return (
     // ── Outer wrapper — NOT clipped, holds chamfer accents ─────────────────
     <motion.div
+      ref={cardRef}
       layout
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
       transition={{ duration: 0.4 }}
       className="relative"
+      style={
+        prefersReducedMotion || lowPower
+          ? {}
+          : { rotateX: springRotX, rotateY: springRotY, transformPerspective: 900 }
+      }
       onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseLeave={() => { setHovered(false); onMouseLeaveCard(); }}
+      onMouseMove={onMouseMove}
       onFocusCapture={() => setHovered(true)}
       onBlurCapture={() => setHovered(false)}
     >

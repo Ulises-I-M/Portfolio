@@ -5,6 +5,7 @@ import GrainOverlay from "@/components/ui/GrainOverlay";
 import ScrollProgress from "@/components/ui/ScrollProgress";
 import BackToTop from "@/components/ui/BackToTop";
 import CustomCursor from "@/components/ui/CustomCursor";
+import BootScreen from "@/components/ui/BootScreen";
 import Terminal from "@/components/ui/Terminal";
 import DataTicker from "@/components/ui/DataTicker";
 import Navbar from "@/components/layout/Navbar";
@@ -50,6 +51,7 @@ export default function RootLayout({
         style={{ fontFamily: "'Space Mono', ui-monospace, monospace" }}
       >
         <LangProvider>
+          <BootScreen />
           <GrainOverlay />
           <ScrollProgress />
           <CustomCursor />

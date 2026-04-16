@@ -298,3 +298,9 @@ html.custom-cursor-active * {
     background-size: 64px 64px;
   }
 }
+
+/* Custom cursor click ripple */
+@keyframes cursor-ripple {
+  0%   { transform: scale(1);   opacity: 0.9; }
+  100% { transform: scale(3.5); opacity: 0;   }
+}
