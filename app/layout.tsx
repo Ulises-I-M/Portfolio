@@ -5,7 +5,7 @@ import GrainOverlay from "@/components/ui/GrainOverlay";
 import ScrollProgress from "@/components/ui/ScrollProgress";
 import BackToTop from "@/components/ui/BackToTop";
 import CustomCursor from "@/components/ui/CustomCursor";
-import BootScreen from "@/components/ui/BootScreen";
+import BootWrapper from "@/components/ui/BootWrapper";
 import Terminal from "@/components/ui/Terminal";
 import DataTicker from "@/components/ui/DataTicker";
 import Navbar from "@/components/layout/Navbar";
@@ -45,21 +45,27 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap"
           rel="stylesheet"
         />
+        {/* Mark returning visitors before React hydrates — eliminates black flash */}
+        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
+        <script dangerouslySetInnerHTML={{ __html: `try{if(sessionStorage.getItem('booted'))document.documentElement.dataset.booted='1'}catch(e){}` }} />
       </head>
       <body
         className="min-h-full bg-[#0a0a0a] text-[#efefef] antialiased"
         style={{ fontFamily: "'Space Mono', ui-monospace, monospace" }}
       >
         <LangProvider>
-          <BootScreen />
+          {/* Global overlays — always present, outside boot gate */}
           <GrainOverlay />
           <ScrollProgress />
           <CustomCursor />
-          <Navbar />
-          {children}
-          <BackToTop />
-          <DataTicker />
-          <Terminal />
+          {/* Everything below only renders after the boot sequence completes */}
+          <BootWrapper>
+            <Navbar />
+            {children}
+            <BackToTop />
+            <DataTicker />
+            <Terminal />
+          </BootWrapper>
         </LangProvider>
       </body>
     </html>
