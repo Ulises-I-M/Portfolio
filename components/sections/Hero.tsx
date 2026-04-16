@@ -7,6 +7,8 @@ import {
   useScroll,
   useTransform,
   useMotionTemplate,
+  useMotionValue,
+  useSpring,
 } from "framer-motion";
 import SocialIcon from "@/components/ui/SocialIcon";
 import Crosshair from "@/components/ui/Crosshair";
@@ -18,15 +20,17 @@ import ChevronCluster from "@/components/ui/ChevronCluster";
 import CircuitPath from "@/components/ui/CircuitPath";
 import WarningBadge from "@/components/ui/WarningBadge";
 import BarcodeIndicator from "@/components/ui/BarcodeIndicator";
+import { useLowPower } from "@/hooks/useLowPower";
 import { personal, social } from "@/lib/data";
 import { useLang } from "@/context/LangContext";
 
 export default function Hero() {
   const prefersReducedMotion = useReducedMotion();
+  const lowPower = useLowPower();
   const { tr } = useLang();
   const sectionRef = useRef<HTMLElement>(null);
 
-  // Chromatic aberration: grows as the user scrolls out of the hero
+  // ── Chromatic aberration on scroll ────────────────────────────────────────
   const { scrollYProgress } = useScroll({
     target: sectionRef,
     offset: ["start start", "end start"],
@@ -34,6 +38,31 @@ export default function Hero() {
   const aberration = useTransform(scrollYProgress, [0, 0.5], [0, 10]);
   const textShadow = useMotionTemplate`${aberration}px 0 rgba(255,0,100,0.75), -${aberration}px 0 rgba(0,230,255,0.75)`;
 
+  // ── Mouse parallax ─────────────────────────────────────────────────────────
+  // rawX/Y are normalized 0–1 (0.5 = center). Spring adds smooth inertia.
+  const rawX = useMotionValue(0.5);
+  const rawY = useMotionValue(0.5);
+  const pX = useSpring(rawX, { stiffness: 55, damping: 20 });
+  const pY = useSpring(rawY, { stiffness: 55, damping: 20 });
+
+  // Layer depths: glow moves most, crosshairs least
+  const glowX    = useTransform(pX, [0, 1], [-28, 28]);
+  const glowY    = useTransform(pY, [0, 1], [-18, 18]);
+  const crossX   = useTransform(pX, [0, 1], [-8,  8 ]);
+  const crossY   = useTransform(pY, [0, 1], [-5,  5 ]);
+  const circuitX = useTransform(pX, [0, 1], [-12, 12]);
+  const circuitY = useTransform(pY, [0, 1], [-7,  7 ]);
+  const lineX    = useTransform(pX, [0, 1], [-4,  4 ]);
+
+  const onMouseMove = (e: React.MouseEvent<HTMLElement>) => {
+    if (prefersReducedMotion || lowPower) return;
+    const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
+    rawX.set((e.clientX - left) / width);
+    rawY.set((e.clientY - top) / height);
+  };
+  const onMouseLeave = () => { rawX.set(0.5); rawY.set(0.5); };
+
+  // ── Entry animation helper ─────────────────────────────────────────────────
   const fadeIn = (delay: number) => ({
     initial: prefersReducedMotion ? {} : { opacity: 0, y: 20 },
     animate: { opacity: 1, y: 0 },
@@ -50,19 +79,22 @@ export default function Hero() {
       id="home"
       className="relative flex min-h-screen items-center overflow-hidden bg-grid"
       aria-label="Hero — Ulises Miranda"
+      onMouseMove={onMouseMove}
+      onMouseLeave={onMouseLeave}
     >
       {/* 3D city wireframe background */}
       <CityCanvas />
 
-      {/* Circuit path decoration — top-right */}
-      <CircuitPath
-        variant="hero"
-        width={320}
-        height={220}
-        className="absolute top-16 right-24 opacity-60 hidden lg:block"
-      />
+      {/* Circuit path — parallax layer (medium depth) */}
+      <motion.div
+        style={prefersReducedMotion || lowPower ? {} : { x: circuitX, y: circuitY }}
+        className="absolute top-16 right-24 hidden lg:block"
+        aria-hidden="true"
+      >
+        <CircuitPath variant="hero" width={320} height={220} className="opacity-60" />
+      </motion.div>
 
-      {/* HUD corner crosshairs — staggered fade in */}
+      {/* HUD corner crosshairs — staggered fade + parallax */}
       {([
         { pos: "top-8 left-8",     delay: 0.08 },
         { pos: "top-8 right-8",    delay: 0.12 },
@@ -75,39 +107,36 @@ export default function Hero() {
           initial={prefersReducedMotion ? {} : { opacity: 0 }}
           animate={{ opacity: 0.4 }}
           transition={{ duration: 0.5, delay }}
+          style={prefersReducedMotion || lowPower ? {} : { x: crossX, y: crossY }}
           className={`absolute ${pos}`}
         >
           <Crosshair size={20} />
         </motion.div>
       ))}
 
-      {/* Vertical neon line */}
+      {/* Vertical neon line — very subtle parallax */}
       <motion.div
         aria-hidden="true"
         className="absolute left-[15%] top-0 bottom-0 w-px"
         style={{
-          background:
-            "linear-gradient(to bottom, transparent, #a8ff00 30%, #a8ff00 70%, transparent)",
+          background: "linear-gradient(to bottom, transparent, #a8ff00 30%, #a8ff00 70%, transparent)",
+          ...(prefersReducedMotion || lowPower ? {} : { x: lineX }),
         }}
         initial={prefersReducedMotion ? {} : { opacity: 0 }}
         animate={{ opacity: 0.1 }}
         transition={{ duration: 0.8, delay: 0 }}
       />
 
-      {/* Floating ambient glow */}
+      {/* Floating ambient glow — strongest parallax (background depth) */}
       <motion.div
         aria-hidden="true"
         className="absolute top-1/3 left-1/4 w-96 h-96 rounded-full pointer-events-none"
         style={{
-          background:
-            "radial-gradient(circle, rgba(168,255,0,0.04) 0%, transparent 70%)",
+          background: "radial-gradient(circle, rgba(168,255,0,0.04) 0%, transparent 70%)",
+          ...(prefersReducedMotion || lowPower ? {} : { x: glowX, y: glowY }),
         }}
         initial={prefersReducedMotion ? {} : { opacity: 0 }}
-        animate={
-          prefersReducedMotion
-            ? {}
-            : { scale: [1, 1.15, 1], opacity: [0.5, 1, 0.5] }
-        }
+        animate={prefersReducedMotion ? {} : { scale: [1, 1.15, 1], opacity: [0.5, 1, 0.5] }}
         transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
       />
 
@@ -147,7 +176,6 @@ export default function Hero() {
         transition={{ duration: 0.5, delay: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
         className="absolute bottom-14 left-8 hidden md:flex flex-col gap-2 font-mono text-[10px] text-[#555555] tracking-[0.15em]"
       >
-        {/* Vertical barcode spectrum */}
         <BarcodeIndicator bars={24} maxHeight={32} />
         <span className="text-[#222222]">LAT: -34.6037</span>
         <span className="text-[#222222]">LNG: -58.3816</span>
@@ -172,7 +200,7 @@ export default function Hero() {
           <span className="text-[#222222]">——</span> INIT
         </motion.p>
 
-        {/* Big display name — chromatic aberration applied here */}
+        {/* Big display name — chromatic aberration on scroll */}
         <motion.div {...fadeIn(0.2)} style={prefersReducedMotion ? {} : { textShadow }}>
           <h1
             className="font-mono font-bold leading-none tracking-tight mb-2"
@@ -201,12 +229,7 @@ export default function Hero() {
         {/* Role typewriter + warning badge */}
         <motion.div {...fadeIn(0.7)} className="mt-6 flex items-center gap-4 flex-wrap">
           <Typewriter
-            phrases={[
-              "FRONTEND_DEVELOPER",
-              "REACT_ENGINEER",
-              "UI_ARCHITECT",
-              "AVAILABLE_FOR_HIRE",
-            ]}
+            phrases={["FRONTEND_DEVELOPER", "REACT_ENGINEER", "UI_ARCHITECT", "AVAILABLE_FOR_HIRE"]}
             className="font-mono text-sm md:text-base tracking-[0.2em] text-[#555555] uppercase"
           />
           <WarningBadge label="AVAILABLE" level="ok" pulse />
@@ -215,7 +238,7 @@ export default function Hero() {
         {/* Divider */}
         <motion.hr {...fadeIn(0.85)} className="neon-rule my-8 max-w-xs" />
 
-        {/* Bio short */}
+        {/* Bio */}
         <motion.p
           {...fadeIn(1.0)}
           className="font-mono text-sm leading-relaxed text-[#aaaaaa] max-w-md"
@@ -223,11 +246,8 @@ export default function Hero() {
           {tr.hero.bio}
         </motion.p>
 
-        {/* CTAs — chamfered corners */}
-        <motion.div
-          {...fadeIn(1.1)}
-          className="mt-10 flex flex-wrap items-center gap-4"
-        >
+        {/* CTAs */}
+        <motion.div {...fadeIn(1.1)} className="mt-10 flex flex-wrap items-center gap-4">
           <a
             href="#projects"
             className="inline-flex items-center gap-3 border border-[#a8ff00] px-6 py-3 font-mono text-xs tracking-[0.2em] text-[#a8ff00] transition-all duration-200 hover:bg-[#a8ff00] hover:text-[#0a0a0a] cursor-pointer focus-visible:outline focus-visible:outline-[#a8ff00] chamfered-sm"
@@ -253,10 +273,7 @@ export default function Hero() {
         </motion.div>
 
         {/* Social links */}
-        <motion.div
-          {...fadeIn(1.2)}
-          className="mt-12 flex items-center gap-6"
-        >
+        <motion.div {...fadeIn(1.2)} className="mt-12 flex items-center gap-6">
           {social.map((s) => (
             <a
               key={s.label}
@@ -284,9 +301,7 @@ export default function Hero() {
         aria-hidden="true"
         style={{ zIndex: 1 }}
       >
-        <span className="font-mono text-[9px] tracking-[0.25em] text-[#555555]">
-          SCROLL
-        </span>
+        <span className="font-mono text-[9px] tracking-[0.25em] text-[#555555]">SCROLL</span>
         <motion.div
           className="h-6 w-px bg-[#a8ff00] origin-top"
           animate={prefersReducedMotion ? {} : { scaleY: [1, 0.3, 1] }}

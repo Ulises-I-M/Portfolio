@@ -3,6 +3,7 @@ import "./globals.css";
 import Script from "next/script";
 import { LangProvider } from "@/context/LangContext";
 import GrainOverlay from "@/components/ui/GrainOverlay";
+import CRTOverlay from "@/components/ui/CRTOverlay";
 import ScrollProgress from "@/components/ui/ScrollProgress";
 import BackToTop from "@/components/ui/BackToTop";
 import CustomCursor from "@/components/ui/CustomCursor";
@@ -62,6 +63,7 @@ export default function RootLayout({
         <LangProvider>
           {/* Global overlays — always present, outside boot gate */}
           <GrainOverlay />
+          <CRTOverlay />
           <ScrollProgress />
           <CustomCursor />
           {/* Everything below only renders after the boot sequence completes */}
