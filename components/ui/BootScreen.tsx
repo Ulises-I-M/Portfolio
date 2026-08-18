@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 
 // ─── Boot sequence lines ──────────────────────────────────────────────────────
@@ -21,6 +21,9 @@ const HOLD_MS          = 500;
 const EXIT_DURATION_MS = 600;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+// useLayoutEffect warns during SSR; fall back to useEffect there.
+const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
+
 function isReturningVisitor() {
   if (typeof document === "undefined") return false;
   return document.documentElement.dataset.booted === "1";
@@ -34,19 +37,25 @@ interface Props {
 export default function BootScreen({ onDone }: Props) {
   const prefersReducedMotion = useReducedMotion();
 
-  // Start visible so it covers the page on first render. Returning visitors
-  // get it hidden immediately (detected via the inline <head> script).
-  const [visible, setVisible]           = useState(() => !isReturningVisitor());
+  // Always starts visible so the client's first render matches the server's,
+  // which keeps hydration clean. Returning visitors are hidden in a layout
+  // effect below — that runs before paint, so they never see a flash.
+  const [visible, setVisible]           = useState(true);
   const [visibleCount, setVisibleCount] = useState(0);
   const [exiting, setExiting]           = useState(false);
 
-  useEffect(() => {
-    // Returning visitor or reduced motion: reveal page immediately, no sequence
+  useIsoLayoutEffect(() => {
     if (isReturningVisitor() || prefersReducedMotion) {
       setVisible(false);
       onDone();
-      return;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    // Returning visitor or reduced motion: the layout effect already revealed
+    // the page, so skip the sequence entirely.
+    if (isReturningVisitor() || prefersReducedMotion) return;
 
     let count = 0;
     const interval = setInterval(() => {
@@ -77,6 +86,7 @@ export default function BootScreen({ onDone }: Props) {
   return (
     <motion.div
       key="boot"
+      data-boot-screen=""
       aria-hidden="true"
       initial={{ opacity: 1 }}
       animate={{ opacity: exiting ? 0 : 1 }}

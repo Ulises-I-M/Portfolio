@@ -38,7 +38,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className="h-full">
+    // The boot-detect script below stamps data-booted on <html> before React
+    // hydrates, so the client element carries an attribute the server HTML has
+    // not. suppressHydrationWarning covers exactly that one-level difference.
+    <html lang="es" className="h-full" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

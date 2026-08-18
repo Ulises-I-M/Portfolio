@@ -304,3 +304,11 @@ html.custom-cursor-active * {
   0%   { transform: scale(1);   opacity: 0.9; }
   100% { transform: scale(3.5); opacity: 0;   }
 }
+
+/* Returning visitors: the inline <head> script stamps data-booted on <html>
+   before the body renders, so this hides the boot screen from the first paint —
+   no flash while waiting for JS, and the markup still matches SSR so hydration
+   stays clean. */
+html[data-booted="1"] [data-boot-screen] {
+  display: none;
+}
