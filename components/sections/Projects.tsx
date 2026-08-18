@@ -1,8 +1,15 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { motion, AnimatePresence, useMotionValue, useSpring, useReducedMotion } from "framer-motion";
+import {
+  motion,
+  AnimatePresence,
+  useMotionValue,
+  useSpring,
+  useTransform,
+  useReducedMotion,
+} from "framer-motion";
 import SectionLabel from "@/components/ui/SectionLabel";
 import RevealText from "@/components/ui/RevealText";
 import GrainEffect from "@/components/ui/GrainEffect";
@@ -34,31 +41,47 @@ function ProjectModal({
 }) {
   const { tr } = useLang();
 
-  // With layoutId, Framer interpolates the card's rect to the panel's, so the
-  // card visibly travels to the centre. The rotateX settle reads as the card
-  // tipping upright as it arrives. No exit needed — unmounting sends it back to
-  // the card, which still carries the same layoutId.
-  const panelProps = morph
+  // Orientation of the held chip. 0-1, with 0.5 facing you. It starts
+  // off-centre so the settle to centre reads as the chip turning upright as it
+  // is lifted — the same springs then serve the mouse-follow tilt, so the lift
+  // and the hold are one mechanism rather than two.
+  const hx = useMotionValue(morph ? 0.12 : 0.5);
+  const hy = useMotionValue(morph ? 0.35 : 0.5);
+  const sx = useSpring(hx, { stiffness: 90, damping: 18 });
+  const sy = useSpring(hy, { stiffness: 90, damping: 18 });
+
+  const rotateY = useTransform(sx, [0, 1], [-22, 22]);
+  const rotateX = useTransform(sy, [0, 1], [16, -16]);
+  // Light band sliding across the face as the chip angles
+  const shineX = useTransform(sx, [0, 1], ["-30%", "30%"]);
+
+  useEffect(() => {
+    if (!morph) return;
+    // Next frame, so the spring starts from the turned pose rather than
+    // snapping through it
+    const id = requestAnimationFrame(() => { hx.set(0.5); hy.set(0.5); });
+    return () => cancelAnimationFrame(id);
+  }, [morph, hx, hy]);
+
+  const onOverlayMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!morph) return;
+    hx.set(e.clientX / window.innerWidth);
+    hy.set(e.clientY / window.innerHeight);
+  };
+
+  // Outer layer owns the journey only — position and size. Orientation lives on
+  // the inner layer, because a mouse-driven tilt needs style={{ rotateX }} and
+  // that collides with an animate={{ rotateX }} on the same element.
+  const panelOuter = morph
     ? {
         layoutId: `project-${projectSlug(project)}`,
-        initial: { rotateX: 8 },
-        animate: { rotateX: 0 },
         transition: { type: "spring" as const, stiffness: 95, damping: 22, mass: 0.9 },
-        style: {
-          boxShadow: "0 0 40px rgba(168,255,0,0.08)",
-          clipPath: frameClipPath(),
-          transformPerspective: 1200,
-        },
       }
     : {
         initial: { opacity: 0, y: 16, scale: 0.97 },
         animate: { opacity: 1, y: 0, scale: 1 },
         exit: { opacity: 0, y: 16, scale: 0.97 },
         transition: { duration: 0.25 },
-        style: {
-          boxShadow: "0 0 40px rgba(168,255,0,0.08)",
-          clipPath: frameClipPath(),
-        },
       };
 
   return (
@@ -74,10 +97,22 @@ function ProjectModal({
         backdropFilter: "blur(2px)",
       }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onMouseMove={onOverlayMove}
     >
+      <motion.div {...panelOuter} className="relative w-full max-w-md">
+      {/* The chip itself. Clip and overflow live here, not on the outer layer:
+          on the outer, a tilted chip would have its corners eaten by the clip
+          and the stepped silhouette would deform. */}
       <motion.div
-        {...panelProps}
-        className="relative w-full max-w-2xl bg-[#0a0a0a] overflow-hidden"
+        className="relative w-full overflow-hidden bg-[#0a0a0a]"
+        style={{
+          clipPath: frameClipPath(),
+          filter:
+            "drop-shadow(0 22px 30px rgba(0,0,0,0.75)) drop-shadow(0 0 18px rgba(168,255,0,0.13))",
+          ...(morph
+            ? { rotateX, rotateY, transformPerspective: 700 }
+            : {}),
+        }}
       >
         {/* Image */}
         <div className="relative aspect-video overflow-hidden bg-[#111111]">
@@ -87,7 +122,7 @@ function ProjectModal({
             fill
             className="object-cover"
             style={{ filter: "grayscale(0.2) contrast(1.05)" }}
-            sizes="(max-width: 768px) 100vw, 672px"
+            sizes="(max-width: 768px) 100vw, 448px"
           />
           {/* Neon tint */}
           <div
@@ -156,6 +191,21 @@ function ProjectModal({
             ))}
           </div>
         </div>
+
+        {/* Specular sweep — what separates a real object from a rotated div */}
+        {morph && (
+          <motion.div
+            aria-hidden="true"
+            className="absolute inset-y-0 -inset-x-1/4 pointer-events-none"
+            style={{
+              x: shineX,
+              background:
+                "linear-gradient(105deg, transparent 38%, rgba(168,255,0,0.07) 47%, rgba(255,255,255,0.10) 50%, rgba(168,255,0,0.07) 53%, transparent 62%)",
+              zIndex: 30,
+            }}
+          />
+        )}
+      </motion.div>
       </motion.div>
     </motion.div>
   );
@@ -664,7 +714,7 @@ export default function Projects() {
             <motion.div
               animate={
                 morph && selected
-                  ? { scale: 0.92, opacity: 0.8, filter: "blur(3px)" }
+                  ? { scale: 0.93, opacity: 0.85, filter: "blur(2px)" }
                   : { scale: 1, opacity: 1, filter: "blur(0px)" }
               }
               transition={{ duration: 0.35, ease: "easeOut" }}
@@ -672,7 +722,7 @@ export default function Projects() {
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeTag}
-                className="grid grid-cols-1 sm:grid-cols-2 gap-10"
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8"
               >
                 {filtered.map((project) => (
                   <ProjectCard
