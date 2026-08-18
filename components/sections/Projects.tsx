@@ -7,6 +7,7 @@ import SectionLabel from "@/components/ui/SectionLabel";
 import RevealText from "@/components/ui/RevealText";
 import GrainEffect from "@/components/ui/GrainEffect";
 import HUDCardFrame from "@/components/ui/HUDCardFrame";
+import GateTransition from "@/components/ui/GateTransition";
 import { useLowPower } from "@/hooks/useLowPower";
 import { projects, type Project } from "@/lib/data";
 import { useLang } from "@/context/LangContext";
@@ -530,6 +531,31 @@ export default function Projects() {
   const [activeTag, setActiveTag] = useState("ALL");
   const [selected, setSelected] = useState<Project | null>(null);
   const { tr, lang } = useLang();
+  const prefersReducedMotion = useReducedMotion();
+
+  // ── Filter gate ────────────────────────────────────────────────────────────
+  // Clicking a filter shuts the gate over the grid, swaps the tag while it is
+  // covered, then reopens to reveal the new set.
+  const [gateOpen, setGateOpen] = useState(true);
+  const pendingTag = useRef<string | null>(null);
+
+  const selectTag = (tag: string) => {
+    if (tag === activeTag) return;
+    if (prefersReducedMotion) {
+      setActiveTag(tag);
+      return;
+    }
+    pendingTag.current = tag;
+    setGateOpen(false);
+  };
+
+  const onGateShut = () => {
+    if (pendingTag.current !== null) {
+      setActiveTag(pendingTag.current);
+      pendingTag.current = null;
+    }
+    setGateOpen(true);
+  };
 
   const filtered =
     activeTag === "ALL" ? projects : projects.filter((p) => p.tags.includes(activeTag));
@@ -553,7 +579,7 @@ export default function Projects() {
                   key={tag}
                   role="tab"
                   aria-selected={activeTag === tag}
-                  onClick={() => setActiveTag(tag)}
+                  onClick={() => selectTag(tag)}
                   className="px-4 py-1.5 font-mono text-[10px] tracking-[0.2em] transition-all duration-200 cursor-pointer border"
                   style={{
                     borderColor: activeTag === tag ? "#a8ff00" : "#1e1e1e",
@@ -570,22 +596,33 @@ export default function Projects() {
             </div>
           </RevealText>
 
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTag}
-              className="grid grid-cols-1 sm:grid-cols-2 gap-10"
-            >
-              {filtered.map((project) => (
-                <ProjectCard
-                  key={project.title}
-                  project={project}
-                  index={projects.indexOf(project)}
-                  onSelect={setSelected}
-                  lang={lang}
-                />
-              ))}
-            </motion.div>
-          </AnimatePresence>
+          {/* Grid + filter gate. `relative` anchors the contained gate overlay. */}
+          <div className="relative">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTag}
+                className="grid grid-cols-1 sm:grid-cols-2 gap-10"
+              >
+                {filtered.map((project) => (
+                  <ProjectCard
+                    key={project.title}
+                    project={project}
+                    index={projects.indexOf(project)}
+                    onSelect={setSelected}
+                    lang={lang}
+                  />
+                ))}
+              </motion.div>
+            </AnimatePresence>
+
+            {!prefersReducedMotion && (
+              <GateTransition
+                isOpen={gateOpen}
+                variant="contained"
+                onCloseComplete={onGateShut}
+              />
+            )}
+          </div>
         </div>
       </section>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   motion,
   useReducedMotion,
@@ -18,6 +18,7 @@ import CityCanvas from "@/components/ui/CityCanvas";
 import SerratedRingGauge from "@/components/ui/SerratedRingGauge";
 import ChevronCluster from "@/components/ui/ChevronCluster";
 import CircuitPath from "@/components/ui/CircuitPath";
+import GateTransition from "@/components/ui/GateTransition";
 import WarningBadge from "@/components/ui/WarningBadge";
 import BarcodeIndicator from "@/components/ui/BarcodeIndicator";
 import { useLowPower } from "@/hooks/useLowPower";
@@ -29,6 +30,23 @@ export default function Hero() {
   const lowPower = useLowPower();
   const { tr } = useLang();
   const sectionRef = useRef<HTMLElement>(null);
+
+  // ── Entry gate ─────────────────────────────────────────────────────────────
+  // Hero mounts only after the boot sequence, so the gate starts shut and
+  // slides open to reveal the page. Reduced motion skips it entirely.
+  const [gateOpen, setGateOpen] = useState(false);
+  const [gateDone, setGateDone] = useState(false);
+
+  useEffect(() => {
+    if (prefersReducedMotion) {
+      setGateOpen(true);
+      setGateDone(true);
+      return;
+    }
+    // Held past the boot screen's 600ms exit fade so the gate reads as its own beat
+    const t = setTimeout(() => setGateOpen(true), 750);
+    return () => clearTimeout(t);
+  }, [prefersReducedMotion]);
 
   // ── Chromatic aberration on scroll ────────────────────────────────────────
   const { scrollYProgress } = useScroll({
@@ -82,6 +100,11 @@ export default function Hero() {
       onMouseMove={onMouseMove}
       onMouseLeave={onMouseLeave}
     >
+      {/* Entry gate — shut on mount, slides open to reveal the page */}
+      {!gateDone && (
+        <GateTransition isOpen={gateOpen} onOpenComplete={() => setGateDone(true)} />
+      )}
+
       {/* 3D city wireframe background */}
       <CityCanvas />
 
