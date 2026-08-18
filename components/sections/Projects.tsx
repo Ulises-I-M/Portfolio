@@ -8,15 +8,58 @@ import RevealText from "@/components/ui/RevealText";
 import GrainEffect from "@/components/ui/GrainEffect";
 import HUDCardFrame from "@/components/ui/HUDCardFrame";
 import GateTransition from "@/components/ui/GateTransition";
+import { frameClipPath } from "@/components/ui/hudFrameGeometry";
 import { useLowPower } from "@/hooks/useLowPower";
 import { projects, type Project } from "@/lib/data";
 import { useLang } from "@/context/LangContext";
 import type { Lang } from "@/lib/i18n";
 
+// Stable key tying a grid card to its detail panel for the shared-element morph
+const projectSlug = (p: Project) =>
+  p.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
 // ─── Project Detail Modal ────────────────────────────────────────────────────
 
-function ProjectModal({ project, onClose, lang }: { project: Project; onClose: () => void; lang: Lang }) {
+function ProjectModal({
+  project,
+  onClose,
+  lang,
+  morph,
+}: {
+  project: Project;
+  onClose: () => void;
+  lang: Lang;
+  /** When true the panel morphs out of its grid card instead of fading in. */
+  morph: boolean;
+}) {
   const { tr } = useLang();
+
+  // With layoutId, Framer interpolates the card's rect to the panel's, so the
+  // card visibly travels to the centre. The rotateX settle reads as the card
+  // tipping upright as it arrives. No exit needed — unmounting sends it back to
+  // the card, which still carries the same layoutId.
+  const panelProps = morph
+    ? {
+        layoutId: `project-${projectSlug(project)}`,
+        initial: { rotateX: 8 },
+        animate: { rotateX: 0 },
+        transition: { type: "spring" as const, stiffness: 95, damping: 22, mass: 0.9 },
+        style: {
+          boxShadow: "0 0 40px rgba(168,255,0,0.08)",
+          clipPath: frameClipPath(),
+          transformPerspective: 1200,
+        },
+      }
+    : {
+        initial: { opacity: 0, y: 16, scale: 0.97 },
+        animate: { opacity: 1, y: 0, scale: 1 },
+        exit: { opacity: 0, y: 16, scale: 0.97 },
+        transition: { duration: 0.25 },
+        style: {
+          boxShadow: "0 0 40px rgba(168,255,0,0.08)",
+          clipPath: frameClipPath(),
+        },
+      };
 
   return (
     <motion.div
@@ -26,16 +69,15 @@ function ProjectModal({ project, onClose, lang }: { project: Project; onClose: (
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
       className="fixed inset-0 z-[300] flex items-center justify-center p-4 sm:p-8"
-      style={{ background: "rgba(0,0,0,0.85)", backdropFilter: "blur(4px)" }}
+      style={{
+        background: morph ? "rgba(0,0,0,0.55)" : "rgba(0,0,0,0.85)",
+        backdropFilter: "blur(2px)",
+      }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <motion.div
-        initial={{ opacity: 0, y: 16, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 16, scale: 0.97 }}
-        transition={{ duration: 0.25 }}
-        className="relative w-full max-w-2xl bg-[#0a0a0a] border border-[#1e1e1e] overflow-hidden"
-        style={{ boxShadow: "0 0 40px rgba(168,255,0,0.08)" }}
+        {...panelProps}
+        className="relative w-full max-w-2xl bg-[#0a0a0a] overflow-hidden"
       >
         {/* Image */}
         <div className="relative aspect-video overflow-hidden bg-[#111111]">
@@ -136,6 +178,7 @@ function ProjectCard({
   const { tr } = useLang();
   const prefersReducedMotion = useReducedMotion();
   const lowPower = useLowPower();
+  const morph = !prefersReducedMotion && !lowPower;
 
   // ── 3D tilt ────────────────────────────────────────────────────────────────
   const cardRef = useRef<HTMLDivElement>(null);
@@ -160,6 +203,17 @@ function ProjectCard({
     rotY.set(0);
   };
 
+  // Snap the tilt flat before opening. A non-identity transform on the wrapper
+  // would compose with the layout animation and land the panel askew; jump()
+  // clears the spring instantly instead of easing it over ~200ms.
+  const openDetail = () => {
+    rotX.set(0);
+    rotY.set(0);
+    springRotX.jump(0);
+    springRotY.jump(0);
+    onSelect(project);
+  };
+
   // ── Derived dossier metadata ──────────────────────────────────────────────
   const idx = String(index + 1).padStart(3, "0");
   const typeTag = (project.tags[0] ?? "WEB")
@@ -178,6 +232,7 @@ function ProjectCard({
     <motion.div
       ref={cardRef}
       layout
+      layoutId={morph ? `project-${projectSlug(project)}` : undefined}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
@@ -197,11 +252,12 @@ function ProjectCard({
       {/* ── SVG HUD frame (drawn outside the clipped article) ─────────────── */}
       <HUDCardFrame hovered={hovered} />
 
-      {/* ── Card body — clipped to chamfered-all shape ────────────────────── */}
+      {/* ── Card body — clipped to the shared frame silhouette ───────────── */}
       <article
-        className="relative overflow-hidden cursor-pointer chamfered-all"
-        onClick={() => onSelect(project)}
+        className="relative overflow-hidden cursor-pointer"
+        onClick={openDetail}
         style={{
+          clipPath: frameClipPath(),
           filter: hovered
             ? "drop-shadow(0 0 14px rgba(168,255,0,0.12))"
             : "none",
@@ -532,6 +588,9 @@ export default function Projects() {
   const [selected, setSelected] = useState<Project | null>(null);
   const { tr, lang } = useLang();
   const prefersReducedMotion = useReducedMotion();
+  const lowPower = useLowPower();
+  // blur() is expensive on weak GPUs, so the depth cue is skipped there too
+  const morph = !prefersReducedMotion && !lowPower;
 
   // ── Filter gate ────────────────────────────────────────────────────────────
   // Clicking a filter shuts the gate over the grid, swaps the tag while it is
@@ -598,6 +657,18 @@ export default function Projects() {
 
           {/* Grid + filter gate. `relative` anchors the contained gate overlay. */}
           <div className="relative">
+            {/* Recede while a detail panel is open — the strongest depth cue,
+                and the reason the card reads as coming toward the viewer. Sits
+                outside AnimatePresence so the filter's key swap does not fight
+                it, and beside the gate so the gate is not blurred with it. */}
+            <motion.div
+              animate={
+                morph && selected
+                  ? { scale: 0.92, opacity: 0.8, filter: "blur(3px)" }
+                  : { scale: 1, opacity: 1, filter: "blur(0px)" }
+              }
+              transition={{ duration: 0.35, ease: "easeOut" }}
+            >
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeTag}
@@ -614,6 +685,7 @@ export default function Projects() {
                 ))}
               </motion.div>
             </AnimatePresence>
+            </motion.div>
 
             {!prefersReducedMotion && (
               <GateTransition
@@ -629,7 +701,7 @@ export default function Projects() {
       {/* Modal */}
       <AnimatePresence>
         {selected && (
-          <ProjectModal project={selected} onClose={() => setSelected(null)} lang={lang} />
+          <ProjectModal project={selected} onClose={() => setSelected(null)} lang={lang} morph={morph} />
         )}
       </AnimatePresence>
     </>
