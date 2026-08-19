@@ -19,6 +19,25 @@ const LP_COLS      = 12;   // low-power: ~45% fewer cols
 const STREET_N     = 5;
 const SCROLL_SPEED = 0.20;
 
+// ─── Detail tuning ────────────────────────────────────────────────────────────
+const WIN_DENSITY   = 0.15;  // fraction of cells lit
+const WIN_DEPTH_MIN = 0.42;  // windows only on buildings nearer than this
+const FLICKER_RARE  = 0.955; // cells above this hash toggle over time
+const CRAFT_N       = 12;
+
+/**
+ * Cheap deterministic hash. Window state is derived from this per cell rather
+ * than stored: a mask per building would be ~40KB of state to keep in sync with
+ * the tier geometry, and this costs a few multiplies instead.
+ */
+const hash1 = (a: number) => {
+  let x = Math.imul(a ^ 0x9e3779b9, 0x85ebca6b);
+  x ^= x >>> 13;
+  x = Math.imul(x, 0xc2b2ae35);
+  x ^= x >>> 16;
+  return (x >>> 0) / 4294967296;
+};
+
 // ─── Hologram face colors ─────────────────────────────────────────────────────
 const FACE_FILL = "rgba(4,12,4,0.82)";
 const SIDE_FILL = "rgba(4,12,4,0.72)";
@@ -48,6 +67,15 @@ interface Building {
   ins3:     number;
   hasTower: boolean;
   hasHelip: boolean;
+  /** Seed for window cells and blink phase — keeps both stable per building */
+  id: number;
+  phase: number;
+  /** Rooftop clutter, in offsets from the building's own footprint */
+  roof: { ox: number; oz: number; w: number; d: number; h: number }[];
+  /** Facade billboard: vertical span as a fraction of height */
+  bill: { y0: number; y1: number } | null;
+  /** Skyway to a neighbour already placed in this row */
+  sky: { x: number; y: number } | null;
 }
 
 // ─── Projection ───────────────────────────────────────────────────────────────
@@ -64,9 +92,14 @@ function buildCity(rng: () => number, rows: number, cols: number): Building[] {
   const halfW     = ((cols - 1) * CELL) / 2;
   const centreCol = cols / 2;
 
+  let id = 0;
+
   for (let row = 0; row < rows; row++) {
+    // Reset per row: skyways only ever connect neighbours in the same row
+    let prev: Building | null = null;
+
     for (let col = 0; col < cols; col++) {
-      if (col % STREET_N === 0 || row % STREET_N === 0) continue;
+      if (col % STREET_N === 0 || row % STREET_N === 0) { prev = null; continue; }
 
       const distX: number = Math.abs(col - centreCol) / centreCol;
 
@@ -135,7 +168,28 @@ function buildCity(rng: () => number, rows: number, cols: number): Building[] {
         }
       }
 
-      out.push({
+      // Rooftop clutter — tanks and plant on the flatter roofs
+      const roof: Building["roof"] = [];
+      if ((type === "block" || type === "slab") && rng() > 0.45) {
+        const n = 1 + Math.floor(rng() * 3);
+        for (let k = 0; k < n; k++) {
+          roof.push({
+            ox: 0.12 + rng() * 0.6,
+            oz: 0.12 + rng() * 0.6,
+            w:  0.10 + rng() * 0.16,
+            d:  0.10 + rng() * 0.16,
+            h:  3 + rng() * 7,
+          });
+        }
+      }
+
+      // Facade billboard, on taller mid-city stock
+      const bill =
+        h > 55 && district !== "suburb" && rng() > 0.82
+          ? { y0: 0.42 + rng() * 0.18, y1: 0.60 + rng() * 0.16 }
+          : null;
+
+      const b: Building = {
         wx1: col * CELL + padX1 - halfW,
         wx2: (col + 1) * CELL - padX2 - halfW,
         wz1: row * CELL + padZ1,
@@ -144,7 +198,21 @@ function buildCity(rng: () => number, rows: number, cols: number): Building[] {
         tier2H, tier3H, ins2, ins3,
         hasTower: type === "tower" && h > 118 && rng() > 0.38,
         hasHelip: type === "block" && h > 44   && rng() > 0.52,
-      });
+        id: id++,
+        phase: rng(),
+        roof,
+        bill,
+        sky: null,
+      };
+
+      // Skyway between two tall neighbours, hung below both roofs
+      if (prev && prev.type === "tower" && type === "tower" && rng() > 0.78) {
+        const y = Math.min(prev.h, h) * (0.55 + rng() * 0.25);
+        prev.sky = { x: b.wx1, y };
+      }
+
+      out.push(b);
+      prev = b;
     }
   }
   return out;
@@ -173,12 +241,28 @@ export default function CityCanvas() {
     let rafId: number;
     let offset  = 0;
     let lastT   = 0;
+    let frameT  = 0;   // ms, shared by window flicker, beacons and traffic
     let city: Building[] = [];
+    let craft: { x: number; z: number; y: number; vx: number; len: number }[] = [];
 
     const rebuild = () => {
       canvas.width  = canvas.offsetWidth;
       canvas.height = canvas.offsetHeight;
       city = buildCity(mkRng(canvas.width * 7 + canvas.height * 13), activeRows, activeCols);
+
+      // Air traffic — a small fixed pool on fixed lanes, wrapping at the edges
+      const cr = mkRng(canvas.width * 31 + 17);
+      const span = ((activeCols - 1) * CELL) / 2 + CELL * 3;
+      craft = Array.from({ length: lowPower ? 0 : CRAFT_N }, () => {
+        const dir = cr() > 0.5 ? 1 : -1;
+        return {
+          x:   (cr() * 2 - 1) * span,
+          z:   CELL * 2 + cr() * (activeRows * CELL * 0.55),
+          y:   185 + cr() * 130,
+          vx:  dir * (0.9 + cr() * 1.5),
+          len: 16 + cr() * 26,
+        };
+      });
     };
 
     const fillFace = (
@@ -195,25 +279,93 @@ export default function CityCanvas() {
       ctx.fill();
     };
 
+    // ── Batched edge stroking ────────────────────────────────────────────────
+    // Previously every segment did its own beginPath/stroke: at ~500 buildings
+    // by ~26 segments that was upwards of 13k stroke calls a frame, and the
+    // scene only managed 43fps before any of the detail below existed.
+    // Segments now accumulate into buckets keyed by quantised alpha and width,
+    // and each bucket strokes as a single path.
+    //
+    // Buckets are flushed in depth bands rather than once at the end: buildings
+    // are painted back-to-front over near-opaque fills, so deferring every edge
+    // to the end would let distant edges draw over near facades.
+    const segs = new Map<number, number[]>();
+
     const edge = (
       ax: number, ay: number, az: number,
       bx: number, by: number, bz: number,
       alpha: number, lw: number, W: number, H: number
     ) => {
+      if (alpha < 0.006) return;            // below visibility — never shows
       const p1 = project(ax, ay, az, W, H);
       const p2 = project(bx, by, bz, W, H);
       if (!p1 || !p2) return;
-      ctx.lineWidth = lw;
-      ctx.strokeStyle = `rgba(168,255,0,${alpha.toFixed(4)})`;
-      ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
-      ctx.stroke();
+      // 0.005 alpha steps, 0.05 width steps: finer than the eye can separate at
+      // these values, and collapses the many near-identical shades per building
+      const qa = Math.min(255, Math.round(alpha * 200));
+      const ql = Math.min(255, Math.round(lw * 20));
+      const key = qa * 256 + ql;
+      let arr = segs.get(key);
+      if (!arr) { arr = []; segs.set(key, arr); }
+      arr.push(p1.x, p1.y, p2.x, p2.y);
+    };
+
+    // Windows are filled quads, not strokes, so they need their own buckets.
+    // Perspective means they are not axis-aligned, hence polygons over rect().
+    const quads = new Map<number, number[]>();
+    // Flat [x, y, alpha, ...] gathered during the building pass
+    const beacons: number[] = [];
+
+    const quad = (
+      pts: [number, number, number][], alpha: number, W: number, H: number
+    ) => {
+      if (alpha < 0.01) return;
+      const ps = pts.map(([wx, wy, wz]) => project(wx, wy, wz, W, H));
+      if (ps.some(p => !p)) return;
+      const key = Math.min(255, Math.round(alpha * 200));
+      let arr = quads.get(key);
+      if (!arr) { arr = []; quads.set(key, arr); }
+      for (const pt of ps) arr.push(pt!.x, pt!.y);
+    };
+
+    const flushQuads = () => {
+      for (const [key, arr] of quads) {
+        if (arr.length === 0) continue;
+        ctx.fillStyle = `rgba(190,255,90,${(key / 200).toFixed(4)})`;
+        ctx.beginPath();
+        for (let i = 0; i < arr.length; i += 8) {
+          ctx.moveTo(arr[i], arr[i + 1]);
+          ctx.lineTo(arr[i + 2], arr[i + 3]);
+          ctx.lineTo(arr[i + 4], arr[i + 5]);
+          ctx.lineTo(arr[i + 6], arr[i + 7]);
+          ctx.closePath();
+        }
+        ctx.fill();
+        arr.length = 0;
+      }
+    };
+
+    const flushEdges = () => {
+      for (const [key, arr] of segs) {
+        if (arr.length === 0) continue;
+        ctx.lineWidth   = (key & 255) / 20;
+        ctx.strokeStyle = `rgba(168,255,0,${((key >> 8) / 200).toFixed(4)})`;
+        ctx.beginPath();
+        for (let i = 0; i < arr.length; i += 4) {
+          ctx.moveTo(arr[i], arr[i + 1]);
+          ctx.lineTo(arr[i + 2], arr[i + 3]);
+        }
+        ctx.stroke();
+        arr.length = 0;                     // reuse the array, avoid GC churn
+      }
     };
 
     const drawTier = (
       wx1: number, wx2: number, wz1: number, wz2: number,
       yBase: number, yTop: number,
       base: number, isTopTier: boolean,
-      W: number, H: number, lw: number
+      W: number, H: number, lw: number,
+      seed = -1, depthT = 0
     ) => {
       const roofA = isTopTier ? Math.min(base * 2.4, 0.30) : base * 1.0;
       const wallA = base;
@@ -244,6 +396,40 @@ export default function CityCanvas() {
       if (!lowPower) {
         // Structural columns on front face
         const nV = Math.max(1, Math.round(bw / 14));
+
+        // ── Lit windows ──────────────────────────────────────────────────────
+        // Gated on depth: distant buildings are a few pixels tall, so their
+        // cells would cost hash evaluations for nothing visible.
+        if (seed >= 0 && depthT > WIN_DEPTH_MIN && bh > 12) {
+          const nF = Math.max(1, Math.round(bh / 16));
+          const cw = bw / nV;
+          const ch = bh / nF;
+          const mx = cw * 0.36;
+          const my = ch * 0.34;
+          const lit = 0.10 + (depthT - WIN_DEPTH_MIN) * 0.42;
+
+          for (let v = 0; v < nV; v++) {
+            for (let f = 0; f < nF; f++) {
+              const hv = hash1(seed * 7919 + v * 131 + f * 31);
+              let on = hv < WIN_DENSITY;
+              // A sparse few toggle over time so the city is not frozen.
+              // Only these cells pay the extra arithmetic.
+              if (hv > FLICKER_RARE) {
+                on = ((frameT / 2600 + hv * 10) % 1) < 0.55;
+              }
+              if (!on) continue;
+              const x1 = wx1 + v * cw + mx;
+              const x2 = wx1 + (v + 1) * cw - mx;
+              const y1 = yBase + f * ch + my;
+              const y2 = yBase + (f + 1) * ch - my;
+              quad(
+                [[x1, y1, wz1], [x2, y1, wz1], [x2, y2, wz1], [x1, y2, wz1]],
+                lit * (0.6 + hv * 0.8), W, H
+              );
+            }
+          }
+        }
+
         for (let v = 1; v < nV; v++)
           edge(wx1 + bw*(v/nV), yBase, wz1, wx1 + bw*(v/nV), yTop, wz1, wallA * 0.35, lw*0.55, W, H);
 
@@ -272,7 +458,8 @@ export default function CityCanvas() {
         rafId = requestAnimationFrame(draw);
         return;
       }
-      lastT = t;
+      lastT  = t;
+      frameT = t;
 
       const { width, height } = canvas;
       ctx.clearRect(0, 0, width, height);
@@ -280,6 +467,15 @@ export default function CityCanvas() {
       offset += SCROLL_SPEED;
       const scrollMod = offset % maxView;
       const halfW     = ((activeCols - 1) * CELL) / 2;
+
+      // Wet-asphalt glow along the ground plane, under everything
+      const horizonY = height * HORIZON_Y;
+      const groundG = ctx.createLinearGradient(0, horizonY, 0, height);
+      groundG.addColorStop(0,    "rgba(168,255,0,0.000)");
+      groundG.addColorStop(0.45, "rgba(168,255,0,0.022)");
+      groundG.addColorStop(1,    "rgba(168,255,0,0.000)");
+      ctx.fillStyle = groundG;
+      ctx.fillRect(0, horizonY, width, height - horizonY);
 
       const visible = city
         .map((b) => {
@@ -290,7 +486,12 @@ export default function CityCanvas() {
         .filter(({ wz }) => wz + CAM_Z > 8 && wz < maxView * 0.88)
         .sort((a, b) => b.wz - a.wz);
 
+      let bandCount = 0;
       for (const { b, wz } of visible) {
+        // Band size trades stroke calls against occlusion fidelity. These are
+        // consecutive in depth, so an edge drawing over a neighbour's facade
+        // within a band is a sub-pixel concern.
+        if (++bandCount % 24 === 0) { flushEdges(); flushQuads(); }
         const wz1    = wz;
         const wz2    = wz + (b.wz2 - b.wz1);
         const depthT = Math.max(0, Math.min(1, 1 - wz / (maxView * 0.78)));
@@ -299,12 +500,12 @@ export default function CityCanvas() {
 
         if (b.type === "tower" && b.tier2H !== null) {
           const t2 = b.tier2H, t3 = b.tier3H, i2 = b.ins2, i3 = b.ins3;
-          drawTier(b.wx1,    b.wx2,    wz1,          wz2,          0,  t2,      base,       false,    width, height, lw);
-          drawTier(b.wx1+i2, b.wx2-i2, wz1+i2*0.45, wz2-i2*0.45, t2, t3??b.h, base*0.92, t3===null, width, height, lw*0.9);
+          drawTier(b.wx1,    b.wx2,    wz1,          wz2,          0,  t2,      base,       false,    width, height, lw,     b.id,          depthT);
+          drawTier(b.wx1+i2, b.wx2-i2, wz1+i2*0.45, wz2-i2*0.45, t2, t3??b.h, base*0.92, t3===null, width, height, lw*0.9, b.id + 5000,   depthT);
           if (t3 !== null)
-            drawTier(b.wx1+i3, b.wx2-i3, wz1+i3*0.45, wz2-i3*0.45, t3, b.h,   base*0.82, true,      width, height, lw*0.8);
+            drawTier(b.wx1+i3, b.wx2-i3, wz1+i3*0.45, wz2-i3*0.45, t3, b.h,   base*0.82, true,      width, height, lw*0.8, b.id + 9000,   depthT);
         } else {
-          drawTier(b.wx1, b.wx2, wz1, wz2, 0, b.h, base, true, width, height, lw);
+          drawTier(b.wx1, b.wx2, wz1, wz2, 0, b.h, base, true, width, height, lw, b.id, depthT);
         }
 
         edge(b.wx1, 0, wz1, b.wx2, 0, wz1, base*0.20, 0.28, width, height);
@@ -316,6 +517,65 @@ export default function CityCanvas() {
           const ant = Math.min(base * 2.5, 0.32);
           edge(cx, b.h,    wz1, cx, b.h+24, wz1, ant,     0.55, width, height);
           edge(cx, b.h+18, wz1, cx, b.h+27, wz1, ant*0.4, 0.45, width, height);
+
+          // Aircraft warning beacon. The only red in an all-green scene, so it
+          // stays small and sparse rather than becoming the subject.
+          if (!lowPower && depthT > 0.3) {
+            const on = ((frameT / 1500 + b.phase) % 1) < 0.42;
+            if (on) {
+              const pt = project(cx, b.h + 28, wz1, width, height);
+              if (pt) {
+                beacons.push(pt.x, pt.y, Math.min(0.75, 0.25 + depthT * 0.7));
+              }
+            }
+          }
+        }
+
+        if (!lowPower && depthT > 0.34) {
+          // Rooftop clutter
+          const bw2 = b.wx2 - b.wx1;
+          const bd2 = wz2 - wz1;
+          for (const r of b.roof) {
+            const rx1 = b.wx1 + bw2 * r.ox;
+            const rx2 = rx1 + bw2 * r.w;
+            const rz1 = wz1 + bd2 * r.oz;
+            const rz2 = rz1 + bd2 * r.d;
+            const a = base * 0.7;
+            edge(rx1, b.h, rz1, rx2, b.h, rz1, a, lw*0.6, width, height);
+            edge(rx1, b.h + r.h, rz1, rx2, b.h + r.h, rz1, a, lw*0.6, width, height);
+            edge(rx1, b.h, rz1, rx1, b.h + r.h, rz1, a, lw*0.6, width, height);
+            edge(rx2, b.h, rz1, rx2, b.h + r.h, rz1, a, lw*0.6, width, height);
+            edge(rx1, b.h + r.h, rz1, rx1, b.h + r.h, rz2, a*0.6, lw*0.5, width, height);
+            edge(rx2, b.h + r.h, rz1, rx2, b.h + r.h, rz2, a*0.6, lw*0.5, width, height);
+          }
+
+          // Facade billboard — brighter than the wall it sits on
+          if (b.bill) {
+            const bx1 = b.wx1 + bw2 * 0.30;
+            const bx2 = b.wx2 - bw2 * 0.30;
+            const by1 = b.h * b.bill.y0;
+            const by2 = b.h * b.bill.y1;
+            const pulse = 0.55 + 0.45 * Math.sin(frameT / 900 + b.phase * 6.28);
+            quad([[bx1,by1,wz1],[bx2,by1,wz1],[bx2,by2,wz1],[bx1,by2,wz1]],
+              Math.min(0.22, base * 1.1 * pulse), width, height);
+            const ba = Math.min(0.34, base * 1.7);
+            edge(bx1, by1, wz1, bx2, by1, wz1, ba, lw*0.8, width, height);
+            edge(bx1, by2, wz1, bx2, by2, wz1, ba, lw*0.8, width, height);
+            edge(bx1, by1, wz1, bx1, by2, wz1, ba, lw*0.8, width, height);
+            edge(bx2, by1, wz1, bx2, by2, wz1, ba, lw*0.8, width, height);
+          }
+
+          // Skyway to the neighbour recorded at generation time
+          if (b.sky) {
+            const y = b.sky.y;
+            const zc = (wz1 + wz2) / 2;
+            const a = base * 1.1;
+            edge(b.wx2, y,   zc - 4, b.sky.x, y,   zc - 4, a, lw*0.8, width, height);
+            edge(b.wx2, y+7, zc - 4, b.sky.x, y+7, zc - 4, a, lw*0.8, width, height);
+            edge(b.wx2, y,   zc + 4, b.sky.x, y,   zc + 4, a*0.6, lw*0.6, width, height);
+            edge(b.wx2, y,   zc - 4, b.wx2,   y+7, zc - 4, a*0.7, lw*0.6, width, height);
+            edge(b.sky.x, y, zc - 4, b.sky.x, y+7, zc - 4, a*0.7, lw*0.6, width, height);
+          }
         }
 
         if (b.hasHelip) {
@@ -327,6 +587,9 @@ export default function CityCanvas() {
           edge(cx, b.h, cz-arm, cx, b.h, cz+arm, pa, 0.42, width, height);
         }
       }
+
+      flushEdges();
+      flushQuads();
 
       // Street grid
       for (let row = 0; row < activeRows; row++) {
@@ -352,6 +615,66 @@ export default function CityCanvas() {
             0.06 + depthT*0.13, 0.50, width, height);
         }
       }
+
+      flushEdges();
+
+      // ── Aircraft beacons ────────────────────────────────────────────────
+      if (beacons.length) {
+        for (let i = 0; i < beacons.length; i += 3) {
+          ctx.fillStyle = `rgba(255,60,45,${beacons[i + 2].toFixed(3)})`;
+          ctx.beginPath();
+          ctx.arc(beacons[i], beacons[i + 1], 1.5, 0, 6.283);
+          ctx.fill();
+        }
+        beacons.length = 0;
+      }
+
+      // ── Air traffic ─────────────────────────────────────────────────────
+      // Drawn after the city: these fly above it, so occlusion is not worth
+      // resolving. Same projection and depth fade as everything else.
+      if (craft.length) {
+        const wrapAt = ((activeCols - 1) * CELL) / 2 + CELL * 4;
+        for (const c of craft) {
+          c.x += c.vx;
+          if (c.x >  wrapAt) c.x = -wrapAt;
+          if (c.x < -wrapAt) c.x =  wrapAt;
+
+          let cz = c.z - scrollMod;
+          if (cz < -CELL * 2) cz += maxView;
+          if (cz + CAM_Z <= 8 || cz > maxView * 0.8) continue;
+
+          const dT = Math.max(0, Math.min(1, 1 - cz / (maxView * 0.78)));
+          const head = project(c.x, c.y, cz, width, height);
+          const tail = project(c.x - c.vx * c.len, c.y, cz, width, height);
+          if (!head || !tail) continue;
+
+          const a = 0.10 + dT * 0.5;
+          const g = ctx.createLinearGradient(tail.x, tail.y, head.x, head.y);
+          g.addColorStop(0, "rgba(168,255,0,0)");
+          g.addColorStop(1, `rgba(200,255,120,${a.toFixed(3)})`);
+          ctx.strokeStyle = g;
+          ctx.lineWidth = 0.5 + dT * 1.1;
+          ctx.beginPath();
+          ctx.moveTo(tail.x, tail.y);
+          ctx.lineTo(head.x, head.y);
+          ctx.stroke();
+
+          ctx.fillStyle = `rgba(220,255,160,${Math.min(0.85, a * 1.6).toFixed(3)})`;
+          ctx.beginPath();
+          ctx.arc(head.x, head.y, 0.6 + dT * 1.1, 0, 6.283);
+          ctx.fill();
+        }
+      }
+
+      // ── Horizon haze ────────────────────────────────────────────────────
+      // Last, so distant buildings dissolve into it. Near ones extend far
+      // below the horizon and are barely touched.
+      const hazeG = ctx.createLinearGradient(0, horizonY - height * 0.06, 0, horizonY + height * 0.30);
+      hazeG.addColorStop(0,   "rgba(6,10,6,0.78)");
+      hazeG.addColorStop(0.4, "rgba(6,10,6,0.38)");
+      hazeG.addColorStop(1,   "rgba(6,10,6,0)");
+      ctx.fillStyle = hazeG;
+      ctx.fillRect(0, horizonY - height * 0.06, width, height * 0.36);
 
       rafId = requestAnimationFrame(draw);
     };
