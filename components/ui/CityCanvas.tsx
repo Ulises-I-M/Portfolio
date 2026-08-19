@@ -20,9 +20,6 @@ const STREET_N     = 5;
 const SCROLL_SPEED = 0.20;
 
 // ─── Detail tuning ────────────────────────────────────────────────────────────
-const WIN_DENSITY   = 0.15;  // fraction of cells lit
-const WIN_DEPTH_MIN = 0.42;  // windows only on buildings nearer than this
-const FLICKER_RARE  = 0.955; // cells above this hash toggle over time
 const CRAFT_N       = 12;
 
 /**
@@ -54,6 +51,12 @@ function mkRng(seed: number) {
 // ─── Types ────────────────────────────────────────────────────────────────────
 type District = "downtown" | "midtown" | "suburb";
 type BldType  = "tower" | "block" | "slab" | "stub";
+/**
+ * Roof treatments. The city only ever tapered inward, which reads as 20th
+ * century setback massing; the cyberpunk silhouette comes from crowns that
+ * cantilever OUT past the shaft, and from apertures cut through the top.
+ */
+type Crown = "flat" | "hammer" | "ring" | "spires" | "pagoda";
 
 interface Building {
   wx1: number; wx2: number;
@@ -76,6 +79,11 @@ interface Building {
   bill: { y0: number; y1: number } | null;
   /** Skyway to a neighbour already placed in this row */
   sky: { x: number; y: number } | null;
+  crown: Crown;
+  /** Lateral drift per setback, so tiers step off-axis instead of concentric */
+  skew: number;
+  /** Sign blade projecting perpendicular from the facade */
+  blade: { y: number; h: number; out: number } | null;
 }
 
 // ─── Projection ───────────────────────────────────────────────────────────────
@@ -189,6 +197,18 @@ function buildCity(rng: () => number, rows: number, cols: number): Building[] {
           ? { y0: 0.42 + rng() * 0.18, y1: 0.60 + rng() * 0.16 }
           : null;
 
+      // Crowns weight toward the tall stock: a hammerhead on a stub reads as
+      // noise, on a tower it reads as architecture.
+      const cr = rng();
+      let crown: Crown = "flat";
+      if (type === "tower") {
+        crown = cr < 0.30 ? "hammer" : cr < 0.48 ? "ring" : cr < 0.70 ? "spires" : cr < 0.84 ? "pagoda" : "flat";
+      } else if (type === "block" && h > 55) {
+        crown = cr < 0.22 ? "hammer" : cr < 0.34 ? "pagoda" : "flat";
+      }
+
+      const bw0 = CELL - padX1 - padX2;
+
       const b: Building = {
         wx1: col * CELL + padX1 - halfW,
         wx2: (col + 1) * CELL - padX2 - halfW,
@@ -203,6 +223,12 @@ function buildCity(rng: () => number, rows: number, cols: number): Building[] {
         roof,
         bill,
         sky: null,
+        crown,
+        skew: (rng() - 0.5) * bw0 * 0.30,
+        blade:
+          h > 40 && district !== "suburb" && rng() > 0.72
+            ? { y: h * (0.45 + rng() * 0.35), h: 8 + rng() * 16, out: 9 + rng() * 12 }
+            : null,
       };
 
       // Skyway between two tall neighbours, hung below both roofs
@@ -395,47 +421,11 @@ export default function CityCanvas() {
       // ── Detail geometry: skip on low-power devices ─────────────────────────
       if (!lowPower) {
         // Structural columns on front face
-        const nV = Math.max(1, Math.round(bw / 14));
-
-        // ── Lit windows ──────────────────────────────────────────────────────
-        // Gated on depth: distant buildings are a few pixels tall, so their
-        // cells would cost hash evaluations for nothing visible.
-        if (seed >= 0 && depthT > WIN_DEPTH_MIN && bh > 12) {
-          const nF = Math.max(1, Math.round(bh / 16));
-          const cw = bw / nV;
-          const ch = bh / nF;
-          const mx = cw * 0.36;
-          const my = ch * 0.34;
-          const lit = 0.10 + (depthT - WIN_DEPTH_MIN) * 0.42;
-
-          for (let v = 0; v < nV; v++) {
-            for (let f = 0; f < nF; f++) {
-              const hv = hash1(seed * 7919 + v * 131 + f * 31);
-              let on = hv < WIN_DENSITY;
-              // A sparse few toggle over time so the city is not frozen.
-              // Only these cells pay the extra arithmetic.
-              if (hv > FLICKER_RARE) {
-                on = ((frameT / 2600 + hv * 10) % 1) < 0.55;
-              }
-              if (!on) continue;
-              const x1 = wx1 + v * cw + mx;
-              const x2 = wx1 + (v + 1) * cw - mx;
-              const y1 = yBase + f * ch + my;
-              const y2 = yBase + (f + 1) * ch - my;
-              quad(
-                [[x1, y1, wz1], [x2, y1, wz1], [x2, y2, wz1], [x1, y2, wz1]],
-                lit * (0.6 + hv * 0.8), W, H
-              );
-            }
-          }
-        }
-
-        for (let v = 1; v < nV; v++)
-          edge(wx1 + bw*(v/nV), yBase, wz1, wx1 + bw*(v/nV), yTop, wz1, wallA * 0.35, lw*0.55, W, H);
+        const nV = Math.max(1, Math.round(bw / 26));
 
         // Floor lines — front face
         if (bh > 12) {
-          const nF = Math.max(1, Math.round(bh / 16));
+          const nF = Math.max(1, Math.round(bh / 30));
           for (let f = 1; f < nF; f++) {
             const fy = yBase + bh*(f/nF);
             edge(wx1, fy, wz1, wx2, fy, wz1, wallA * 0.30, lw*0.50, W, H);
@@ -443,7 +433,7 @@ export default function CityCanvas() {
         }
         // Floor lines — left side
         if (bh > 12) {
-          const nF = Math.max(1, Math.round(bh / 20));
+          const nF = Math.max(1, Math.round(bh / 34));
           for (let f = 1; f < nF; f++) {
             const fy = yBase + bh*(f/nF);
             edge(wx1, fy, wz1, wx1, fy, wz2, sideA * 0.28, lw*0.45, W, H);
@@ -501,9 +491,9 @@ export default function CityCanvas() {
         if (b.type === "tower" && b.tier2H !== null) {
           const t2 = b.tier2H, t3 = b.tier3H, i2 = b.ins2, i3 = b.ins3;
           drawTier(b.wx1,    b.wx2,    wz1,          wz2,          0,  t2,      base,       false,    width, height, lw,     b.id,          depthT);
-          drawTier(b.wx1+i2, b.wx2-i2, wz1+i2*0.45, wz2-i2*0.45, t2, t3??b.h, base*0.92, t3===null, width, height, lw*0.9, b.id + 5000,   depthT);
+          drawTier(b.wx1+i2+b.skew, b.wx2-i2+b.skew, wz1+i2*0.45, wz2-i2*0.45, t2, t3??b.h, base*0.92, t3===null, width, height, lw*0.9, b.id + 5000,   depthT);
           if (t3 !== null)
-            drawTier(b.wx1+i3, b.wx2-i3, wz1+i3*0.45, wz2-i3*0.45, t3, b.h,   base*0.82, true,      width, height, lw*0.8, b.id + 9000,   depthT);
+            drawTier(b.wx1+i3+b.skew*1.6, b.wx2-i3+b.skew*1.6, wz1+i3*0.45, wz2-i3*0.45, t3, b.h,   base*0.82, true,      width, height, lw*0.8, b.id + 9000,   depthT);
         } else {
           drawTier(b.wx1, b.wx2, wz1, wz2, 0, b.h, base, true, width, height, lw, b.id, depthT);
         }
@@ -511,6 +501,78 @@ export default function CityCanvas() {
         edge(b.wx1, 0, wz1, b.wx2, 0, wz1, base*0.20, 0.28, width, height);
         edge(b.wx1, 0, wz1, b.wx1, 0, wz2, base*0.16, 0.28, width, height);
         edge(b.wx2, 0, wz1, b.wx2, 0, wz2, base*0.16, 0.28, width, height);
+
+        // ── Crown ────────────────────────────────────────────────────────
+        if (!lowPower && b.crown !== "flat" && depthT > 0.22) {
+          const bw3 = b.wx2 - b.wx1;
+          const dz  = wz2 - wz1;
+          const cx3 = (b.wx1 + b.wx2) / 2 + b.skew;
+          const x1  = b.wx1 + b.skew;
+          const x2  = b.wx2 + b.skew;
+          const ca  = Math.min(0.55, base * 2.6);
+          const clw = lw * 0.85;
+
+          const box = (ax: number, bx: number, az: number, bz: number, y0: number, y1: number, a: number) => {
+            edge(ax, y0, az, bx, y0, az, a, clw, width, height);
+            edge(ax, y1, az, bx, y1, az, a, clw, width, height);
+            edge(ax, y0, az, ax, y1, az, a, clw, width, height);
+            edge(bx, y0, az, bx, y1, az, a, clw, width, height);
+            edge(ax, y1, az, ax, y1, bz, a * 0.6, clw * 0.8, width, height);
+            edge(bx, y1, az, bx, y1, bz, a * 0.6, clw * 0.8, width, height);
+            edge(ax, y1, bz, bx, y1, bz, a * 0.6, clw * 0.8, width, height);
+          };
+
+          if (b.crown === "hammer") {
+            // Cap wider than the shaft, on a narrow neck — the overhang is the
+            // whole point, so it has to read clearly against the sky
+            const oh = bw3 * 0.34;
+            const nk = bw3 * 0.30;
+            box(cx3 - nk, cx3 + nk, wz1 + dz * 0.2, wz2 - dz * 0.2, b.h, b.h + 13, ca * 0.8);
+            box(x1 - oh, x2 + oh, wz1 - dz * 0.12, wz2 + dz * 0.12, b.h + 13, b.h + 26, ca);
+            edge(x1 - oh, b.h + 13, wz1 - dz * 0.12, x1, b.h + 13, wz1, ca * 0.7, clw, width, height);
+            edge(x2 + oh, b.h + 13, wz1 - dz * 0.12, x2, b.h + 13, wz1, ca * 0.7, clw, width, height);
+          } else if (b.crown === "ring") {
+            // Twin uprights bridged at the top: the gap between them is the
+            // aperture that makes the silhouette read as engineered
+            const inset = bw3 * 0.16;
+            const postW = bw3 * 0.20;
+            const top = b.h + 34;
+            box(x1 + inset, x1 + inset + postW, wz1, wz2, b.h, top, ca);
+            box(x2 - inset - postW, x2 - inset, wz1, wz2, b.h, top, ca);
+            edge(x1 + inset, top, wz1, x2 - inset, top, wz1, ca, clw, width, height);
+            edge(x1 + inset, top - 7, wz1, x2 - inset, top - 7, wz1, ca * 0.55, clw * 0.8, width, height);
+          } else if (b.crown === "spires") {
+            const n = 3;
+            for (let k = 0; k < n; k++) {
+              const sx = x1 + bw3 * (0.24 + k * 0.26);
+              const sh = 20 + ((b.id * 37 + k * 13) % 26);
+              edge(sx, b.h, wz1 + dz * 0.5, sx, b.h + sh, wz1 + dz * 0.5, ca * 0.9, clw * 0.8, width, height);
+              edge(sx - 2.5, b.h + sh * 0.55, wz1 + dz * 0.5, sx + 2.5, b.h + sh * 0.55, wz1 + dz * 0.5, ca * 0.5, clw * 0.6, width, height);
+            }
+          } else if (b.crown === "pagoda") {
+            // Stacked slabs, each overhanging the one below
+            let y = b.h;
+            for (let k = 0; k < 3; k++) {
+              const grow = bw3 * (0.10 + k * 0.09);
+              box(x1 - grow, x2 + grow, wz1 - dz * 0.08, wz2 + dz * 0.08, y, y + 7, ca * (1 - k * 0.18));
+              y += 11;
+            }
+          }
+        }
+
+        // ── Sign blade ───────────────────────────────────────────────────
+        // Panel cantilevered off the facade, the signature of the reference
+        if (!lowPower && b.blade && depthT > 0.36) {
+          const bl = b.blade;
+          const sx = b.wx2;
+          const zf = wz1 - bl.out;
+          const a  = Math.min(0.42, base * 2.0);
+          quad([[sx, bl.y, wz1], [sx, bl.y, zf], [sx, bl.y + bl.h, zf], [sx, bl.y + bl.h, wz1]],
+            Math.min(0.20, base * 1.0), width, height);
+          edge(sx, bl.y, wz1, sx, bl.y, zf, a, lw * 0.8, width, height);
+          edge(sx, bl.y + bl.h, wz1, sx, bl.y + bl.h, zf, a, lw * 0.8, width, height);
+          edge(sx, bl.y, zf, sx, bl.y + bl.h, zf, a, lw * 0.8, width, height);
+        }
 
         if (b.hasTower) {
           const cx  = (b.wx1 + b.wx2) / 2;
