@@ -8,6 +8,7 @@ import {
   useMotionValue,
   useSpring,
   useTransform,
+  useTime,
   useReducedMotion,
 } from "framer-motion";
 import SectionLabel from "@/components/ui/SectionLabel";
@@ -41,32 +42,58 @@ function ProjectModal({
 }) {
   const { tr } = useLang();
 
-  // Orientation of the held chip. 0-1, with 0.5 facing you. It starts
-  // off-centre so the settle to centre reads as the chip turning upright as it
-  // is lifted — the same springs then serve the mouse-follow tilt, so the lift
-  // and the hold are one mechanism rather than two.
-  const hx = useMotionValue(morph ? 0.12 : 0.5);
-  const hy = useMotionValue(morph ? 0.35 : 0.5);
-  const sx = useSpring(hx, { stiffness: 90, damping: 18 });
-  const sy = useSpring(hy, { stiffness: 90, damping: 18 });
+  const chipRef = useRef<HTMLDivElement>(null);
 
-  const rotateY = useTransform(sx, [0, 1], [-22, 22]);
-  const rotateX = useTransform(sy, [0, 1], [16, -16]);
-  // Light band sliding across the face as the chip angles
-  const shineX = useTransform(sx, [0, 1], ["-30%", "30%"]);
+  // Orientation, -1..1 per axis with 0 facing you. Starts off-centre so the
+  // settle to centre reads as the chip turning upright as it is lifted; the
+  // same springs then serve the pointer tilt, so lift and hold are one thing.
+  const hx = useMotionValue(morph ? -0.75 : 0);
+  const hy = useMotionValue(morph ? -0.3 : 0);
+  // Mass gives drag and follow-through — without it the chip tracks the
+  // pointer rigidly and reads weightless.
+  const sx = useSpring(hx, { stiffness: 70, damping: 16, mass: 1.2 });
+  const sy = useSpring(hy, { stiffness: 70, damping: 16, mass: 1.2 });
+
+  // A held object is never perfectly still. Combining the drift into the same
+  // transform avoids a second wrapper competing for the same rotation.
+  const t = useTime();
+  const rotateY = useTransform(
+    [sx, t] as const,
+    ([v, ms]: number[]) => v * 15 + Math.sin(ms / 1900) * 1.1
+  );
+  const rotateX = useTransform(
+    [sy, t] as const,
+    ([v, ms]: number[]) => -v * 15 + Math.cos(ms / 2300) * 0.8
+  );
+
+  // Highlight tracks both axes, and sharpens as the chip turns edge-on
+  const shineX = useTransform(sx, [-1, 1], ["-32%", "32%"]);
+  const shineY = useTransform(sy, [-1, 1], ["-14%", "14%"]);
+  const shineOpacity = useTransform(
+    [sx, sy] as const,
+    ([a, b]: number[]) => 0.35 + Math.min(1, Math.hypot(a, b)) * 0.65
+  );
 
   useEffect(() => {
     if (!morph) return;
     // Next frame, so the spring starts from the turned pose rather than
     // snapping through it
-    const id = requestAnimationFrame(() => { hx.set(0.5); hy.set(0.5); });
+    const id = requestAnimationFrame(() => { hx.set(0); hy.set(0); });
     return () => cancelAnimationFrame(id);
   }, [morph, hx, hy]);
 
+  // Measured against the chip's own centre, not the viewport. Mapping over the
+  // whole window made a pointer in a far corner swing the chip as hard as one
+  // right beside it, which is why it felt detached from the cursor.
   const onOverlayMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!morph) return;
-    hx.set(e.clientX / window.innerWidth);
-    hy.set(e.clientY / window.innerHeight);
+    const el = chipRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const reach = Math.max(r.width, r.height) * 1.6;
+    const clamp = (v: number) => Math.max(-1, Math.min(1, v));
+    hx.set(clamp((e.clientX - (r.left + r.width / 2)) / reach));
+    hy.set(clamp((e.clientY - (r.top + r.height / 2)) / reach));
   };
 
   // Outer layer owns the journey only — position and size. Orientation lives on
@@ -104,6 +131,7 @@ function ProjectModal({
           on the outer, a tilted chip would have its corners eaten by the clip
           and the stepped silhouette would deform. */}
       <motion.div
+        ref={chipRef}
         className="relative w-full overflow-hidden bg-[#0a0a0a]"
         style={{
           clipPath: frameClipPath(),
@@ -192,6 +220,10 @@ function ProjectModal({
           </div>
         </div>
 
+        {/* Same frame it wears in the tray — without it, picking the chip up
+            turns it into a different object. */}
+        <HUDCardFrame hovered />
+
         {/* Specular sweep — what separates a real object from a rotated div */}
         {morph && (
           <motion.div
@@ -199,6 +231,8 @@ function ProjectModal({
             className="absolute inset-y-0 -inset-x-1/4 pointer-events-none"
             style={{
               x: shineX,
+              y: shineY,
+              opacity: shineOpacity,
               background:
                 "linear-gradient(105deg, transparent 38%, rgba(168,255,0,0.07) 47%, rgba(255,255,255,0.10) 50%, rgba(168,255,0,0.07) 53%, transparent 62%)",
               zIndex: 30,
@@ -234,8 +268,14 @@ function ProjectCard({
   const cardRef = useRef<HTMLDivElement>(null);
   const rotX    = useMotionValue(0);
   const rotY    = useMotionValue(0);
-  const springRotX = useSpring(rotX, { stiffness: 160, damping: 20 });
-  const springRotY = useSpring(rotY, { stiffness: 160, damping: 20 });
+  // Mass so the chip lags the pointer slightly instead of tracking it rigidly
+  const springRotX = useSpring(rotX, { stiffness: 120, damping: 18, mass: 1.1 });
+  const springRotY = useSpring(rotY, { stiffness: 120, damping: 18, mass: 1.1 });
+
+  // Internal parallax: the artwork drifts against the tilt, which is what gives
+  // the chip thickness. Without it the face and frame move as one flat sheet.
+  const artX = useTransform(springRotY, [-7, 7], [6, -6]);
+  const artY = useTransform(springRotX, [-7, 7], [-6, 6]);
 
   const onMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (prefersReducedMotion || lowPower) return;
@@ -244,8 +284,8 @@ function ProjectCard({
     const { left, top, width, height } = el.getBoundingClientRect();
     const dx = ((e.clientX - left) / width  - 0.5) * 2; // –1 → 1
     const dy = ((e.clientY - top)  / height - 0.5) * 2;
-    rotX.set(-dy * 5); // max ±5 °
-    rotY.set( dx * 5);
+    rotX.set(-dy * 7); // max ±7 °
+    rotY.set( dx * 7);
   };
 
   const onMouseLeaveCard = () => {
@@ -284,10 +324,16 @@ function ProjectCard({
       layout
       layoutId={morph ? `project-${projectSlug(project)}` : undefined}
       initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
-      transition={{ duration: 0.4 }}
+      transition={{ type: "spring", stiffness: 220, damping: 24, mass: 1 }}
       className="relative"
+      // One animate drives both the entry and the hover lift: a chip you touch
+      // should rise off the tray, not merely tilt in place.
+      animate={
+        prefersReducedMotion || lowPower
+          ? { opacity: 1, y: 0 }
+          : { opacity: 1, y: hovered ? -7 : 0, scale: hovered ? 1.025 : 1 }
+      }
       style={
         prefersReducedMotion || lowPower
           ? {}
@@ -454,6 +500,15 @@ function ProjectCard({
 
         {/* ── Image ────────────────────────────────────────────────────── */}
         <div className="relative aspect-video overflow-hidden bg-[#111111]">
+          {/* Scaled up so the parallax drift never exposes an edge */}
+          <motion.div
+            className="absolute inset-0"
+            style={
+              prefersReducedMotion || lowPower
+                ? {}
+                : { x: artX, y: artY, scale: 1.06 }
+            }
+          >
           <Image
             src={project.image}
             alt={project.title}
@@ -468,6 +523,7 @@ function ProjectCard({
             }}
             sizes="(max-width: 768px) 100vw, 50vw"
           />
+          </motion.div>
           {/* Neon tint */}
           <div
             aria-hidden="true"

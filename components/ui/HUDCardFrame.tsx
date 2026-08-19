@@ -38,7 +38,7 @@ export default function HUDCardFrame({ hovered = false }: HUDCardFrameProps) {
   }
 
   const { w: W, h: H } = size;
-  const { C, IN } = FRAME;
+  const { C, KEY, IN, NOFF, NW } = FRAME;
 
   const EXT  = 8;    // L-bracket extension beyond the outline
   const ARM  = 22;   // L-bracket arm length
@@ -136,10 +136,20 @@ export default function HUDCardFrame({ hovered = false }: HUDCardFrameProps) {
         ))}
 
         {/* ── Corner L-brackets ── */}
-        <polyline points={`${C + ARM},-${EXT} ${C},-${EXT} -${EXT},${C} -${EXT},${C + ARM}`}
+        {/* Top-left follows the key's diagonal rather than a chamfer */}
+        <polyline
+          points={`${KEY + ARM},-${EXT} ${KEY + EXT * 0.8},-${EXT} -${EXT},${KEY + EXT * 0.8} -${EXT},${KEY + ARM}`}
           fill="none" stroke={col(cMain)} strokeWidth={1.5} />
-        <circle cx={C} cy={-EXT} r={DOT} fill={col(cMain)} />
-        <circle cx={-EXT} cy={C} r={DOT} fill={col(cMain)} />
+        <circle cx={KEY + EXT * 0.8} cy={-EXT} r={DOT} fill={col(cMain)} />
+        <circle cx={-EXT} cy={KEY + EXT * 0.8} r={DOT} fill={col(cMain)} />
+        {/* Key index marks — short ticks along the diagonal */}
+        {[0.34, 0.5, 0.66].map((f, i) => {
+          const kx = KEY * (1 - f), ky = KEY * f;
+          return (
+            <line key={`key${i}`} x1={kx} y1={ky} x2={kx + 7} y2={ky + 7}
+              stroke={col(cDim)} strokeWidth={1} />
+          );
+        })}
 
         <polyline points={`${W - C - ARM},-${EXT} ${W - C},-${EXT} ${W + EXT},${C} ${W + EXT},${C + ARM}`}
           fill="none" stroke={col(cMain)} strokeWidth={1.5} />
@@ -175,10 +185,32 @@ export default function HUDCardFrame({ hovered = false }: HUDCardFrameProps) {
         <line x1={W * 0.5 + W * 0.13 * 0.3} y1={-13} x2={W * 0.5 + W * 0.13 * 0.3} y2={-8}
           stroke={col(cDim)} strokeWidth={1} />
 
-        {/* ── Bottom circuit traces ── */}
-        <polyline points={`${C},${H + EXT} ${C},${H + EXT + 8} ${C - 8},${H + EXT + 8}`}
-          fill="none" stroke={col(cDim)} strokeWidth={1} />
-        <circle cx={C - 8} cy={H + EXT + 8} r={DOT} fill={col(cDim)} />
+        {/* ── Contact fingers ── */}
+        {/* They sit in the run of bottom edge that offsetting the notch freed.
+            Brighter than the rest of the frame: these are the conductive part. */}
+        {(() => {
+          const padTop = H - 19;
+          const padH = 11;
+          const from = C + 8;
+          const to = W / 2 + NOFF - NW / 2 - 14;
+          const n = Math.max(5, Math.min(11, Math.floor((to - from) / 11)));
+          const step = (to - from) / n;
+          return (
+            <g>
+              {/* bus line feeding the pads */}
+              <line x1={from} y1={padTop - 5} x2={to} y2={padTop - 5}
+                stroke={col(cDim)} strokeWidth={1} />
+              {Array.from({ length: n }, (_, i) => {
+                const x = from + i * step;
+                const w = step * (i % 3 === 1 ? 0.3 : 0.46);
+                return (
+                  <rect key={`pad${i}`} x={x} y={padTop} width={w} height={padH}
+                    fill={col(hovered ? 0.85 : 0.5)} />
+                );
+              })}
+            </g>
+          );
+        })()}
       </svg>
     </div>
   );

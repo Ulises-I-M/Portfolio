@@ -19,21 +19,23 @@ export type Coord =
 export const FRAME = {
   C:   20, // corner reach
   S:    8, // step size within a corner
+  KEY: 42, // keyed corner — one long diagonal, twice the other corners
   ND:   6, // side notch depth
   NH:  34, // side notch height
-  NW:  56, // bottom notch width
+  NW:  46, // bottom notch width
   NDB:  7, // bottom notch depth
+  NOFF: 74, // bottom notch offset right of centre
   IN:   5, // inset of the inner parallel border
 } as const;
 
-const { C, S, ND, NH, NW, NDB } = FRAME;
+const { C, S, KEY, ND, NH, NW, NDB, NOFF } = FRAME;
 const NH2 = NH / 2;
 const NW2 = NW / 2;
 
 /** Clockwise from the start of the top edge. */
 export const FRAME_POINTS: Array<[Coord, Coord]> = [
-  // top edge
-  [C, 0],
+  // top edge — starts past the keyed corner
+  [KEY, 0],
   [{ end: C }, 0],
   // top-right corner — two-step stair down to the right edge
   [{ end: C }, S],
@@ -52,10 +54,10 @@ export const FRAME_POINTS: Array<[Coord, Coord]> = [
   [{ end: C }, { end: S }],
   [{ end: C }, { end: 0 }],
   // bottom edge notch
-  [{ mid: NW2 }, { end: 0 }],
-  [{ mid: NW2 }, { end: NDB }],
-  [{ mid: -NW2 }, { end: NDB }],
-  [{ mid: -NW2 }, { end: 0 }],
+  [{ mid: NOFF + NW2 }, { end: 0 }],
+  [{ mid: NOFF + NW2 }, { end: NDB }],
+  [{ mid: NOFF - NW2 }, { end: NDB }],
+  [{ mid: NOFF - NW2 }, { end: 0 }],
   // bottom-left corner
   [C, { end: 0 }],
   [C, { end: S }],
@@ -67,11 +69,9 @@ export const FRAME_POINTS: Array<[Coord, Coord]> = [
   [ND, { mid: NH2 }],
   [ND, { mid: -NH2 }],
   [0, { mid: -NH2 }],
-  // top-left corner
-  [0, C],
-  [S, C],
-  [S, S],
-  [C, S],
+  // top-left — the key: one long diagonal, not a stair. This asymmetry is what
+  // reads as a component rather than a decorative frame.
+  [0, KEY],
 ];
 
 function toCss(c: Coord): string {
