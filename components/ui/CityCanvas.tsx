@@ -36,8 +36,8 @@ const hash1 = (a: number) => {
 };
 
 // ─── Hologram face colors ─────────────────────────────────────────────────────
-const FACE_FILL = "rgba(4,12,4,0.82)";
-const SIDE_FILL = "rgba(4,12,4,0.72)";
+const FACE_FILL = "rgba(4,12,4,0.96)";
+const SIDE_FILL = "rgba(4,12,4,0.94)";
 
 // ─── RNG ──────────────────────────────────────────────────────────────────────
 function mkRng(seed: number) {
@@ -399,7 +399,8 @@ export default function CityCanvas() {
       const bh = yTop - yBase;
       const bw = wx2 - wx1;
 
-      fillFace([[wx1,yBase,wz1],[wx1,yBase,wz2],[wx1,yTop,wz2],[wx1,yTop,wz1]], SIDE_FILL, W, H);
+      const sideX = (wx1 + wx2) / 2 > 0 ? wx1 : wx2;
+      fillFace([[sideX,yBase,wz1],[sideX,yBase,wz2],[sideX,yTop,wz2],[sideX,yTop,wz1]], SIDE_FILL, W, H);
       fillFace([[wx1,yBase,wz1],[wx2,yBase,wz1],[wx2,yTop,wz1],[wx1,yTop,wz1]], FACE_FILL, W, H);
       fillFace([[wx1,yTop,wz1],[wx2,yTop,wz1],[wx2,yTop,wz2],[wx1,yTop,wz2]], FACE_FILL, W, H);
 
@@ -473,7 +474,7 @@ export default function CityCanvas() {
           if (wz < -CELL * 2) wz += maxView;
           return { b, wz };
         })
-        .filter(({ wz }) => wz + CAM_Z > 8 && wz < maxView * 0.88)
+        .filter(({ wz }) => wz + CAM_Z > 8 && wz < maxView * 0.72)
         .sort((a, b) => b.wz - a.wz);
 
       let bandCount = 0;
@@ -485,7 +486,7 @@ export default function CityCanvas() {
         const wz1    = wz;
         const wz2    = wz + (b.wz2 - b.wz1);
         const depthT = Math.max(0, Math.min(1, 1 - wz / (maxView * 0.78)));
-        const base   = 0.040 + depthT * 0.15;
+        const base   = 0.022 + Math.pow(depthT, 2.0) * 0.185;
         const lw     = 0.42  + depthT * 0.55;
 
         if (b.type === "tower" && b.tier2H !== null) {
@@ -513,6 +514,12 @@ export default function CityCanvas() {
           const clw = lw * 0.85;
 
           const box = (ax: number, bx: number, az: number, bz: number, y0: number, y1: number, a: number) => {
+            // Solid, not hollow: a crown is what gets read against the sky, and
+            // an empty outline lets the whole city behind it through
+            const sx3 = (ax + bx) / 2 > 0 ? ax : bx;
+            fillFace([[sx3,y0,az],[sx3,y0,bz],[sx3,y1,bz],[sx3,y1,az]], SIDE_FILL, width, height);
+            fillFace([[ax,y0,az],[bx,y0,az],[bx,y1,az],[ax,y1,az]], FACE_FILL, width, height);
+            fillFace([[ax,y1,az],[bx,y1,az],[bx,y1,bz],[ax,y1,bz]], FACE_FILL, width, height);
             edge(ax, y0, az, bx, y0, az, a, clw, width, height);
             edge(ax, y1, az, bx, y1, az, a, clw, width, height);
             edge(ax, y0, az, ax, y1, az, a, clw, width, height);
@@ -603,6 +610,10 @@ export default function CityCanvas() {
             const rz1 = wz1 + bd2 * r.oz;
             const rz2 = rz1 + bd2 * r.d;
             const a = base * 0.7;
+            const rsx = (rx1 + rx2) / 2 > 0 ? rx1 : rx2;
+            fillFace([[rsx,b.h,rz1],[rsx,b.h,rz2],[rsx,b.h+r.h,rz2],[rsx,b.h+r.h,rz1]], SIDE_FILL, width, height);
+            fillFace([[rx1,b.h,rz1],[rx2,b.h,rz1],[rx2,b.h+r.h,rz1],[rx1,b.h+r.h,rz1]], FACE_FILL, width, height);
+            fillFace([[rx1,b.h+r.h,rz1],[rx2,b.h+r.h,rz1],[rx2,b.h+r.h,rz2],[rx1,b.h+r.h,rz2]], FACE_FILL, width, height);
             edge(rx1, b.h, rz1, rx2, b.h, rz1, a, lw*0.6, width, height);
             edge(rx1, b.h + r.h, rz1, rx2, b.h + r.h, rz1, a, lw*0.6, width, height);
             edge(rx1, b.h, rz1, rx1, b.h + r.h, rz1, a, lw*0.6, width, height);
@@ -733,7 +744,7 @@ export default function CityCanvas() {
       // below the horizon and are barely touched.
       const hazeG = ctx.createLinearGradient(0, horizonY - height * 0.06, 0, horizonY + height * 0.30);
       hazeG.addColorStop(0,   "rgba(6,10,6,0.78)");
-      hazeG.addColorStop(0.4, "rgba(6,10,6,0.38)");
+      hazeG.addColorStop(0.4, "rgba(6,10,6,0.46)");
       hazeG.addColorStop(1,   "rgba(6,10,6,0)");
       ctx.fillStyle = hazeG;
       ctx.fillRect(0, horizonY - height * 0.06, width, height * 0.36);
