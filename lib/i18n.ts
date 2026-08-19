@@ -2,6 +2,19 @@ export type Lang = "en" | "es";
 
 export const t = {
   en: {
+    notFound: {
+      code: "404",
+      title: "SECTOR NOT FOUND",
+      status: "SIGNAL LOST",
+      body: "The route you requested is not mapped in this system. It may have been decommissioned, or it never existed.",
+      cta: "RETURN TO BASE",
+      log: [
+        "> RESOLVING ADDRESS...            [ OK ]",
+        "> TRACING ROUTE...                [ FAIL ]",
+        "> SECTOR LOOKUP...                [ NULL ]",
+        "> FALLBACK HANDLER...             [ OK ]",
+      ],
+    },
     nav: {
       home: "HOME",
       about: "ABOUT",
@@ -77,6 +90,19 @@ export const t = {
   },
 
   es: {
+    notFound: {
+      code: "404",
+      title: "SECTOR NO ENCONTRADO",
+      status: "SEÑAL PERDIDA",
+      body: "La ruta solicitada no está mapeada en este sistema. Puede haber sido dada de baja, o nunca haber existido.",
+      cta: "VOLVER A LA BASE",
+      log: [
+        "> RESOLVIENDO DIRECCIÓN...        [ OK ]",
+        "> TRAZANDO RUTA...                [ FALLO ]",
+        "> BÚSQUEDA DE SECTOR...           [ NULO ]",
+        "> MANEJADOR ALTERNATIVO...        [ OK ]",
+      ],
+    },
     nav: {
       home: "INICIO",
       about: "SOBRE MÍ",

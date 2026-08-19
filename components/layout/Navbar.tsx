@@ -43,7 +43,7 @@ export default function Navbar() {
       >
         {/* Logo with status dot */}
         <a
-          href="#home"
+          href="/#home"
           className="flex items-center gap-2 font-mono text-sm tracking-[0.15em] text-[#a8ff00] hover:opacity-80 transition-opacity"
           aria-label="Ulises Miranda — back to top"
         >
@@ -69,7 +69,7 @@ export default function Navbar() {
               return (
                 <li key={link.href}>
                   <a
-                    href={link.href}
+                    href={`/${link.href}`}
                     className="relative font-mono text-xs tracking-[0.2em] transition-colors duration-200 cursor-pointer flex items-center gap-1.5"
                     style={{ color: isActive ? "#a8ff00" : "#555555" }}
                   >
@@ -153,7 +153,7 @@ export default function Navbar() {
             {navLinks.map((link) => (
               <li key={link.href}>
                 <a
-                  href={link.href}
+                  href={`/${link.href}`}
                   onClick={() => setMenuOpen(false)}
                   className="font-mono text-sm tracking-[0.2em] text-[#efefef] hover:text-[#a8ff00] transition-colors cursor-pointer flex items-center gap-2"
                 >
