@@ -30,11 +30,14 @@ const CRAFT_N       = 12;
 const FILL_RGB = "58,132,28";
 
 /** Face alpha by depth. Near ~0.18, far ~0.025. */
-const faceAlpha = (depthT: number) => 0.025 + depthT * 0.15;
+const faceAlpha = (depthT: number) => 0.02 + depthT * 0.115;
 // Roof catches the most light, the receding side the least
 const ROOF_MUL = 1.18;
 const FACE_MUL = 1.0;
 const SIDE_MUL = 0.55;
+// Vertical faces fade toward the base — the hologram loses hold near the ground
+const FADE_TOP = 1.35;
+const FADE_BOT = 0.28;
 const fillOf = (a: number) => `rgba(${FILL_RGB},${Math.min(0.34, a).toFixed(3)})`;
 
 // ─── RNG ──────────────────────────────────────────────────────────────────────
@@ -213,6 +216,17 @@ export default function CityCanvas() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    // Bloom buffers. Two, not one: the downscale and the blur have to be
+    // separate steps, because setting a blur filter and then drawing a
+    // full-size source into a small canvas makes the browser blur at full
+    // resolution first.
+    const BLUR_DIV = 5;
+    const small    = document.createElement("canvas");
+    const smallCtx = small.getContext("2d");
+    const blurBuf  = document.createElement("canvas");
+    const blurCtx  = blurBuf.getContext("2d");
+    if (!smallCtx || !blurCtx) return;
+
     // ── Grid dimensions based on device capability ──────────────────────────
     const activeRows = lowPower ? LP_ROWS : ROWS;
     const activeCols = lowPower ? LP_COLS : COLS;
@@ -230,6 +244,10 @@ export default function CityCanvas() {
     const rebuild = () => {
       canvas.width  = canvas.offsetWidth;
       canvas.height = canvas.offsetHeight;
+      small.width    = Math.max(1, Math.round(canvas.width  / BLUR_DIV));
+      small.height   = Math.max(1, Math.round(canvas.height / BLUR_DIV));
+      blurBuf.width  = small.width;
+      blurBuf.height = small.height;
       city = buildCity(mkRng(canvas.width * 7 + canvas.height * 13), activeRows, activeCols);
 
       // Air traffic — a small fixed pool on fixed lanes, wrapping at the edges
@@ -249,7 +267,7 @@ export default function CityCanvas() {
 
     const fillFace = (
       pts: [number, number, number][],
-      style: string, W: number, H: number
+      style: string | CanvasGradient, W: number, H: number
     ) => {
       const ps = pts.map(([wx, wy, wz]) => project(wx, wy, wz, W, H));
       if (ps.some(p => !p)) return;
@@ -325,8 +343,22 @@ export default function CityCanvas() {
 
       const fa = faceAlpha(depthT);
       const sideX = (wx1 + wx2) / 2 > 0 ? wx1 : wx2;
-      fillFace([[sideX,yBase,wz1],[sideX,yBase,wz2],[sideX,yTop,wz2],[sideX,yTop,wz1]], fillOf(fa * SIDE_MUL), W, H);
-      fillFace([[wx1,yBase,wz1],[wx2,yBase,wz1],[wx2,yTop,wz1],[wx1,yTop,wz1]], fillOf(fa * FACE_MUL), W, H);
+
+      // Vertical faces fade downward rather than carrying a flat alpha, so each
+      // volume reads as a projection losing coherence toward its base instead
+      // of as an evenly tinted pane of glass.
+      const vertFill = (mul: number, atX: number, atZ: number): string | CanvasGradient => {
+        const pT = project(atX, yTop,  atZ, W, H);
+        const pB = project(atX, yBase, atZ, W, H);
+        if (!pT || !pB || Math.abs(pB.y - pT.y) < 1) return fillOf(fa * mul);
+        const g = ctx.createLinearGradient(0, pT.y, 0, pB.y);
+        g.addColorStop(0, fillOf(fa * mul * FADE_TOP));
+        g.addColorStop(1, fillOf(fa * mul * FADE_BOT));
+        return g;
+      };
+
+      fillFace([[sideX,yBase,wz1],[sideX,yBase,wz2],[sideX,yTop,wz2],[sideX,yTop,wz1]], fillOf(fa * SIDE_MUL * 0.8), W, H);
+      fillFace([[wx1,yBase,wz1],[wx2,yBase,wz1],[wx2,yTop,wz1],[wx1,yTop,wz1]], vertFill(FACE_MUL, wx1, wz1), W, H);
       fillFace([[wx1,yTop,wz1],[wx2,yTop,wz1],[wx2,yTop,wz2],[wx1,yTop,wz2]], fillOf(fa * ROOF_MUL), W, H);
 
       edge(wx1,yBase,wz1, wx1,yTop,wz1,  wallA,       lw,      W, H);
@@ -344,8 +376,11 @@ export default function CityCanvas() {
         edge(wx2,yBase,wz1, wx2,yBase,wz2, sideA * 0.55, lw * 0.8, W, H);
       }
 
-      // ── Detail geometry: skip on low-power devices ─────────────────────────
-      if (!lowPower) {
+      // ── Detail geometry ────────────────────────────────────────────────────
+      // Gated on depth as well as capability: past the near band the bloom
+      // washes these lines out entirely, so drawing them there is work the
+      // next pass destroys.
+      if (!lowPower && depthT > 0.52) {
         // Structural columns on front face
         const nV = Math.max(1, Math.round(bw / 14));
         for (let v = 1; v < nV; v++)
@@ -581,6 +616,27 @@ export default function CityCanvas() {
       hazeG.addColorStop(1,   "rgba(6,10,6,0)");
       ctx.fillStyle = hazeG;
       ctx.fillRect(0, horizonY - height * 0.06, width, height * 0.36);
+
+      // ── Bloom ───────────────────────────────────────────────────────────
+      // Additive is the point: it turns a lit face into something that spills
+      // light past its own edges, which is what separates a hologram from a
+      // painted shape.
+      if (!lowPower) {
+        smallCtx.clearRect(0, 0, small.width, small.height);
+        smallCtx.drawImage(canvas, 0, 0, small.width, small.height);
+
+        blurCtx.filter = "none";
+        blurCtx.clearRect(0, 0, blurBuf.width, blurBuf.height);
+        blurCtx.filter = "blur(3px)";
+        blurCtx.drawImage(small, 0, 0);
+        blurCtx.filter = "none";
+
+        ctx.globalCompositeOperation = "lighter";
+        ctx.globalAlpha = 0.7;
+        ctx.drawImage(blurBuf, 0, 0, canvas.width, canvas.height);
+        ctx.globalCompositeOperation = "source-over";
+        ctx.globalAlpha = 1;
+      }
 
       rafId = requestAnimationFrame(draw);
     };
