@@ -41,9 +41,22 @@ const DOF_BLUR      = 4;     // px at the reduced scale
 const DOF_STRIPS    = 10;    // per band; enough that the ramp reads continuous
 const DOF_SHARP_TOP = 0.40;  // fraction of height where the sharp strip begins
 const DOF_SHARP_BOT = 0.74;  // and where it ends
-// Vertical faces fade toward the base — the hologram loses hold near the ground
-const FADE_TOP = 1.35;
-const FADE_BOT = 0.28;
+// Opacity by height. The top third of a building holds full strength, and from
+// there down it falls away to almost nothing — the projection loses its grip on
+// the lower floors. Measured against the whole building, not the current tier,
+// so a stacked tower fades as one object rather than once per setback.
+const FADE_HOLD  = 2 / 3;
+const FADE_MIN   = 0.01;
+const TOP_BOOST  = 1.35;
+/** 1 above the hold line, ramping to FADE_MIN at the base. */
+const heightFade = (y: number, total: number) => {
+  if (total <= 0) return 1;
+  const t = y / total;
+  if (t >= FADE_HOLD) return 1;
+  return FADE_MIN + (t / FADE_HOLD) * (1 - FADE_MIN);
+};
+/** Steps a vertical edge is split into so it can follow the ramp. */
+const V_FADE_STEPS = 5;
 const fillOf = (a: number) => `rgba(${FILL_RGB},${Math.min(0.34, a).toFixed(3)})`;
 
 // ─── RNG ──────────────────────────────────────────────────────────────────────
@@ -339,8 +352,9 @@ export default function CityCanvas() {
       yBase: number, yTop: number,
       base: number, isTopTier: boolean,
       W: number, H: number, lw: number,
-      depthT = 0
+      depthT = 0, bTotal = 0
     ) => {
+      const total = bTotal || yTop;
       const roofA = isTopTier ? Math.min(base * 2.4, 0.30) : base * 1.0;
       const wallA = base;
       const sideA = base * 0.60;
@@ -353,33 +367,55 @@ export default function CityCanvas() {
       // Vertical faces fade downward rather than carrying a flat alpha, so each
       // volume reads as a projection losing coherence toward its base instead
       // of as an evenly tinted pane of glass.
+      // Sampled at several stops rather than two: a tier can straddle the hold
+      // line, or sit entirely above or below it, and sampling handles all three
+      // without special-casing any of them.
       const vertFill = (mul: number, atX: number, atZ: number): string | CanvasGradient => {
         const pT = project(atX, yTop,  atZ, W, H);
         const pB = project(atX, yBase, atZ, W, H);
         if (!pT || !pB || Math.abs(pB.y - pT.y) < 1) return fillOf(fa * mul);
         const g = ctx.createLinearGradient(0, pT.y, 0, pB.y);
-        g.addColorStop(0, fillOf(fa * mul * FADE_TOP));
-        g.addColorStop(1, fillOf(fa * mul * FADE_BOT));
+        for (let i = 0; i <= 4; i++) {
+          const p = i / 4;
+          const wy = yTop - p * (yTop - yBase);
+          g.addColorStop(p, fillOf(fa * mul * TOP_BOOST * heightFade(wy, total)));
+        }
         return g;
       };
 
-      fillFace([[sideX,yBase,wz1],[sideX,yBase,wz2],[sideX,yTop,wz2],[sideX,yTop,wz1]], fillOf(fa * SIDE_MUL * 0.8), W, H);
+      fillFace([[sideX,yBase,wz1],[sideX,yBase,wz2],[sideX,yTop,wz2],[sideX,yTop,wz1]], vertFill(SIDE_MUL * 0.8, sideX, wz1), W, H);
       fillFace([[wx1,yBase,wz1],[wx2,yBase,wz1],[wx2,yTop,wz1],[wx1,yTop,wz1]], vertFill(FACE_MUL, wx1, wz1), W, H);
-      fillFace([[wx1,yTop,wz1],[wx2,yTop,wz1],[wx2,yTop,wz2],[wx1,yTop,wz2]], fillOf(fa * ROOF_MUL), W, H);
+      fillFace([[wx1,yTop,wz1],[wx2,yTop,wz1],[wx2,yTop,wz2],[wx1,yTop,wz2]], fillOf(fa * ROOF_MUL * heightFade(yTop, total)), W, H);
 
-      edge(wx1,yBase,wz1, wx1,yTop,wz1,  wallA,       lw,      W, H);
-      edge(wx2,yBase,wz1, wx2,yTop,wz1,  wallA,       lw,      W, H);
-      edge(wx1,yBase,wz2, wx1,yTop,wz2,  sideA,       lw,      W, H);
-      edge(wx2,yBase,wz2, wx2,yTop,wz2,  sideA,       lw,      W, H);
-      edge(wx1,yTop,wz1,  wx2,yTop,wz1,  roofA,       lw,      W, H);
-      edge(wx1,yTop,wz2,  wx2,yTop,wz2,  roofA * 0.6, lw,      W, H);
-      edge(wx1,yTop,wz1,  wx1,yTop,wz2,  roofA * 0.6, lw,      W, H);
-      edge(wx2,yTop,wz1,  wx2,yTop,wz2,  roofA * 0.6, lw,      W, H);
+      // A vertical edge has to fade along its own length, but the batcher groups
+      // segments by quantised alpha and strokes each group as one path — a
+      // gradient stroke would force one path per edge and undo that. Splitting
+      // the run into steps keeps every piece inside the batch.
+      const vEdge = (x: number, z: number, alpha: number, lwv: number) => {
+        for (let i = 0; i < V_FADE_STEPS; i++) {
+          const a0 = yBase + (yTop - yBase) * (i / V_FADE_STEPS);
+          const a1 = yBase + (yTop - yBase) * ((i + 1) / V_FADE_STEPS);
+          edge(x, a0, z, x, a1, z, alpha * heightFade((a0 + a1) / 2, total), lwv, W, H);
+        }
+      };
+
+      vEdge(wx1, wz1, wallA, lw);
+      vEdge(wx2, wz1, wallA, lw);
+      vEdge(wx1, wz2, sideA, lw);
+      vEdge(wx2, wz2, sideA, lw);
+
+      // Horizontal runs sit at one height, so they just sample the ramp there
+      const fTop = heightFade(yTop, total);
+      edge(wx1,yTop,wz1,  wx2,yTop,wz1,  roofA * fTop,       lw, W, H);
+      edge(wx1,yTop,wz2,  wx2,yTop,wz2,  roofA * 0.6 * fTop, lw, W, H);
+      edge(wx1,yTop,wz1,  wx1,yTop,wz2,  roofA * 0.6 * fTop, lw, W, H);
+      edge(wx2,yTop,wz1,  wx2,yTop,wz2,  roofA * 0.6 * fTop, lw, W, H);
 
       if (yBase > 0) {
-        edge(wx1,yBase,wz1, wx2,yBase,wz1, wallA * 0.65, lw * 0.8, W, H);
-        edge(wx1,yBase,wz1, wx1,yBase,wz2, sideA * 0.55, lw * 0.8, W, H);
-        edge(wx2,yBase,wz1, wx2,yBase,wz2, sideA * 0.55, lw * 0.8, W, H);
+        const fBase = heightFade(yBase, total);
+        edge(wx1,yBase,wz1, wx2,yBase,wz1, wallA * 0.65 * fBase, lw * 0.8, W, H);
+        edge(wx1,yBase,wz1, wx1,yBase,wz2, sideA * 0.55 * fBase, lw * 0.8, W, H);
+        edge(wx2,yBase,wz1, wx2,yBase,wz2, sideA * 0.55 * fBase, lw * 0.8, W, H);
       }
 
       // ── Detail geometry ────────────────────────────────────────────────────
@@ -390,14 +426,14 @@ export default function CityCanvas() {
         // Structural columns on front face
         const nV = Math.max(1, Math.round(bw / 14));
         for (let v = 1; v < nV; v++)
-          edge(wx1 + bw*(v/nV), yBase, wz1, wx1 + bw*(v/nV), yTop, wz1, wallA * 0.35, lw*0.55, W, H);
+          vEdge(wx1 + bw*(v/nV), wz1, wallA * 0.35, lw*0.55);
 
         // Floor lines — front face
         if (bh > 12) {
           const nF = Math.max(1, Math.round(bh / 16));
           for (let f = 1; f < nF; f++) {
             const fy = yBase + bh*(f/nF);
-            edge(wx1, fy, wz1, wx2, fy, wz1, wallA * 0.30, lw*0.50, W, H);
+            edge(wx1, fy, wz1, wx2, fy, wz1, wallA * 0.30 * heightFade(fy, total), lw*0.50, W, H);
           }
         }
         // Floor lines — left side
@@ -405,7 +441,7 @@ export default function CityCanvas() {
           const nF = Math.max(1, Math.round(bh / 20));
           for (let f = 1; f < nF; f++) {
             const fy = yBase + bh*(f/nF);
-            edge(wx1, fy, wz1, wx1, fy, wz2, sideA * 0.28, lw*0.45, W, H);
+            edge(wx1, fy, wz1, wx1, fy, wz2, sideA * 0.28 * heightFade(fy, total), lw*0.45, W, H);
           }
         }
       }
@@ -459,12 +495,12 @@ export default function CityCanvas() {
 
         if (b.type === "tower" && b.tier2H !== null) {
           const t2 = b.tier2H, t3 = b.tier3H, i2 = b.ins2, i3 = b.ins3;
-          drawTier(b.wx1,    b.wx2,    wz1,          wz2,          0,  t2,      base,       false,    width, height, lw, depthT);
-          drawTier(b.wx1+i2, b.wx2-i2, wz1+i2*0.45, wz2-i2*0.45, t2, t3??b.h, base*0.92, t3===null, width, height, lw*0.9, depthT);
+          drawTier(b.wx1,    b.wx2,    wz1,          wz2,          0,  t2,      base,       false,    width, height, lw, depthT, b.h);
+          drawTier(b.wx1+i2, b.wx2-i2, wz1+i2*0.45, wz2-i2*0.45, t2, t3??b.h, base*0.92, t3===null, width, height, lw*0.9, depthT, b.h);
           if (t3 !== null)
-            drawTier(b.wx1+i3, b.wx2-i3, wz1+i3*0.45, wz2-i3*0.45, t3, b.h,   base*0.82, true,      width, height, lw*0.8, depthT);
+            drawTier(b.wx1+i3, b.wx2-i3, wz1+i3*0.45, wz2-i3*0.45, t3, b.h,   base*0.82, true,      width, height, lw*0.8, depthT, b.h);
         } else {
-          drawTier(b.wx1, b.wx2, wz1, wz2, 0, b.h, base, true, width, height, lw, depthT);
+          drawTier(b.wx1, b.wx2, wz1, wz2, 0, b.h, base, true, width, height, lw, depthT, b.h);
         }
 
         edge(b.wx1, 0, wz1, b.wx2, 0, wz1, base*0.20, 0.28, width, height);
