@@ -22,18 +22,92 @@ const SCROLL_SPEED = 0.20;
 // ─── Detail tuning ────────────────────────────────────────────────────────────
 const CRAFT_N       = 12;
 
-// ─── Hologram face colours ────────────────────────────────────────────────────
+// ─── Tuning ───────────────────────────────────────────────────────────────────
+// Everything you would reach for to change how the city looks lives here. The
+// values below are the only place any colour or opacity is written down; the
+// drawing code reads from them and never hardcodes its own.
+
+// ── Building bodies ──────────────────────────────────────────────────────────
 // The top third of a building is genuinely opaque — it occludes whatever is
 // behind it — and from there down the volume dissolves to nothing. At full
 // opacity the faces can no longer be told apart by alpha, so the three shade by
 // colour instead: the receding side darker, the roof catching more light.
+// These carry no alpha of their own; the height ramp supplies it.
 const FACE_RGB = "16,40,9";
 const SIDE_RGB = "9,24,5";
 const ROOF_RGB = "28,64,15";
 
-/** Opaque above the hold line, ramping to nothing at the base. */
+/** Opaque at or above HOLD (as a fraction of height), down to MIN at the base. */
 const FADE_HOLD = 2 / 3;
 const FADE_MIN  = 0.01;
+
+// ── Wireframe lines ──────────────────────────────────────────────────────────
+const EDGE_RGB = "168,255,0";
+/** Brightness by distance: FAR at the horizon, FAR+NEAR at the camera. */
+const EDGE_A_FAR   = 0.06;
+const EDGE_A_NEAR  = 0.44;
+/** Above 1 this collapses the far half faster, so distance dissolves. */
+const EDGE_A_CURVE = 1.35;
+/** Line width by distance, same idea. */
+const EDGE_W_FAR   = 0.42;
+const EDGE_W_NEAR  = 0.55;
+
+/** Brightness per kind of line, as a fraction of the distance-based base. */
+const EDGE_MUL = {
+  vertFront:  1.00,   // corner uprights on the lit face
+  vertSide:   0.60,   // corner uprights on the receding face
+  roofTop:    2.40,   // roof outline on the topmost tier, capped by ROOF_CAP
+  roofOther:  1.00,   // roof outline on a lower tier
+  roofBack:   0.60,   // the far half of a roof outline
+  baseFront:  0.65,   // where a tier lands on the one below
+  baseSide:   0.55,
+  footFront:  0.20,   // the building's footprint on the ground
+  footSide:   0.16,
+  column:     0.35,   // structural uprights
+  floorFront: 0.30,   // floor lines on the lit face
+  floorSide:  0.28,
+} as const;
+/** Ceiling on the top tier's roof outline, which would otherwise blow out. */
+const ROOF_CAP = 0.30;
+
+/** Line width per kind, as a fraction of the distance-based width. */
+const EDGE_LW = {
+  base:   0.80,
+  foot:   0.28,   // absolute, not a fraction
+  column: 0.55,
+  floorFront: 0.50,
+  floorSide:  0.45,
+} as const;
+
+// ── Ground ───────────────────────────────────────────────────────────────────
+const GRID_A_FAR  = 0.010;
+const GRID_A_NEAR = 0.032;
+const GRID_LW     = 0.28;
+const LAMP_A_FAR  = 0.06;
+const LAMP_A_NEAR = 0.13;
+const LAMP_LW     = 0.50;
+/** Wet-asphalt sheen along the ground plane. */
+const GLOW_RGB    = "168,255,0";
+const GLOW_A      = 0.022;
+
+// ── Air traffic ──────────────────────────────────────────────────────────────
+const CRAFT_TAIL_RGB = "168,255,0";   // fades to nothing behind the craft
+const CRAFT_HEAD_RGB = "200,255,120";
+const CRAFT_DOT_RGB  = "220,255,160";
+const CRAFT_A_FAR    = 0.10;
+const CRAFT_A_NEAR   = 0.50;
+const CRAFT_DOT_CAP  = 0.85;
+
+// ── Aircraft beacons ─────────────────────────────────────────────────────────
+// The only red in an all-green scene, so it stays small and sparse
+const BEACON_RGB = "255,60,45";
+
+// ── Horizon haze ─────────────────────────────────────────────────────────────
+const HAZE_RGB  = "6,10,6";
+const HAZE_A_TOP = 0.78;
+const HAZE_A_MID = 0.46;
+
+// ── Derived ──────────────────────────────────────────────────────────────────
 const heightFade = (y: number, total: number) => {
   if (total <= 0) return 1;
   const t = y / total;
@@ -329,7 +403,7 @@ export default function CityCanvas() {
       for (const [key, arr] of segs) {
         if (arr.length === 0) continue;
         ctx.lineWidth   = (key & 255) / 20;
-        ctx.strokeStyle = `rgba(168,255,0,${((key >> 8) / 200).toFixed(4)})`;
+        ctx.strokeStyle = `rgba(${EDGE_RGB},${((key >> 8) / 200).toFixed(4)})`;
         ctx.beginPath();
         for (let i = 0; i < arr.length; i += 4) {
           ctx.moveTo(arr[i], arr[i + 1]);
@@ -348,9 +422,11 @@ export default function CityCanvas() {
       depthT = 0, bTotal = 0
     ) => {
       const total = bTotal || yTop;
-      const roofA = isTopTier ? Math.min(base * 2.4, 0.30) : base * 1.0;
-      const wallA = base;
-      const sideA = base * 0.60;
+      const roofA = isTopTier
+        ? Math.min(base * EDGE_MUL.roofTop, ROOF_CAP)
+        : base * EDGE_MUL.roofOther;
+      const wallA = base * EDGE_MUL.vertFront;
+      const sideA = base * EDGE_MUL.vertSide;
       const bh = yTop - yBase;
       const bw = wx2 - wx1;
 
@@ -401,16 +477,16 @@ export default function CityCanvas() {
 
       // Horizontal runs sit at one height, so they just sample the ramp there
       const fTop = heightFade(yTop, total);
-      edge(wx1,yTop,wz1,  wx2,yTop,wz1,  roofA * fTop,       lw, W, H);
-      edge(wx1,yTop,wz2,  wx2,yTop,wz2,  roofA * 0.6 * fTop, lw, W, H);
-      edge(wx1,yTop,wz1,  wx1,yTop,wz2,  roofA * 0.6 * fTop, lw, W, H);
-      edge(wx2,yTop,wz1,  wx2,yTop,wz2,  roofA * 0.6 * fTop, lw, W, H);
+      edge(wx1,yTop,wz1,  wx2,yTop,wz1,  roofA * fTop,                        lw, W, H);
+      edge(wx1,yTop,wz2,  wx2,yTop,wz2,  roofA * EDGE_MUL.roofBack * fTop,    lw, W, H);
+      edge(wx1,yTop,wz1,  wx1,yTop,wz2,  roofA * EDGE_MUL.roofBack * fTop,    lw, W, H);
+      edge(wx2,yTop,wz1,  wx2,yTop,wz2,  roofA * EDGE_MUL.roofBack * fTop,    lw, W, H);
 
       if (yBase > 0) {
         const fBase = heightFade(yBase, total);
-        edge(wx1,yBase,wz1, wx2,yBase,wz1, wallA * 0.65 * fBase, lw * 0.8, W, H);
-        edge(wx1,yBase,wz1, wx1,yBase,wz2, sideA * 0.55 * fBase, lw * 0.8, W, H);
-        edge(wx2,yBase,wz1, wx2,yBase,wz2, sideA * 0.55 * fBase, lw * 0.8, W, H);
+        edge(wx1,yBase,wz1, wx2,yBase,wz1, wallA * EDGE_MUL.baseFront * fBase, lw * EDGE_LW.base, W, H);
+        edge(wx1,yBase,wz1, wx1,yBase,wz2, sideA * EDGE_MUL.baseSide * fBase, lw * EDGE_LW.base, W, H);
+        edge(wx2,yBase,wz1, wx2,yBase,wz2, sideA * EDGE_MUL.baseSide * fBase, lw * EDGE_LW.base, W, H);
       }
 
       // ── Detail geometry ────────────────────────────────────────────────────
@@ -421,14 +497,14 @@ export default function CityCanvas() {
         // Structural columns on front face
         const nV = Math.max(1, Math.round(bw / 14));
         for (let v = 1; v < nV; v++)
-          vEdge(wx1 + bw*(v/nV), wz1, wallA * 0.35, lw*0.55);
+          vEdge(wx1 + bw*(v/nV), wz1, wallA * EDGE_MUL.column, lw * EDGE_LW.column);
 
         // Floor lines — front face
         if (bh > 12) {
           const nF = Math.max(1, Math.round(bh / 16));
           for (let f = 1; f < nF; f++) {
             const fy = yBase + bh*(f/nF);
-            edge(wx1, fy, wz1, wx2, fy, wz1, wallA * 0.30 * heightFade(fy, total), lw*0.50, W, H);
+            edge(wx1, fy, wz1, wx2, fy, wz1, wallA * EDGE_MUL.floorFront * heightFade(fy, total), lw * EDGE_LW.floorFront, W, H);
           }
         }
         // Floor lines — left side
@@ -436,7 +512,7 @@ export default function CityCanvas() {
           const nF = Math.max(1, Math.round(bh / 20));
           for (let f = 1; f < nF; f++) {
             const fy = yBase + bh*(f/nF);
-            edge(wx1, fy, wz1, wx1, fy, wz2, sideA * 0.28 * heightFade(fy, total), lw*0.45, W, H);
+            edge(wx1, fy, wz1, wx1, fy, wz2, sideA * EDGE_MUL.floorSide * heightFade(fy, total), lw * EDGE_LW.floorSide, W, H);
           }
         }
       }
@@ -461,9 +537,9 @@ export default function CityCanvas() {
       // Wet-asphalt glow along the ground plane, under everything
       const horizonY = height * HORIZON_Y;
       const groundG = ctx.createLinearGradient(0, horizonY, 0, height);
-      groundG.addColorStop(0,    "rgba(168,255,0,0.000)");
-      groundG.addColorStop(0.45, "rgba(168,255,0,0.022)");
-      groundG.addColorStop(1,    "rgba(168,255,0,0.000)");
+      groundG.addColorStop(0,    fillOf(GLOW_RGB, 0));
+      groundG.addColorStop(0.45, fillOf(GLOW_RGB, GLOW_A));
+      groundG.addColorStop(1,    fillOf(GLOW_RGB, 0));
       ctx.fillStyle = groundG;
       ctx.fillRect(0, horizonY, width, height - horizonY);
 
@@ -485,8 +561,8 @@ export default function CityCanvas() {
         const wz1    = wz;
         const wz2    = wz + (b.wz2 - b.wz1);
         const depthT = Math.max(0, Math.min(1, 1 - wz / (maxView * 0.78)));
-        const base   = 0.06 + Math.pow(depthT, 1.35) * 0.44;
-        const lw     = 0.42  + depthT * 0.55;
+        const base   = EDGE_A_FAR + Math.pow(depthT, EDGE_A_CURVE) * EDGE_A_NEAR;
+        const lw     = EDGE_W_FAR + depthT * EDGE_W_NEAR;
 
         if (b.type === "tower" && b.tier2H !== null) {
           const t2 = b.tier2H, t3 = b.tier3H, i2 = b.ins2, i3 = b.ins3;
@@ -498,9 +574,9 @@ export default function CityCanvas() {
           drawTier(b.wx1, b.wx2, wz1, wz2, 0, b.h, base, true, width, height, lw, depthT, b.h);
         }
 
-        edge(b.wx1, 0, wz1, b.wx2, 0, wz1, base*0.20, 0.28, width, height);
-        edge(b.wx1, 0, wz1, b.wx1, 0, wz2, base*0.16, 0.28, width, height);
-        edge(b.wx2, 0, wz1, b.wx2, 0, wz2, base*0.16, 0.28, width, height);
+        edge(b.wx1, 0, wz1, b.wx2, 0, wz1, base * EDGE_MUL.footFront, EDGE_LW.foot, width, height);
+        edge(b.wx1, 0, wz1, b.wx1, 0, wz2, base * EDGE_MUL.footSide, EDGE_LW.foot, width, height);
+        edge(b.wx2, 0, wz1, b.wx2, 0, wz2, base * EDGE_MUL.footSide, EDGE_LW.foot, width, height);
 
         if (b.hasTower) {
           const cx  = (b.wx1 + b.wx2) / 2;
@@ -574,10 +650,10 @@ export default function CityCanvas() {
         if (wz < -CELL) wz += maxView;
         if (wz + CAM_Z <= 8 || wz > maxView * 0.88) continue;
         const depthT = Math.max(0, Math.min(1, 1 - wz / (maxView * 0.78)));
-        const alpha  = 0.010 + depthT * 0.032;
+        const alpha  = GRID_A_FAR + depthT * GRID_A_NEAR;
         for (let col = 0; col < activeCols - 1; col++) {
           const wx1 = col * CELL - halfW;
-          edge(wx1, 0, wz, wx1+CELL, 0, wz, alpha, 0.28, width, height);
+          edge(wx1, 0, wz, wx1+CELL, 0, wz, alpha, GRID_LW, width, height);
         }
       }
 
@@ -589,7 +665,7 @@ export default function CityCanvas() {
           if (wz + CAM_Z <= 8 || wz > maxView * 0.75) continue;
           const depthT = Math.max(0, Math.min(1, 1 - wz / (maxView * 0.75)));
           edge(col*CELL - halfW, 0, wz, col*CELL - halfW, 10, wz,
-            0.06 + depthT*0.13, 0.50, width, height);
+            LAMP_A_FAR + depthT * LAMP_A_NEAR, LAMP_LW, width, height);
         }
       }
 
@@ -598,7 +674,7 @@ export default function CityCanvas() {
       // ── Aircraft beacons ────────────────────────────────────────────────
       if (beacons.length) {
         for (let i = 0; i < beacons.length; i += 3) {
-          ctx.fillStyle = `rgba(255,60,45,${beacons[i + 2].toFixed(3)})`;
+          ctx.fillStyle = fillOf(BEACON_RGB, beacons[i + 2]);
           ctx.beginPath();
           ctx.arc(beacons[i], beacons[i + 1], 1.5, 0, 6.283);
           ctx.fill();
@@ -625,10 +701,10 @@ export default function CityCanvas() {
           const tail = project(c.x - c.vx * c.len, c.y, cz, width, height);
           if (!head || !tail) continue;
 
-          const a = 0.10 + dT * 0.5;
+          const a = CRAFT_A_FAR + dT * CRAFT_A_NEAR;
           const g = ctx.createLinearGradient(tail.x, tail.y, head.x, head.y);
-          g.addColorStop(0, "rgba(168,255,0,0)");
-          g.addColorStop(1, `rgba(200,255,120,${a.toFixed(3)})`);
+          g.addColorStop(0, fillOf(CRAFT_TAIL_RGB, 0));
+          g.addColorStop(1, fillOf(CRAFT_HEAD_RGB, a));
           ctx.strokeStyle = g;
           ctx.lineWidth = 0.5 + dT * 1.1;
           ctx.beginPath();
@@ -636,7 +712,7 @@ export default function CityCanvas() {
           ctx.lineTo(head.x, head.y);
           ctx.stroke();
 
-          ctx.fillStyle = `rgba(220,255,160,${Math.min(0.85, a * 1.6).toFixed(3)})`;
+          ctx.fillStyle = fillOf(CRAFT_DOT_RGB, Math.min(CRAFT_DOT_CAP, a * 1.6));
           ctx.beginPath();
           ctx.arc(head.x, head.y, 0.6 + dT * 1.1, 0, 6.283);
           ctx.fill();
@@ -647,9 +723,9 @@ export default function CityCanvas() {
       // Last, so distant buildings dissolve into it. Near ones extend far
       // below the horizon and are barely touched.
       const hazeG = ctx.createLinearGradient(0, horizonY - height * 0.06, 0, horizonY + height * 0.30);
-      hazeG.addColorStop(0,   "rgba(6,10,6,0.78)");
-      hazeG.addColorStop(0.4, "rgba(6,10,6,0.46)");
-      hazeG.addColorStop(1,   "rgba(6,10,6,0)");
+      hazeG.addColorStop(0,   fillOf(HAZE_RGB, HAZE_A_TOP));
+      hazeG.addColorStop(0.4, fillOf(HAZE_RGB, HAZE_A_MID));
+      hazeG.addColorStop(1,   fillOf(HAZE_RGB, 0));
       ctx.fillStyle = hazeG;
       ctx.fillRect(0, horizonY - height * 0.06, width, height * 0.36);
 
