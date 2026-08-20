@@ -30,11 +30,17 @@ const CRAFT_N       = 12;
 const FILL_RGB = "58,132,28";
 
 /** Face alpha by depth. Near ~0.18, far ~0.025. */
-const faceAlpha = (depthT: number) => 0.02 + depthT * 0.115;
+const faceAlpha = (depthT: number) => 0.025 + depthT * 0.15;
 // Roof catches the most light, the receding side the least
 const ROOF_MUL = 1.18;
 const FACE_MUL = 1.0;
 const SIDE_MUL = 0.55;
+
+// ─── Depth of field ───────────────────────────────────────────────────────────
+const DOF_BLUR      = 4;     // px at the reduced scale
+const DOF_STRIPS    = 10;    // per band; enough that the ramp reads continuous
+const DOF_SHARP_TOP = 0.40;  // fraction of height where the sharp strip begins
+const DOF_SHARP_BOT = 0.74;  // and where it ends
 // Vertical faces fade toward the base — the hologram loses hold near the ground
 const FADE_TOP = 1.35;
 const FADE_BOT = 0.28;
@@ -216,11 +222,11 @@ export default function CityCanvas() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Bloom buffers. Two, not one: the downscale and the blur have to be
+    // Post-processing buffers. Two, not one: the downscale and the blur have to be
     // separate steps, because setting a blur filter and then drawing a
     // full-size source into a small canvas makes the browser blur at full
     // resolution first.
-    const BLUR_DIV = 5;
+    const BLUR_DIV = 4;
     const small    = document.createElement("canvas");
     const smallCtx = small.getContext("2d");
     const blurBuf  = document.createElement("canvas");
@@ -377,8 +383,8 @@ export default function CityCanvas() {
       }
 
       // ── Detail geometry ────────────────────────────────────────────────────
-      // Gated on depth as well as capability: past the near band the bloom
-      // washes these lines out entirely, so drawing them there is work the
+      // Gated on depth as well as capability: past the near band the depth blur
+      // dissolves these lines entirely, so drawing them there is work the
       // next pass destroys.
       if (!lowPower && depthT > 0.52) {
         // Structural columns on front face
@@ -617,25 +623,47 @@ export default function CityCanvas() {
       ctx.fillStyle = hazeG;
       ctx.fillRect(0, horizonY - height * 0.06, width, height * 0.36);
 
-      // ── Bloom ───────────────────────────────────────────────────────────
-      // Additive is the point: it turns a lit face into something that spills
-      // light past its own edges, which is what separates a hologram from a
-      // painted shape.
+      // ── Depth of field ──────────────────────────────────────────────────
+      // Same material a bloom pass would use — the finished frame, read back
+      // small and blurred — but composited over instead of added, and only
+      // across the top and bottom bands. The sharp strip in the middle is where
+      // the buildings that matter sit; blurring the far horizon and the ground
+      // underfoot is what makes this read as a model rather than a place.
+      //
+      // The bands are strips of rising alpha rather than a gradient mask.
+      // Masking would need a second full-size canvas and a destination-in pass;
+      // what lands here is already blurred, so the stepping between strips does
+      // not survive to be seen.
       if (!lowPower) {
         smallCtx.clearRect(0, 0, small.width, small.height);
         smallCtx.drawImage(canvas, 0, 0, small.width, small.height);
 
         blurCtx.filter = "none";
         blurCtx.clearRect(0, 0, blurBuf.width, blurBuf.height);
-        blurCtx.filter = "blur(3px)";
+        blurCtx.filter = `blur(${DOF_BLUR}px)`;
         blurCtx.drawImage(small, 0, 0);
         blurCtx.filter = "none";
 
-        ctx.globalCompositeOperation = "lighter";
-        ctx.globalAlpha = 0.7;
-        ctx.drawImage(blurBuf, 0, 0, canvas.width, canvas.height);
-        ctx.globalCompositeOperation = "source-over";
-        ctx.globalAlpha = 1;
+        const sy = blurBuf.height / height;   // full-res y -> buffer y
+
+        const band = (from: number, to: number, aFrom: number, aTo: number) => {
+          const y0 = height * from;
+          const h  = (height * to - y0) / DOF_STRIPS;
+          for (let i = 0; i < DOF_STRIPS; i++) {
+            const t = (i + 0.5) / DOF_STRIPS;
+            ctx.globalAlpha = aFrom + (aTo - aFrom) * t;
+            const dy = y0 + i * h;
+            ctx.drawImage(
+              blurBuf,
+              0, dy * sy, blurBuf.width, h * sy,
+              0, dy,      width,        h
+            );
+          }
+          ctx.globalAlpha = 1;
+        };
+
+        band(0, DOF_SHARP_TOP, 1, 0);   // far: hardest at the horizon
+        band(DOF_SHARP_BOT, 1, 0, 1);   // near: hardest underfoot
       }
 
       rafId = requestAnimationFrame(draw);
