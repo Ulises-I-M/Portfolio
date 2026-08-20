@@ -1,21 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { Github, Linkedin, Instagram } from "lucide-react";
+import SocialIcon from "@/components/ui/SocialIcon";
 import SectionLabel from "@/components/ui/SectionLabel";
 import HUDCorners from "@/components/ui/HUDCorners";
 import RevealText from "@/components/ui/RevealText";
 import Crosshair from "@/components/ui/Crosshair";
+import ChevronCluster from "@/components/ui/ChevronCluster";
+import NestedSquares from "@/components/ui/NestedSquares";
 import { personal, social } from "@/lib/data";
-
-const socialIcons = {
-  github: Github,
-  linkedin: Linkedin,
-  instagram: Instagram,
-} as const;
+import { useLang } from "@/context/LangContext";
 
 export default function Contact() {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const { tr } = useLang();
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -46,15 +44,22 @@ export default function Contact() {
   return (
     <section
       id="contact"
-      className="relative py-28 px-6 border-t border-[#1e1e1e]"
+      className="relative py-28 px-6 bg-cyber-grid"
       aria-label="Contact"
     >
       {/* Decorative crosshair */}
       <Crosshair className="absolute top-16 right-16 opacity-20 hidden md:block" size={24} />
+      {/* Nested squares — bottom left */}
+      <NestedSquares
+        size={80}
+        layers={3}
+        rotate
+        className="absolute bottom-12 left-8 opacity-20 hidden lg:block"
+      />
 
       <div className="mx-auto max-w-7xl">
-        <RevealText>
-          <SectionLabel index="05" label="Contact" className="mb-12" />
+        <RevealText scan>
+          <SectionLabel index="07" label={tr.sections.contact} className="mb-12" />
         </RevealText>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
@@ -64,12 +69,11 @@ export default function Contact() {
               className="font-mono font-bold text-[#efefef] mb-6 leading-tight"
               style={{ fontSize: "clamp(1.5rem, 3vw, 2.5rem)" }}
             >
-              <span className="text-[#a8ff00]">✦</span> INICIEMOS<br />
-              UN PROYECTO
+              <span className="text-[#a8ff00]">✦</span> {tr.contact.heading1}<br />
+              {tr.contact.heading2}
             </h2>
             <p className="font-mono text-sm leading-loose text-[#555555] mb-10 max-w-md">
-              Disponible para trabajo freelance o posiciones full-time. Si tienes un proyecto
-              interesante o quieres charlar, no dudes en escribirme.
+              {tr.contact.tagline}
             </p>
 
             {/* Contact info rows */}
@@ -104,43 +108,38 @@ export default function Contact() {
                 // SOCIAL
               </p>
               <div className="flex gap-6">
-                {social.map((s) => {
-                  const Icon = socialIcons[s.icon as keyof typeof socialIcons];
-                  return (
-                    <a
-                      key={s.label}
-                      href={s.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 font-mono text-xs tracking-[0.15em] text-[#555555] hover:text-[#a8ff00] transition-colors cursor-pointer group"
-                      aria-label={`${s.label} — ${s.handle}`}
-                    >
-                      {Icon && (
-                        <Icon
-                          size={14}
-                          className="transition-colors duration-200 group-hover:text-[#a8ff00]"
-                          aria-hidden="true"
-                        />
-                      )}
-                      {s.label.toUpperCase()}
-                    </a>
-                  );
-                })}
+                {social.map((s) => (
+                  <a
+                    key={s.label}
+                    href={s.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 font-mono text-xs tracking-[0.15em] text-[#555555] hover:text-[#a8ff00] transition-colors cursor-pointer group"
+                    aria-label={`${s.label} — ${s.handle}`}
+                  >
+                    <SocialIcon
+                      name={s.icon as "github" | "linkedin" | "instagram"}
+                      size={14}
+                      className="transition-colors duration-200 group-hover:text-[#a8ff00]"
+                    />
+                    {s.label.toUpperCase()}
+                  </a>
+                ))}
               </div>
             </div>
           </RevealText>
 
           {/* Right — form */}
           <RevealText delay={0.2}>
-            <HUDCorners className="p-8" size={16}>
+            <HUDCorners className="p-8" size={16} ticks label="MSG.INPUT">
               {status === "success" ? (
                 <div className="flex flex-col items-center justify-center min-h-[300px] gap-4 text-center">
                   <span className="text-4xl text-[#a8ff00]" aria-hidden="true">✦</span>
                   <p className="font-mono text-sm text-[#efefef] tracking-[0.1em]">
-                    MENSAJE ENVIADO
+                    {tr.contact.successTitle}
                   </p>
                   <p className="font-mono text-xs text-[#555555]">
-                    Te respondo en menos de 24hs.
+                    {tr.contact.successSub}
                   </p>
                 </div>
               ) : (
@@ -151,47 +150,47 @@ export default function Contact() {
 
                   <div className="space-y-4 mb-4">
                     <div>
-                      <label htmlFor="name" className="sr-only">Name</label>
+                      <label htmlFor="name" className="sr-only">{tr.contact.nameLabel}</label>
                       <input
                         id="name"
                         name="name"
                         type="text"
                         required
-                        placeholder="[ NAME ]"
+                        placeholder={tr.contact.namePlaceholder}
                         className={inputClass}
                         aria-required="true"
                       />
                     </div>
                     <div>
-                      <label htmlFor="email" className="sr-only">Email</label>
+                      <label htmlFor="email" className="sr-only">{tr.contact.emailLabel}</label>
                       <input
                         id="email"
                         name="email"
                         type="email"
                         required
-                        placeholder="[ EMAIL ]"
+                        placeholder={tr.contact.emailPlaceholder}
                         className={inputClass}
                         aria-required="true"
                       />
                     </div>
                     <div>
-                      <label htmlFor="subject" className="sr-only">Subject</label>
+                      <label htmlFor="subject" className="sr-only">{tr.contact.subjectLabel}</label>
                       <input
                         id="subject"
                         name="subject"
                         type="text"
-                        placeholder="[ SUBJECT ]"
+                        placeholder={tr.contact.subjectPlaceholder}
                         className={inputClass}
                       />
                     </div>
                     <div>
-                      <label htmlFor="message" className="sr-only">Message</label>
+                      <label htmlFor="message" className="sr-only">{tr.contact.messageLabel}</label>
                       <textarea
                         id="message"
                         name="message"
                         required
                         rows={5}
-                        placeholder="[ MESSAGE ]"
+                        placeholder={tr.contact.messagePlaceholder}
                         className={`${inputClass} resize-none`}
                         aria-required="true"
                       />
@@ -203,17 +202,18 @@ export default function Contact() {
                       role="alert"
                       className="font-mono text-xs text-red-400 mb-4 tracking-[0.1em]"
                     >
-                      ERROR: Could not send. Try again.
+                      {tr.contact.error}
                     </p>
                   )}
 
                   <button
                     type="submit"
                     disabled={status === "loading"}
-                    className="w-full border border-[#a8ff00] px-6 py-3 font-mono text-xs tracking-[0.2em] text-[#a8ff00] transition-all duration-200 hover:bg-[#a8ff00] hover:text-[#0a0a0a] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                    className="w-full border border-[#a8ff00] px-6 py-3 font-mono text-xs tracking-[0.2em] text-[#a8ff00] transition-all duration-200 hover:bg-[#a8ff00] hover:text-[#0a0a0a] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer chamfered-sm chamfered-glow flex items-center justify-center gap-3"
                     aria-busy={status === "loading"}
                   >
-                    {status === "loading" ? "SENDING..." : "SEND →"}
+                    {status === "loading" ? tr.contact.sending : tr.contact.send}
+                    {status !== "loading" && <ChevronCluster count={3} size={7} />}
                   </button>
                 </form>
               )}

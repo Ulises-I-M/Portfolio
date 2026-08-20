@@ -3,7 +3,7 @@
 export default function GrainOverlay() {
   return (
     <>
-      {/* SVG grain noise — fixed, full screen, pointer-events none */}
+      {/* Static page-wide grain texture — subtle grayscale noise */}
       <svg
         aria-hidden="true"
         className="pointer-events-none fixed inset-0 z-[9999] h-full w-full opacity-[0.045]"
@@ -21,7 +21,7 @@ export default function GrainOverlay() {
         <rect width="100%" height="100%" filter="url(#grain)" />
       </svg>
 
-      {/* Scanlines — fixed, full screen */}
+      {/* Scanlines */}
       <div
         aria-hidden="true"
         className="pointer-events-none fixed inset-0 z-[9997]"

@@ -73,6 +73,188 @@ body {
   background-size: 48px 48px;
 }
 
+/* CRT scanline scroll — moves the 4 px repeating gradient one full tile down */
+@keyframes scanline-scroll {
+  from { background-position: 0 0 }
+  to   { background-position: 0 4px }
+}
+
+/* Slow interference band rolling downward */
+@keyframes scanline-interference {
+  from { background-position: 0 0 }
+  to   { background-position: 0 200px }
+}
+
+/* Ken Burns — slow zoom + pan used on project card image hover */
+@keyframes ken-burns {
+  0%   { transform: scale(1)    translateX(0%)   translateY(0%); }
+  33%  { transform: scale(1.07) translateX(-2%)  translateY(-1%); }
+  66%  { transform: scale(1.05) translateX(2%)   translateY(1%); }
+  100% { transform: scale(1)    translateX(0%)   translateY(0%); }
+}
+
+/* Section scan reveal — a neon line sweeps down before content fades in */
+@keyframes scan-sweep {
+  0%   { transform: scaleX(0); opacity: 1; }
+  60%  { transform: scaleX(1); opacity: 1; }
+  100% { transform: scaleX(1); opacity: 0; }
+}
+
+/* Hide native cursor everywhere when custom cursor is active.
+   Overrides cursor: pointer on buttons/links which would otherwise win. */
+html.custom-cursor-active,
+html.custom-cursor-active * {
+  cursor: none !important;
+}
+
+/* ─── Cybernetic HUD utilities ─────────────────────────────────────────────── */
+
+/* Pulsing dot indicator */
+@keyframes hud-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 4px rgba(168,255,0,0.8); }
+  50% { opacity: 0.3; box-shadow: 0 0 2px rgba(168,255,0,0.3); }
+}
+.hud-pulse {
+  animation: hud-pulse 2s ease-in-out infinite;
+}
+
+/* Data stream scroll — vertical text ticker */
+@keyframes data-stream {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-50%); }
+}
+
+/* Circuit node glow */
+@keyframes circuit-glow {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.4; }
+}
+
+/* Horizontal sweep line */
+@keyframes hud-sweep {
+  0%   { left: 0; opacity: 1; }
+  80%  { opacity: 0.6; }
+  100% { left: 100%; opacity: 0; }
+}
+
+/* Edge tick marks for cyber frames */
+.cyber-tick {
+  position: absolute;
+  background: #a8ff00;
+  opacity: 0.25;
+}
+.cyber-tick-h { width: 6px; height: 1px; }
+.cyber-tick-v { width: 1px; height: 6px; }
+
+/* Cyber border glow on hover */
+.cyber-border-glow {
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+.cyber-border-glow:hover {
+  border-color: rgba(168, 255, 0, 0.4) !important;
+  box-shadow: 0 0 20px rgba(168, 255, 0, 0.06), inset 0 0 20px rgba(168, 255, 0, 0.02);
+}
+
+/* Section cyber grid — denser than bg-grid, with circuit nodes */
+.bg-cyber-grid {
+  background-image:
+    radial-gradient(circle, rgba(168,255,0,0.06) 1px, transparent 1px),
+    linear-gradient(rgba(168,255,0,0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(168,255,0,0.02) 1px, transparent 1px);
+  background-size: 32px 32px, 32px 32px, 32px 32px;
+}
+
+/* Data ticker side rail */
+.data-ticker-rail {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  color: #333333;
+  font-family: "Space Mono", monospace;
+}
+
+/* ─── Chamfered corners ─────────────────────────────────────────────────────── */
+/* Cuts top-right + bottom-left at 45° — classic FUI/cyberpunk card shape */
+.chamfered {
+  clip-path: polygon(
+    0 0,
+    calc(100% - 10px) 0,
+    100% 10px,
+    100% 100%,
+    10px 100%,
+    0 calc(100% - 10px)
+  );
+}
+.chamfered-sm {
+  clip-path: polygon(
+    0 0,
+    calc(100% - 6px) 0,
+    100% 6px,
+    100% 100%,
+    6px 100%,
+    0 calc(100% - 6px)
+  );
+}
+.chamfered-lg {
+  clip-path: polygon(
+    0 0,
+    calc(100% - 16px) 0,
+    100% 16px,
+    100% 100%,
+    16px 100%,
+    0 calc(100% - 16px)
+  );
+}
+/* Use drop-shadow instead of box-shadow — works with clip-path */
+.chamfered-glow {
+  transition: filter 0.3s, border-color 0.3s;
+}
+.chamfered-glow:hover {
+  filter: drop-shadow(0 0 8px rgba(168,255,0,0.18));
+  border-color: rgba(168,255,0,0.35) !important;
+}
+
+/* ─── Diagonal hatching ─────────────────────────────────────────────────────── */
+/* 45° fine lines — FUI "inactive area" or "fill" texture */
+.hatch {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(168,255,0,0.04) 0px,
+    rgba(168,255,0,0.04) 1px,
+    transparent 1px,
+    transparent 6px
+  );
+}
+.hatch-dense {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(168,255,0,0.06) 0px,
+    rgba(168,255,0,0.06) 1px,
+    transparent 1px,
+    transparent 4px
+  );
+}
+
+/* ─── Panel frame header ──────────────────────────────────────────────────────
+   Used on PanelFrame: label sits on top border like a fieldset legend          */
+.panel-label {
+  font-family: "Space Mono", monospace;
+  font-size: 9px;
+  letter-spacing: 0.25em;
+  color: rgba(168,255,0,0.5);
+  text-transform: uppercase;
+  background: #0a0a0a;
+  padding: 0 6px;
+  line-height: 1;
+}
+
+/* ─── Barcode bars ──────────────────────────────────────────────────────────── */
+@keyframes barcode-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.7; }
+}
+
 /* Focus states */
 *:focus-visible {
   outline: 1px solid #a8ff00;
@@ -88,4 +270,31 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Touch/mobile: slow down continuous pulse animations to reduce compositor work */
+@media (hover: none) {
+  .hud-pulse {
+    animation-duration: 4s;
+  }
+  .blink {
+    animation-duration: 1.5s;
+  }
+  .bg-grid {
+    background-size: 64px 64px;
+  }
+}
+
+/* Custom cursor click ripple */
+@keyframes cursor-ripple {
+  0%   { transform: scale(1);   opacity: 0.9; }
+  100% { transform: scale(3.5); opacity: 0;   }
+}
+
+/* Returning visitors: the inline <head> script stamps data-booted on <html>
+   before the body renders, so this hides the boot screen from the first paint —
+   no flash while waiting for JS, and the markup still matches SSR so hydration
+   stays clean. */
+html[data-booted="1"] [data-boot-screen] {
+  display: none;
 }

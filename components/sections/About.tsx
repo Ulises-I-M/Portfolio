@@ -1,43 +1,79 @@
+"use client";
+
 import Image from "next/image";
 import SectionLabel from "@/components/ui/SectionLabel";
 import HUDCorners from "@/components/ui/HUDCorners";
 import RevealText from "@/components/ui/RevealText";
+import GrainEffect from "@/components/ui/GrainEffect";
+import CircuitPath from "@/components/ui/CircuitPath";
+import NestedSquares from "@/components/ui/NestedSquares";
+import GateReveal from "@/components/ui/GateReveal";
 import { personal, skills } from "@/lib/data";
+import { useLang } from "@/context/LangContext";
 
 export default function About() {
+  const { tr } = useLang();
+
   return (
     <section
       id="about"
-      className="relative py-28 px-6 border-t border-[#1e1e1e]"
+      className="relative py-28 px-6 overflow-hidden"
       aria-label="About Ulises Miranda"
     >
+      {/* Circuit path decoration — bottom right */}
+      <CircuitPath
+        variant="about"
+        width={320}
+        height={180}
+        className="absolute bottom-12 right-8 opacity-50 hidden lg:block"
+      />
+      {/* Nested squares — top left corner accent */}
+      <NestedSquares
+        size={72}
+        layers={3}
+        rotate
+        className="absolute top-10 left-6 opacity-30 hidden lg:block"
+      />
       <div className="mx-auto max-w-7xl">
-        <RevealText>
-          <SectionLabel index="02" label="About" className="mb-12" />
+        <RevealText scan>
+          <SectionLabel index="02" label={tr.sections.about} className="mb-12" />
         </RevealText>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
           {/* Image column */}
           <RevealText direction="left" delay={0.1}>
-            <HUDCorners className="inline-block" size={18}>
-              <div className="relative overflow-hidden" style={{ padding: "10px" }}>
-                <Image
-                  src="/images/about_hero.png"
-                  alt="Ulises Miranda"
-                  width={480}
-                  height={560}
-                  className="block w-full object-cover"
-                  style={{ filter: "grayscale(0.3) contrast(1.05)" }}
-                />
-                {/* Neon overlay tint */}
-                <div
-                  aria-hidden="true"
-                  className="absolute inset-0 pointer-events-none"
-                  style={{
-                    background:
-                      "linear-gradient(135deg, rgba(168,255,0,0.06) 0%, transparent 60%)",
-                  }}
-                />
+            <HUDCorners className="inline-block" size={18} ticks label="PROFILE.IMG">
+              <div style={{ padding: "10px" }}>
+                <GateReveal>
+                  <div className="relative overflow-hidden">
+                    <Image
+                      src="/images/about_hero.png"
+                      alt="Ulises Miranda"
+                      width={480}
+                      height={560}
+                      priority
+                      loading="eager"
+                      className="block w-full object-cover"
+                      style={{ filter: "grayscale(0.3) contrast(1.05)" }}
+                    />
+                    {/* Neon overlay tint */}
+                    <div
+                      aria-hidden="true"
+                      className="absolute inset-0 pointer-events-none"
+                      style={{
+                        background:
+                          "linear-gradient(135deg, rgba(168,255,0,0.06) 0%, transparent 60%)",
+                      }}
+                    />
+                    {/* Diagonal hatch texture */}
+                    <div
+                      aria-hidden="true"
+                      className="absolute inset-0 pointer-events-none hatch"
+                      style={{ opacity: 0.5 }}
+                    />
+                    <GrainEffect />
+                  </div>
+                </GateReveal>
               </div>
             </HUDCorners>
 
@@ -49,7 +85,7 @@ export default function About() {
               </div>
               <div>
                 <span className="text-[#555555] block">EXP</span>
-                <span className="text-[#a8ff00]">1+ YRS</span>
+                <span className="text-[#a8ff00]">2+ YRS</span>
               </div>
               <div>
                 <span className="text-[#555555] block">FOCUS</span>
@@ -65,34 +101,30 @@ export default function About() {
                 className="font-mono font-bold text-[#efefef] mb-6 leading-tight"
                 style={{ fontSize: "clamp(1.5rem, 3vw, 2.5rem)" }}
               >
-                <span className="text-[#a8ff00]">✦</span> FRONTEND<br />
-                DEVELOPER
+                <span className="text-[#a8ff00]">✦</span> {tr.about.heading1}<br />
+                {tr.about.heading2}
               </h2>
             </RevealText>
 
             <RevealText delay={0.3}>
-              <p className="font-mono text-sm leading-loose text-[#555555] mb-6 max-w-lg">
-                {personal.bioEs}
+              <p className="font-mono text-sm leading-loose text-[#aaaaaa] mb-6 max-w-lg">
+                {tr.about.bio1}
               </p>
             </RevealText>
 
             <RevealText delay={0.4}>
-              <p className="font-mono text-sm leading-loose text-[#555555] mb-6 max-w-lg">
-                Me especializo en construir interfaces rápidas y accesibles, con atención al
-                detalle visual y al rendimiento. Trabajo cómodo tanto en el diseño como en la
-                implementación técnica.
+              <p className="font-mono text-sm leading-loose text-[#aaaaaa] mb-6 max-w-lg">
+                {tr.about.bio2}
               </p>
             </RevealText>
 
             <RevealText delay={0.45}>
               <div className="border-l-2 border-[#a8ff00] pl-4 mb-10 max-w-lg">
                 <p className="font-mono text-[10px] tracking-[0.2em] text-[#a8ff00] mb-1">
-                  // UX / UI
+                  {tr.about.uxLabel}
                 </p>
-                <p className="font-mono text-sm leading-loose text-[#555555]">
-                  Tengo una fuerte pasión por el diseño UX/UI y el diseño visual en general.
-                  Me preocupo por cada detalle: tipografía, espaciado, jerarquía, micro-interacciones.
-                  El código y el diseño no son mundos separados — los mejores productos viven en esa intersección.
+                <p className="font-mono text-sm leading-loose text-[#aaaaaa]">
+                  {tr.about.uxNote}
                 </p>
               </div>
             </RevealText>
@@ -101,7 +133,7 @@ export default function About() {
             <RevealText delay={0.5}>
               <div className="mb-4">
                 <p className="font-mono text-[10px] tracking-[0.25em] text-[#555555] mb-4 uppercase">
-                  // Tech Stack
+                  {tr.about.techStack}
                 </p>
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
                   {skills.map((skill) => (

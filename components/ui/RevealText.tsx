@@ -8,6 +8,7 @@ interface RevealTextProps {
   className?: string;
   delay?: number;
   direction?: "up" | "left" | "none";
+  scan?: boolean; // show green scan line before content appears
 }
 
 export default function RevealText({
@@ -15,6 +16,7 @@ export default function RevealText({
   className = "",
   delay = 0,
   direction = "up",
+  scan = false,
 }: RevealTextProps) {
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { once: true, margin: "-60px" });
@@ -35,15 +37,32 @@ export default function RevealText({
         : { opacity: 1, y: 0 }
     : initial;
 
+  const contentDelay = scan ? delay + 0.35 : delay;
+
   return (
-    <motion.div
-      ref={ref}
-      initial={initial}
-      animate={animate}
-      transition={{ duration: 0.6, delay, ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number] }}
-      className={className}
-    >
-      {children}
-    </motion.div>
+    <div ref={ref} className={`relative ${className}`}>
+      {/* Optional scan line that sweeps across before content appears */}
+      {scan && isInView && !prefersReducedMotion && (
+        <motion.div
+          aria-hidden="true"
+          className="absolute inset-x-0 top-0 h-px origin-left pointer-events-none z-10"
+          style={{ background: "linear-gradient(to right, transparent, #a8ff00, transparent)" }}
+          initial={{ scaleX: 0, opacity: 1 }}
+          animate={{ scaleX: 1, opacity: 0 }}
+          transition={{ duration: 0.5, delay, ease: "easeOut" }}
+        />
+      )}
+      <motion.div
+        initial={initial}
+        animate={animate}
+        transition={{
+          duration: 0.6,
+          delay: contentDelay,
+          ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number],
+        }}
+      >
+        {children}
+      </motion.div>
+    </div>
   );
 }
