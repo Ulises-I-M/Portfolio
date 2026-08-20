@@ -22,42 +22,35 @@ const SCROLL_SPEED = 0.20;
 // ─── Detail tuning ────────────────────────────────────────────────────────────
 const CRAFT_N       = 12;
 
-// ─── Hologram face colors ─────────────────────────────────────────────────────
-// Volumes are lit glass, not dark mass: a mid green laid over black at an alpha
-// that falls with depth. Near buildings read as solid and glowing, far ones let
-// the city behind them through, and every overlap sums to something brighter —
-// which is what makes the stack read as a hologram rather than as noise.
-const FILL_RGB = "58,132,28";
+// ─── Hologram face colours ────────────────────────────────────────────────────
+// The top third of a building is genuinely opaque — it occludes whatever is
+// behind it — and from there down the volume dissolves to nothing. At full
+// opacity the faces can no longer be told apart by alpha, so the three shade by
+// colour instead: the receding side darker, the roof catching more light.
+const FACE_RGB = "16,40,9";
+const SIDE_RGB = "9,24,5";
+const ROOF_RGB = "28,64,15";
 
-/** Face alpha by depth. Near ~0.18, far ~0.025. */
-const faceAlpha = (depthT: number) => 0.025 + depthT * 0.15;
-// Roof catches the most light, the receding side the least
-const ROOF_MUL = 1.18;
-const FACE_MUL = 1.0;
-const SIDE_MUL = 0.55;
-
-// ─── Depth of field ───────────────────────────────────────────────────────────
-const DOF_BLUR      = 4;     // px at the reduced scale
-const DOF_STRIPS    = 10;    // per band; enough that the ramp reads continuous
-const DOF_SHARP_TOP = 0.40;  // fraction of height where the sharp strip begins
-const DOF_SHARP_BOT = 0.74;  // and where it ends
-// Opacity by height. The top third of a building holds full strength, and from
-// there down it falls away to almost nothing — the projection loses its grip on
-// the lower floors. Measured against the whole building, not the current tier,
-// so a stacked tower fades as one object rather than once per setback.
-const FADE_HOLD  = 2 / 3;
-const FADE_MIN   = 0.01;
-const TOP_BOOST  = 1.35;
-/** 1 above the hold line, ramping to FADE_MIN at the base. */
+/** Opaque above the hold line, ramping to nothing at the base. */
+const FADE_HOLD = 2 / 3;
+const FADE_MIN  = 0.01;
 const heightFade = (y: number, total: number) => {
   if (total <= 0) return 1;
   const t = y / total;
   if (t >= FADE_HOLD) return 1;
   return FADE_MIN + (t / FADE_HOLD) * (1 - FADE_MIN);
 };
+
+const fillOf = (rgb: string, a: number) => `rgba(${rgb},${Math.min(1, a).toFixed(3)})`;
+
 /** Steps a vertical edge is split into so it can follow the ramp. */
 const V_FADE_STEPS = 5;
-const fillOf = (a: number) => `rgba(${FILL_RGB},${Math.min(0.34, a).toFixed(3)})`;
+
+// ─── Depth of field ───────────────────────────────────────────────────────────
+const DOF_BLUR      = 4;     // px at the reduced scale
+const DOF_STRIPS    = 10;    // per band; enough that the ramp reads continuous
+const DOF_SHARP_TOP = 0.40;  // fraction of height where the sharp strip begins
+const DOF_SHARP_BOT = 0.74;  // and where it ends
 
 // ─── RNG ──────────────────────────────────────────────────────────────────────
 function mkRng(seed: number) {
@@ -361,7 +354,6 @@ export default function CityCanvas() {
       const bh = yTop - yBase;
       const bw = wx2 - wx1;
 
-      const fa = faceAlpha(depthT);
       const sideX = (wx1 + wx2) / 2 > 0 ? wx1 : wx2;
 
       // Vertical faces fade downward rather than carrying a flat alpha, so each
@@ -370,22 +362,25 @@ export default function CityCanvas() {
       // Sampled at several stops rather than two: a tier can straddle the hold
       // line, or sit entirely above or below it, and sampling handles all three
       // without special-casing any of them.
-      const vertFill = (mul: number, atX: number, atZ: number): string | CanvasGradient => {
+      // Sampled at several stops rather than two: a tier can straddle the hold
+      // line, or sit entirely above or below it, and sampling handles all three
+      // without special-casing any of them.
+      const vertFill = (rgb: string, atX: number, atZ: number): string | CanvasGradient => {
         const pT = project(atX, yTop,  atZ, W, H);
         const pB = project(atX, yBase, atZ, W, H);
-        if (!pT || !pB || Math.abs(pB.y - pT.y) < 1) return fillOf(fa * mul);
+        if (!pT || !pB || Math.abs(pB.y - pT.y) < 1) return fillOf(rgb, heightFade(yTop, total));
         const g = ctx.createLinearGradient(0, pT.y, 0, pB.y);
         for (let i = 0; i <= 4; i++) {
           const p = i / 4;
           const wy = yTop - p * (yTop - yBase);
-          g.addColorStop(p, fillOf(fa * mul * TOP_BOOST * heightFade(wy, total)));
+          g.addColorStop(p, fillOf(rgb, heightFade(wy, total)));
         }
         return g;
       };
 
-      fillFace([[sideX,yBase,wz1],[sideX,yBase,wz2],[sideX,yTop,wz2],[sideX,yTop,wz1]], vertFill(SIDE_MUL * 0.8, sideX, wz1), W, H);
-      fillFace([[wx1,yBase,wz1],[wx2,yBase,wz1],[wx2,yTop,wz1],[wx1,yTop,wz1]], vertFill(FACE_MUL, wx1, wz1), W, H);
-      fillFace([[wx1,yTop,wz1],[wx2,yTop,wz1],[wx2,yTop,wz2],[wx1,yTop,wz2]], fillOf(fa * ROOF_MUL * heightFade(yTop, total)), W, H);
+      fillFace([[sideX,yBase,wz1],[sideX,yBase,wz2],[sideX,yTop,wz2],[sideX,yTop,wz1]], vertFill(SIDE_RGB, sideX, wz1), W, H);
+      fillFace([[wx1,yBase,wz1],[wx2,yBase,wz1],[wx2,yTop,wz1],[wx1,yTop,wz1]], vertFill(FACE_RGB, wx1, wz1), W, H);
+      fillFace([[wx1,yTop,wz1],[wx2,yTop,wz1],[wx2,yTop,wz2],[wx1,yTop,wz2]], fillOf(ROOF_RGB, heightFade(yTop, total)), W, H);
 
       // A vertical edge has to fade along its own length, but the batcher groups
       // segments by quantised alpha and strokes each group as one path — a
@@ -537,10 +532,9 @@ export default function CityCanvas() {
             const rz2 = rz1 + bd2 * r.d;
             const a = base * 0.7;
             const rsx = (rx1 + rx2) / 2 > 0 ? rx1 : rx2;
-            const rfa = faceAlpha(depthT);
-            fillFace([[rsx,b.h,rz1],[rsx,b.h,rz2],[rsx,b.h+r.h,rz2],[rsx,b.h+r.h,rz1]], fillOf(rfa * SIDE_MUL), width, height);
-            fillFace([[rx1,b.h,rz1],[rx2,b.h,rz1],[rx2,b.h+r.h,rz1],[rx1,b.h+r.h,rz1]], fillOf(rfa * FACE_MUL), width, height);
-            fillFace([[rx1,b.h+r.h,rz1],[rx2,b.h+r.h,rz1],[rx2,b.h+r.h,rz2],[rx1,b.h+r.h,rz2]], fillOf(rfa * ROOF_MUL), width, height);
+            fillFace([[rsx,b.h,rz1],[rsx,b.h,rz2],[rsx,b.h+r.h,rz2],[rsx,b.h+r.h,rz1]], fillOf(SIDE_RGB, 1), width, height);
+            fillFace([[rx1,b.h,rz1],[rx2,b.h,rz1],[rx2,b.h+r.h,rz1],[rx1,b.h+r.h,rz1]], fillOf(FACE_RGB, 1), width, height);
+            fillFace([[rx1,b.h+r.h,rz1],[rx2,b.h+r.h,rz1],[rx2,b.h+r.h,rz2],[rx1,b.h+r.h,rz2]], fillOf(ROOF_RGB, 1), width, height);
             edge(rx1, b.h, rz1, rx2, b.h, rz1, a, lw*0.6, width, height);
             edge(rx1, b.h + r.h, rz1, rx2, b.h + r.h, rz1, a, lw*0.6, width, height);
             edge(rx1, b.h, rz1, rx1, b.h + r.h, rz1, a, lw*0.6, width, height);
