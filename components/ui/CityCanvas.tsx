@@ -22,19 +22,6 @@ const SCROLL_SPEED = 0.20;
 // ─── Detail tuning ────────────────────────────────────────────────────────────
 const CRAFT_N       = 12;
 
-/**
- * Cheap deterministic hash. Window state is derived from this per cell rather
- * than stored: a mask per building would be ~40KB of state to keep in sync with
- * the tier geometry, and this costs a few multiplies instead.
- */
-const hash1 = (a: number) => {
-  let x = Math.imul(a ^ 0x9e3779b9, 0x85ebca6b);
-  x ^= x >>> 13;
-  x = Math.imul(x, 0xc2b2ae35);
-  x ^= x >>> 16;
-  return (x >>> 0) / 4294967296;
-};
-
 // ─── Hologram face colors ─────────────────────────────────────────────────────
 const FACE_FILL = "rgba(4,12,4,0.96)";
 const SIDE_FILL = "rgba(4,12,4,0.94)";
@@ -51,12 +38,6 @@ function mkRng(seed: number) {
 // ─── Types ────────────────────────────────────────────────────────────────────
 type District = "downtown" | "midtown" | "suburb";
 type BldType  = "tower" | "block" | "slab" | "stub";
-/**
- * Roof treatments. The city only ever tapered inward, which reads as 20th
- * century setback massing; the cyberpunk silhouette comes from crowns that
- * cantilever OUT past the shaft, and from apertures cut through the top.
- */
-type Crown = "flat" | "hammer" | "ring" | "spires" | "pagoda";
 
 interface Building {
   wx1: number; wx2: number;
@@ -70,20 +51,12 @@ interface Building {
   ins3:     number;
   hasTower: boolean;
   hasHelip: boolean;
-  /** Seed for window cells and blink phase — keeps both stable per building */
-  id: number;
+  /** Blink phase for the aircraft beacon */
   phase: number;
   /** Rooftop clutter, in offsets from the building's own footprint */
   roof: { ox: number; oz: number; w: number; d: number; h: number }[];
-  /** Facade billboard: vertical span as a fraction of height */
-  bill: { y0: number; y1: number } | null;
   /** Skyway to a neighbour already placed in this row */
   sky: { x: number; y: number } | null;
-  crown: Crown;
-  /** Lateral drift per setback, so tiers step off-axis instead of concentric */
-  skew: number;
-  /** Sign blade projecting perpendicular from the facade */
-  blade: { y: number; h: number; out: number } | null;
 }
 
 // ─── Projection ───────────────────────────────────────────────────────────────
@@ -99,8 +72,6 @@ function buildCity(rng: () => number, rows: number, cols: number): Building[] {
   const out: Building[] = [];
   const halfW     = ((cols - 1) * CELL) / 2;
   const centreCol = cols / 2;
-
-  let id = 0;
 
   for (let row = 0; row < rows; row++) {
     // Reset per row: skyways only ever connect neighbours in the same row
@@ -191,24 +162,6 @@ function buildCity(rng: () => number, rows: number, cols: number): Building[] {
         }
       }
 
-      // Facade billboard, on taller mid-city stock
-      const bill =
-        h > 55 && district !== "suburb" && rng() > 0.82
-          ? { y0: 0.42 + rng() * 0.18, y1: 0.60 + rng() * 0.16 }
-          : null;
-
-      // Crowns weight toward the tall stock: a hammerhead on a stub reads as
-      // noise, on a tower it reads as architecture.
-      const cr = rng();
-      let crown: Crown = "flat";
-      if (type === "tower") {
-        crown = cr < 0.30 ? "hammer" : cr < 0.48 ? "ring" : cr < 0.70 ? "spires" : cr < 0.84 ? "pagoda" : "flat";
-      } else if (type === "block" && h > 55) {
-        crown = cr < 0.22 ? "hammer" : cr < 0.34 ? "pagoda" : "flat";
-      }
-
-      const bw0 = CELL - padX1 - padX2;
-
       const b: Building = {
         wx1: col * CELL + padX1 - halfW,
         wx2: (col + 1) * CELL - padX2 - halfW,
@@ -218,17 +171,9 @@ function buildCity(rng: () => number, rows: number, cols: number): Building[] {
         tier2H, tier3H, ins2, ins3,
         hasTower: type === "tower" && h > 118 && rng() > 0.38,
         hasHelip: type === "block" && h > 44   && rng() > 0.52,
-        id: id++,
         phase: rng(),
         roof,
-        bill,
         sky: null,
-        crown,
-        skew: (rng() - 0.5) * bw0 * 0.30,
-        blade:
-          h > 40 && district !== "suburb" && rng() > 0.72
-            ? { y: h * (0.45 + rng() * 0.35), h: 8 + rng() * 16, out: 9 + rng() * 12 }
-            : null,
       };
 
       // Skyway between two tall neighbours, hung below both roofs
@@ -267,7 +212,7 @@ export default function CityCanvas() {
     let rafId: number;
     let offset  = 0;
     let lastT   = 0;
-    let frameT  = 0;   // ms, shared by window flicker, beacons and traffic
+    let frameT  = 0;   // ms, shared by the beacons and the air traffic
     let city: Building[] = [];
     let craft: { x: number; z: number; y: number; vx: number; len: number }[] = [];
 
@@ -336,40 +281,8 @@ export default function CityCanvas() {
       arr.push(p1.x, p1.y, p2.x, p2.y);
     };
 
-    // Windows are filled quads, not strokes, so they need their own buckets.
-    // Perspective means they are not axis-aligned, hence polygons over rect().
-    const quads = new Map<number, number[]>();
     // Flat [x, y, alpha, ...] gathered during the building pass
     const beacons: number[] = [];
-
-    const quad = (
-      pts: [number, number, number][], alpha: number, W: number, H: number
-    ) => {
-      if (alpha < 0.01) return;
-      const ps = pts.map(([wx, wy, wz]) => project(wx, wy, wz, W, H));
-      if (ps.some(p => !p)) return;
-      const key = Math.min(255, Math.round(alpha * 200));
-      let arr = quads.get(key);
-      if (!arr) { arr = []; quads.set(key, arr); }
-      for (const pt of ps) arr.push(pt!.x, pt!.y);
-    };
-
-    const flushQuads = () => {
-      for (const [key, arr] of quads) {
-        if (arr.length === 0) continue;
-        ctx.fillStyle = `rgba(190,255,90,${(key / 200).toFixed(4)})`;
-        ctx.beginPath();
-        for (let i = 0; i < arr.length; i += 8) {
-          ctx.moveTo(arr[i], arr[i + 1]);
-          ctx.lineTo(arr[i + 2], arr[i + 3]);
-          ctx.lineTo(arr[i + 4], arr[i + 5]);
-          ctx.lineTo(arr[i + 6], arr[i + 7]);
-          ctx.closePath();
-        }
-        ctx.fill();
-        arr.length = 0;
-      }
-    };
 
     const flushEdges = () => {
       for (const [key, arr] of segs) {
@@ -390,8 +303,7 @@ export default function CityCanvas() {
       wx1: number, wx2: number, wz1: number, wz2: number,
       yBase: number, yTop: number,
       base: number, isTopTier: boolean,
-      W: number, H: number, lw: number,
-      seed = -1, depthT = 0
+      W: number, H: number, lw: number
     ) => {
       const roofA = isTopTier ? Math.min(base * 2.4, 0.30) : base * 1.0;
       const wallA = base;
@@ -422,11 +334,13 @@ export default function CityCanvas() {
       // ── Detail geometry: skip on low-power devices ─────────────────────────
       if (!lowPower) {
         // Structural columns on front face
-        const nV = Math.max(1, Math.round(bw / 26));
+        const nV = Math.max(1, Math.round(bw / 14));
+        for (let v = 1; v < nV; v++)
+          edge(wx1 + bw*(v/nV), yBase, wz1, wx1 + bw*(v/nV), yTop, wz1, wallA * 0.35, lw*0.55, W, H);
 
         // Floor lines — front face
         if (bh > 12) {
-          const nF = Math.max(1, Math.round(bh / 30));
+          const nF = Math.max(1, Math.round(bh / 16));
           for (let f = 1; f < nF; f++) {
             const fy = yBase + bh*(f/nF);
             edge(wx1, fy, wz1, wx2, fy, wz1, wallA * 0.30, lw*0.50, W, H);
@@ -434,7 +348,7 @@ export default function CityCanvas() {
         }
         // Floor lines — left side
         if (bh > 12) {
-          const nF = Math.max(1, Math.round(bh / 34));
+          const nF = Math.max(1, Math.round(bh / 20));
           for (let f = 1; f < nF; f++) {
             const fy = yBase + bh*(f/nF);
             edge(wx1, fy, wz1, wx1, fy, wz2, sideA * 0.28, lw*0.45, W, H);
@@ -482,7 +396,7 @@ export default function CityCanvas() {
         // Band size trades stroke calls against occlusion fidelity. These are
         // consecutive in depth, so an edge drawing over a neighbour's facade
         // within a band is a sub-pixel concern.
-        if (++bandCount % 24 === 0) { flushEdges(); flushQuads(); }
+        if (++bandCount % 24 === 0) flushEdges();
         const wz1    = wz;
         const wz2    = wz + (b.wz2 - b.wz1);
         const depthT = Math.max(0, Math.min(1, 1 - wz / (maxView * 0.78)));
@@ -491,95 +405,17 @@ export default function CityCanvas() {
 
         if (b.type === "tower" && b.tier2H !== null) {
           const t2 = b.tier2H, t3 = b.tier3H, i2 = b.ins2, i3 = b.ins3;
-          drawTier(b.wx1,    b.wx2,    wz1,          wz2,          0,  t2,      base,       false,    width, height, lw,     b.id,          depthT);
-          drawTier(b.wx1+i2+b.skew, b.wx2-i2+b.skew, wz1+i2*0.45, wz2-i2*0.45, t2, t3??b.h, base*0.92, t3===null, width, height, lw*0.9, b.id + 5000,   depthT);
+          drawTier(b.wx1,    b.wx2,    wz1,          wz2,          0,  t2,      base,       false,    width, height, lw);
+          drawTier(b.wx1+i2, b.wx2-i2, wz1+i2*0.45, wz2-i2*0.45, t2, t3??b.h, base*0.92, t3===null, width, height, lw*0.9);
           if (t3 !== null)
-            drawTier(b.wx1+i3+b.skew*1.6, b.wx2-i3+b.skew*1.6, wz1+i3*0.45, wz2-i3*0.45, t3, b.h,   base*0.82, true,      width, height, lw*0.8, b.id + 9000,   depthT);
+            drawTier(b.wx1+i3, b.wx2-i3, wz1+i3*0.45, wz2-i3*0.45, t3, b.h,   base*0.82, true,      width, height, lw*0.8);
         } else {
-          drawTier(b.wx1, b.wx2, wz1, wz2, 0, b.h, base, true, width, height, lw, b.id, depthT);
+          drawTier(b.wx1, b.wx2, wz1, wz2, 0, b.h, base, true, width, height, lw);
         }
 
         edge(b.wx1, 0, wz1, b.wx2, 0, wz1, base*0.20, 0.28, width, height);
         edge(b.wx1, 0, wz1, b.wx1, 0, wz2, base*0.16, 0.28, width, height);
         edge(b.wx2, 0, wz1, b.wx2, 0, wz2, base*0.16, 0.28, width, height);
-
-        // ── Crown ────────────────────────────────────────────────────────
-        if (!lowPower && b.crown !== "flat" && depthT > 0.22) {
-          const bw3 = b.wx2 - b.wx1;
-          const dz  = wz2 - wz1;
-          const cx3 = (b.wx1 + b.wx2) / 2 + b.skew;
-          const x1  = b.wx1 + b.skew;
-          const x2  = b.wx2 + b.skew;
-          const ca  = Math.min(0.55, base * 2.6);
-          const clw = lw * 0.85;
-
-          const box = (ax: number, bx: number, az: number, bz: number, y0: number, y1: number, a: number) => {
-            // Solid, not hollow: a crown is what gets read against the sky, and
-            // an empty outline lets the whole city behind it through
-            const sx3 = (ax + bx) / 2 > 0 ? ax : bx;
-            fillFace([[sx3,y0,az],[sx3,y0,bz],[sx3,y1,bz],[sx3,y1,az]], SIDE_FILL, width, height);
-            fillFace([[ax,y0,az],[bx,y0,az],[bx,y1,az],[ax,y1,az]], FACE_FILL, width, height);
-            fillFace([[ax,y1,az],[bx,y1,az],[bx,y1,bz],[ax,y1,bz]], FACE_FILL, width, height);
-            edge(ax, y0, az, bx, y0, az, a, clw, width, height);
-            edge(ax, y1, az, bx, y1, az, a, clw, width, height);
-            edge(ax, y0, az, ax, y1, az, a, clw, width, height);
-            edge(bx, y0, az, bx, y1, az, a, clw, width, height);
-            edge(ax, y1, az, ax, y1, bz, a * 0.6, clw * 0.8, width, height);
-            edge(bx, y1, az, bx, y1, bz, a * 0.6, clw * 0.8, width, height);
-            edge(ax, y1, bz, bx, y1, bz, a * 0.6, clw * 0.8, width, height);
-          };
-
-          if (b.crown === "hammer") {
-            // Cap wider than the shaft, on a narrow neck — the overhang is the
-            // whole point, so it has to read clearly against the sky
-            const oh = bw3 * 0.34;
-            const nk = bw3 * 0.30;
-            box(cx3 - nk, cx3 + nk, wz1 + dz * 0.2, wz2 - dz * 0.2, b.h, b.h + 13, ca * 0.8);
-            box(x1 - oh, x2 + oh, wz1 - dz * 0.12, wz2 + dz * 0.12, b.h + 13, b.h + 26, ca);
-            edge(x1 - oh, b.h + 13, wz1 - dz * 0.12, x1, b.h + 13, wz1, ca * 0.7, clw, width, height);
-            edge(x2 + oh, b.h + 13, wz1 - dz * 0.12, x2, b.h + 13, wz1, ca * 0.7, clw, width, height);
-          } else if (b.crown === "ring") {
-            // Twin uprights bridged at the top: the gap between them is the
-            // aperture that makes the silhouette read as engineered
-            const inset = bw3 * 0.16;
-            const postW = bw3 * 0.20;
-            const top = b.h + 34;
-            box(x1 + inset, x1 + inset + postW, wz1, wz2, b.h, top, ca);
-            box(x2 - inset - postW, x2 - inset, wz1, wz2, b.h, top, ca);
-            edge(x1 + inset, top, wz1, x2 - inset, top, wz1, ca, clw, width, height);
-            edge(x1 + inset, top - 7, wz1, x2 - inset, top - 7, wz1, ca * 0.55, clw * 0.8, width, height);
-          } else if (b.crown === "spires") {
-            const n = 3;
-            for (let k = 0; k < n; k++) {
-              const sx = x1 + bw3 * (0.24 + k * 0.26);
-              const sh = 20 + ((b.id * 37 + k * 13) % 26);
-              edge(sx, b.h, wz1 + dz * 0.5, sx, b.h + sh, wz1 + dz * 0.5, ca * 0.9, clw * 0.8, width, height);
-              edge(sx - 2.5, b.h + sh * 0.55, wz1 + dz * 0.5, sx + 2.5, b.h + sh * 0.55, wz1 + dz * 0.5, ca * 0.5, clw * 0.6, width, height);
-            }
-          } else if (b.crown === "pagoda") {
-            // Stacked slabs, each overhanging the one below
-            let y = b.h;
-            for (let k = 0; k < 3; k++) {
-              const grow = bw3 * (0.10 + k * 0.09);
-              box(x1 - grow, x2 + grow, wz1 - dz * 0.08, wz2 + dz * 0.08, y, y + 7, ca * (1 - k * 0.18));
-              y += 11;
-            }
-          }
-        }
-
-        // ── Sign blade ───────────────────────────────────────────────────
-        // Panel cantilevered off the facade, the signature of the reference
-        if (!lowPower && b.blade && depthT > 0.36) {
-          const bl = b.blade;
-          const sx = b.wx2;
-          const zf = wz1 - bl.out;
-          const a  = Math.min(0.42, base * 2.0);
-          quad([[sx, bl.y, wz1], [sx, bl.y, zf], [sx, bl.y + bl.h, zf], [sx, bl.y + bl.h, wz1]],
-            Math.min(0.20, base * 1.0), width, height);
-          edge(sx, bl.y, wz1, sx, bl.y, zf, a, lw * 0.8, width, height);
-          edge(sx, bl.y + bl.h, wz1, sx, bl.y + bl.h, zf, a, lw * 0.8, width, height);
-          edge(sx, bl.y, zf, sx, bl.y + bl.h, zf, a, lw * 0.8, width, height);
-        }
 
         if (b.hasTower) {
           const cx  = (b.wx1 + b.wx2) / 2;
@@ -622,22 +458,6 @@ export default function CityCanvas() {
             edge(rx2, b.h + r.h, rz1, rx2, b.h + r.h, rz2, a*0.6, lw*0.5, width, height);
           }
 
-          // Facade billboard — brighter than the wall it sits on
-          if (b.bill) {
-            const bx1 = b.wx1 + bw2 * 0.30;
-            const bx2 = b.wx2 - bw2 * 0.30;
-            const by1 = b.h * b.bill.y0;
-            const by2 = b.h * b.bill.y1;
-            const pulse = 0.55 + 0.45 * Math.sin(frameT / 900 + b.phase * 6.28);
-            quad([[bx1,by1,wz1],[bx2,by1,wz1],[bx2,by2,wz1],[bx1,by2,wz1]],
-              Math.min(0.22, base * 1.1 * pulse), width, height);
-            const ba = Math.min(0.34, base * 1.7);
-            edge(bx1, by1, wz1, bx2, by1, wz1, ba, lw*0.8, width, height);
-            edge(bx1, by2, wz1, bx2, by2, wz1, ba, lw*0.8, width, height);
-            edge(bx1, by1, wz1, bx1, by2, wz1, ba, lw*0.8, width, height);
-            edge(bx2, by1, wz1, bx2, by2, wz1, ba, lw*0.8, width, height);
-          }
-
           // Skyway to the neighbour recorded at generation time
           if (b.sky) {
             const y = b.sky.y;
@@ -662,7 +482,6 @@ export default function CityCanvas() {
       }
 
       flushEdges();
-      flushQuads();
 
       // Street grid
       for (let row = 0; row < activeRows; row++) {
