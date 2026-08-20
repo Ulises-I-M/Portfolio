@@ -23,8 +23,19 @@ const SCROLL_SPEED = 0.20;
 const CRAFT_N       = 12;
 
 // ─── Hologram face colors ─────────────────────────────────────────────────────
-const FACE_FILL = "rgba(4,12,4,0.96)";
-const SIDE_FILL = "rgba(4,12,4,0.94)";
+// Volumes are lit glass, not dark mass: a mid green laid over black at an alpha
+// that falls with depth. Near buildings read as solid and glowing, far ones let
+// the city behind them through, and every overlap sums to something brighter —
+// which is what makes the stack read as a hologram rather than as noise.
+const FILL_RGB = "58,132,28";
+
+/** Face alpha by depth. Near ~0.18, far ~0.025. */
+const faceAlpha = (depthT: number) => 0.025 + depthT * 0.15;
+// Roof catches the most light, the receding side the least
+const ROOF_MUL = 1.18;
+const FACE_MUL = 1.0;
+const SIDE_MUL = 0.55;
+const fillOf = (a: number) => `rgba(${FILL_RGB},${Math.min(0.34, a).toFixed(3)})`;
 
 // ─── RNG ──────────────────────────────────────────────────────────────────────
 function mkRng(seed: number) {
@@ -303,7 +314,8 @@ export default function CityCanvas() {
       wx1: number, wx2: number, wz1: number, wz2: number,
       yBase: number, yTop: number,
       base: number, isTopTier: boolean,
-      W: number, H: number, lw: number
+      W: number, H: number, lw: number,
+      depthT = 0
     ) => {
       const roofA = isTopTier ? Math.min(base * 2.4, 0.30) : base * 1.0;
       const wallA = base;
@@ -311,10 +323,11 @@ export default function CityCanvas() {
       const bh = yTop - yBase;
       const bw = wx2 - wx1;
 
+      const fa = faceAlpha(depthT);
       const sideX = (wx1 + wx2) / 2 > 0 ? wx1 : wx2;
-      fillFace([[sideX,yBase,wz1],[sideX,yBase,wz2],[sideX,yTop,wz2],[sideX,yTop,wz1]], SIDE_FILL, W, H);
-      fillFace([[wx1,yBase,wz1],[wx2,yBase,wz1],[wx2,yTop,wz1],[wx1,yTop,wz1]], FACE_FILL, W, H);
-      fillFace([[wx1,yTop,wz1],[wx2,yTop,wz1],[wx2,yTop,wz2],[wx1,yTop,wz2]], FACE_FILL, W, H);
+      fillFace([[sideX,yBase,wz1],[sideX,yBase,wz2],[sideX,yTop,wz2],[sideX,yTop,wz1]], fillOf(fa * SIDE_MUL), W, H);
+      fillFace([[wx1,yBase,wz1],[wx2,yBase,wz1],[wx2,yTop,wz1],[wx1,yTop,wz1]], fillOf(fa * FACE_MUL), W, H);
+      fillFace([[wx1,yTop,wz1],[wx2,yTop,wz1],[wx2,yTop,wz2],[wx1,yTop,wz2]], fillOf(fa * ROOF_MUL), W, H);
 
       edge(wx1,yBase,wz1, wx1,yTop,wz1,  wallA,       lw,      W, H);
       edge(wx2,yBase,wz1, wx2,yTop,wz1,  wallA,       lw,      W, H);
@@ -400,17 +413,17 @@ export default function CityCanvas() {
         const wz1    = wz;
         const wz2    = wz + (b.wz2 - b.wz1);
         const depthT = Math.max(0, Math.min(1, 1 - wz / (maxView * 0.78)));
-        const base   = 0.022 + Math.pow(depthT, 2.0) * 0.185;
+        const base   = 0.06 + Math.pow(depthT, 1.35) * 0.44;
         const lw     = 0.42  + depthT * 0.55;
 
         if (b.type === "tower" && b.tier2H !== null) {
           const t2 = b.tier2H, t3 = b.tier3H, i2 = b.ins2, i3 = b.ins3;
-          drawTier(b.wx1,    b.wx2,    wz1,          wz2,          0,  t2,      base,       false,    width, height, lw);
-          drawTier(b.wx1+i2, b.wx2-i2, wz1+i2*0.45, wz2-i2*0.45, t2, t3??b.h, base*0.92, t3===null, width, height, lw*0.9);
+          drawTier(b.wx1,    b.wx2,    wz1,          wz2,          0,  t2,      base,       false,    width, height, lw, depthT);
+          drawTier(b.wx1+i2, b.wx2-i2, wz1+i2*0.45, wz2-i2*0.45, t2, t3??b.h, base*0.92, t3===null, width, height, lw*0.9, depthT);
           if (t3 !== null)
-            drawTier(b.wx1+i3, b.wx2-i3, wz1+i3*0.45, wz2-i3*0.45, t3, b.h,   base*0.82, true,      width, height, lw*0.8);
+            drawTier(b.wx1+i3, b.wx2-i3, wz1+i3*0.45, wz2-i3*0.45, t3, b.h,   base*0.82, true,      width, height, lw*0.8, depthT);
         } else {
-          drawTier(b.wx1, b.wx2, wz1, wz2, 0, b.h, base, true, width, height, lw);
+          drawTier(b.wx1, b.wx2, wz1, wz2, 0, b.h, base, true, width, height, lw, depthT);
         }
 
         edge(b.wx1, 0, wz1, b.wx2, 0, wz1, base*0.20, 0.28, width, height);
@@ -447,9 +460,10 @@ export default function CityCanvas() {
             const rz2 = rz1 + bd2 * r.d;
             const a = base * 0.7;
             const rsx = (rx1 + rx2) / 2 > 0 ? rx1 : rx2;
-            fillFace([[rsx,b.h,rz1],[rsx,b.h,rz2],[rsx,b.h+r.h,rz2],[rsx,b.h+r.h,rz1]], SIDE_FILL, width, height);
-            fillFace([[rx1,b.h,rz1],[rx2,b.h,rz1],[rx2,b.h+r.h,rz1],[rx1,b.h+r.h,rz1]], FACE_FILL, width, height);
-            fillFace([[rx1,b.h+r.h,rz1],[rx2,b.h+r.h,rz1],[rx2,b.h+r.h,rz2],[rx1,b.h+r.h,rz2]], FACE_FILL, width, height);
+            const rfa = faceAlpha(depthT);
+            fillFace([[rsx,b.h,rz1],[rsx,b.h,rz2],[rsx,b.h+r.h,rz2],[rsx,b.h+r.h,rz1]], fillOf(rfa * SIDE_MUL), width, height);
+            fillFace([[rx1,b.h,rz1],[rx2,b.h,rz1],[rx2,b.h+r.h,rz1],[rx1,b.h+r.h,rz1]], fillOf(rfa * FACE_MUL), width, height);
+            fillFace([[rx1,b.h+r.h,rz1],[rx2,b.h+r.h,rz1],[rx2,b.h+r.h,rz2],[rx1,b.h+r.h,rz2]], fillOf(rfa * ROOF_MUL), width, height);
             edge(rx1, b.h, rz1, rx2, b.h, rz1, a, lw*0.6, width, height);
             edge(rx1, b.h + r.h, rz1, rx2, b.h + r.h, rz1, a, lw*0.6, width, height);
             edge(rx1, b.h, rz1, rx1, b.h + r.h, rz1, a, lw*0.6, width, height);
