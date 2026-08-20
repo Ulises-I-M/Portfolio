@@ -17,7 +17,10 @@ const COLS         = 22;
 const LP_ROWS      = 16;   // low-power: ~50% fewer rows
 const LP_COLS      = 12;   // low-power: ~45% fewer cols
 const STREET_N     = 5;
-const SCROLL_SPEED = 0.20;
+/** World units per millisecond. Time-based, not per-frame: the low-power
+ *  path caps at 30fps and a 120Hz display runs at double, and a per-frame step
+ *  would scroll the city at half and twice the intended speed respectively. */
+const SCROLL_SPEED = 0.20 / (1000 / 60);
 
 // ─── Detail tuning ────────────────────────────────────────────────────────────
 const CRAFT_N       = 12;
@@ -180,14 +183,72 @@ const WIRE_BOX_PAD = 5;
 
 // ── Ground ───────────────────────────────────────────────────────────────────
 const GRID_A_FAR  = 0.010;
-const GRID_A_NEAR = 0.032;
+const GRID_A_NEAR = 0.048;
 const GRID_LW     = 0.28;
 const LAMP_A_FAR  = 0.06;
 const LAMP_A_NEAR = 0.13;
 const LAMP_LW     = 0.50;
-/** Wet-asphalt sheen along the ground plane. */
-const GLOW_RGB    = "168,255,0";
-const GLOW_A      = 0.022;
+
+// ── Emitter ──────────────────────────────────────────────────────────────────
+// The surface the city is standing on, lit from within rather than washed by a
+// sky. A flat gradient across the whole lower frame said "wet asphalt"; an
+// ellipse pooled under the vanishing point says the light has a source and the
+// city is sitting in it. Same squashed-ellipse construction as the horizon
+// haze, and one gradient either way, so it costs nothing to prefer this one.
+const EMIT_RGB    = "126,255,84";
+const EMIT_A      = 0.095;
+const EMIT_R      = 0.44;   // fraction of width
+const EMIT_SQUASH = 0.40;
+const EMIT_DROP   = 0.24;   // centre, as a fraction of height below the horizon
+
+// ── Surface grid ─────────────────────────────────────────────────────────────
+// A straight line in the world projects to a straight line on screen, so a
+// ground rung is one segment however far it runs — the old code drew one per
+// cell and paid twenty-one projections for a line that needed two.
+// The longitudinal half did not exist at all, and without it the ground reads
+// as a ladder rather than a surface. It is split in depth only so that alpha
+// can follow the ramp, since one segment can carry only one alpha.
+const GRID_Z_MUL   = 0.72;   // longitudinal lines against the lateral ones
+const GRID_Z_STEPS = 6;
+/** Every STREET_N-th line is a sector boundary and reads brighter. */
+const SECTOR_MUL   = 3.2;
+
+// ── Volume limits ────────────────────────────────────────────────────────────
+// The projection has to end somewhere. Rather than letting the city run off the
+// sides of the canvas — which reads as a window onto a world — it fades toward
+// its own lateral edges and is bounded by a rail running the length of each
+// side. The rails converge on the vanishing point, which is what makes the
+// ground read as a surface with a far edge rather than as an open plain.
+/** Where the lateral fade starts, as a fraction of the half-width, and what is
+ *  left of a building at the very edge. */
+const EDGE_HOLD = 0.58;
+const EDGE_MIN  = 0.12;
+
+// A rail is a border, not structure, so it sits in the 0.3-0.5 band the rest of
+// the HUD reserves for borders rather than down with the grid. It also keeps a
+// floor under its depth ramp: a boundary that dissolves is not a boundary.
+const RAIL_OUT   = 0.5;    // how far outside the last column the rail sits, in cells
+const RAIL_A     = 0.30;
+const RAIL_A_MIN = 0.34;   // fraction of RAIL_A that survives at the far end
+const RAIL_LW    = 0.55;
+/** Posts along each rail, every STREET_N cells — the edge ticks of the HUD
+ *  frames, stood up in the world. They are what actually reads at a glance;
+ *  a bare line converging on the vanishing point does not. */
+const POST_H     = 15;
+const POST_A     = 1.5;    // multiple of the rail's alpha at that depth
+/** Corner brackets echo the two-step stair of hudFrameGeometry's FRAME (C=20,
+ *  S=8) rather than a plain L — the stair is the shape the rest of the HUD
+ *  uses, and at this size it is the only part of it that survives. */
+const BRACKET_ARM  = 1.15;   // in cells
+const BRACKET_STEP = 0.42;   // in cells
+const BRACKET_RISE = 46;     // world units the corner post climbs
+
+/** A few sector cells lit at a time, cycling slowly. Never all of them: the
+ *  whole look depends on selective accents over dark mass. */
+const CELL_N       = 4;
+const CELL_RGB     = "126,255,84";
+const CELL_A       = 0.05;
+const CELL_PERIOD  = 5200;   // ms a cell takes to rise and fall
 
 // ── Air traffic ──────────────────────────────────────────────────────────────
 const CRAFT_TAIL_RGB = "168,255,0";   // fades to nothing behind the craft
@@ -220,6 +281,50 @@ const SCAN_A      = 0.085;
 const SCAN_WAKE   = 26;      // px of falloff above the line
 const SCAN_STRIPS = 7;       // strips the wake is built from, see below
 
+// ── Tracking reticle ─────────────────────────────────────────────────────────
+// One building at a time is framed, held, and then handed over to another. It
+// is the single thing in the scene that says somebody is reading it rather than
+// just looking at it, and it costs eight projections and a dozen segments.
+// The bracket is the HUDCardFrame corner — arm, elbow dot — and the centre mark
+// is the Crosshair's gapped cross, so the instrument belongs to the same kit as
+// the rest of the HUD instead of being a new invention.
+const TRK_ARM     = 14;      // px along each side of a corner
+const TRK_GAP     = 6;       // px gap at the centre of the cross, as Crosshair
+const TRK_CROSS   = 7;       // px arm of the centre cross
+const TRK_PAD     = 7;       // px the frame stands off the silhouette
+const TRK_A       = 0.72;
+const TRK_LW      = 1.1;
+const TRK_HOLD    = 4600;    // ms on one target
+const TRK_TRAVEL  = 520;     // ms crossing to the next
+/** Only lock onto something with enough presence to be worth framing. */
+const TRK_MIN_PX  = 34;
+const TRK_DEPTH_LO = 0.30;
+const TRK_DEPTH_HI = 0.86;
+
+// ── Re-render sweep ──────────────────────────────────────────────────────────
+// A band that climbs the city in world height, brightening edges as it passes,
+// as though that slice were being recomputed. A plane of constant world y does
+// NOT project to a horizontal line on screen — screen y depends on wz as well —
+// so this is a modulation of alpha by height, never a drawn line. That is what
+// separates it from the depth sweep, which is a plane of constant z and does
+// project to one line.
+const SWEEP_PERIOD = 15000;  // ms between passes
+const SWEEP_RISE   = 2600;   // ms to climb
+const SWEEP_TOP    = 210;    // world units it climbs to
+const SWEEP_BAND   = 26;     // world units of falloff either side
+const SWEEP_A      = 1.5;    // peak multiplier on edge brightness
+
+// ── Instability ──────────────────────────────────────────────────────────────
+// Long waits, short bursts — the scheduling shape GlitchScanlines uses, in ms
+// rather than frames now that the clock drives everything else too.
+const GLITCH_GAP_MIN = 4200;
+const GLITCH_GAP_VAR = 7000;
+const GLITCH_MS      = 70;   // how long one burst lasts
+const GLITCH_SHIFT   = 3;    // px of lateral judder
+const GLITCH_TEAR    = 11;   // px a torn strip slides
+const GLITCH_TEAR_H  = 30;   // px, the tallest a torn strip gets
+const GLITCH_DROP    = 0.34; // what survives in a dropped depth band
+
 // ── Horizon haze ─────────────────────────────────────────────────────────────
 // Two layers. The dark one drains the far city of contrast; the green one is
 // light put back, an ellipse of it around the vanishing point, so the distance
@@ -233,15 +338,14 @@ const HOLO_CORE_A = 0.13;    // at the vanishing point itself
 const HOLO_BAND_A = 0.020;   // along the rest of the horizon line
 const HOLO_SQUASH = 0.38;    // how flat the ellipse of light is
 
-// ── Bloom ────────────────────────────────────────────────────────────────────
-// The blurred read-back the depth-of-field pass already needs, added back over
-// the frame instead of composited into it. On a transparent canvas only what is
-// actually lit contributes, so it glows the edges, marks and motes and leaves
-// the near-black bodies alone. Weighted toward the horizon, where the city has
-// least substance and most need of it.
-const BLOOM_A_FAR  = 0.11;
-const BLOOM_A_NEAR = 0.03;
-const BLOOM_STRIPS = 2;    // a shallow ramp; the depth pass's ten would be waste
+// ── On the absence of a bloom pass ───────────────────────────────────────────
+// There is deliberately none. An additive pass over the frame was tried twice
+// and rejected twice: once for costing more than the depth-of-field that
+// replaced it, and once again here, where it also had to stop at the near band
+// and left a visible step in the alpha where it did. The light it was adding is
+// supplied instead by things that are already being drawn — the emitter pool
+// under the city, the rim on the near silhouettes, and the ellipse of haze on
+// the vanishing point — none of which cost a full-width composite.
 
 // ── Derived ──────────────────────────────────────────────────────────────────
 const TAU = Math.PI * 2;
@@ -291,10 +395,8 @@ const A_STEPS = 200;
 const W_STEPS = 20;
 const R_STEPS = 4;
 
-/** Steps a vertical edge is split into so it can follow the ramp. The rim
- *  halo is a wide, faint smear and does not need the same resolution. */
+/** Steps a vertical edge is split into so it can follow the ramp. */
 const V_FADE_STEPS = 5;
-const V_RIM_STEPS  = 3;
 
 /** Below this a face is indistinguishable from the backdrop, so it is skipped
  *  rather than filled. Dissolving walls put a great many near-nothing bands on
@@ -307,6 +409,12 @@ const DOF_STRIPS    = 10;    // per band; enough that the ramp reads continuous
 const DOF_SHARP_TOP = 0.40;  // fraction of height where the sharp strip begins
 const DOF_SHARP_BOT = 0.74;  // and where it ends
 const DOF_A_TOP     = 0.90;  // held below 1 so the far city survives the blur
+
+/** Where the city stops, as a fraction of its own depth. The depth ramp and the
+ *  visibility filter both read it and they have to agree: the ramp normalises
+ *  against this plane, so if the filter kept buildings past it their depth would
+ *  clamp at 0 and they would render as horizon while still being visibly large. */
+const CULL_Z = 0.72;
 
 // ─── RNG ──────────────────────────────────────────────────────────────────────
 function mkRng(seed: number) {
@@ -362,12 +470,17 @@ interface Depth {
   hold: number;     // height fraction above which the body is opaque
   min: number;      // what is left of the body at street level
   rim: number;      // 0 until the near band, then up to 1
+  lat: number;      // lateral fade toward the edges of the projection
   volume: boolean;  // false once the receding face and roof are gone
   foot: boolean;    // footprint on the ground
   back: boolean;    // anything on the far side of the building
   detail: boolean;  // columns and floor lines
   face: string; side: string; roof: string;
   seed: number;
+  /** The tier being drawn, folded into the seed. Without it every tier of a
+   *  tower hashes identically and drops the same bands at the same relative
+   *  heights, which reads as a repeating pattern climbing the building. */
+  tseed: number;
   pulse: number;    // slow multiplier on edge brightness
 }
 
@@ -382,7 +495,7 @@ const project = (wx: number, wy: number, wz: number, W: number, H: number) => {
 // ─── City generator ───────────────────────────────────────────────────────────
 function buildCity(rng: () => number, rows: number, cols: number): Building[] {
   const out: Building[] = [];
-  const halfW     = ((cols - 1) * CELL) / 2;
+  const halfSpan     = ((cols - 1) * CELL) / 2;
   const centreCol = cols / 2;
 
   for (let row = 0; row < rows; row++) {
@@ -489,8 +602,8 @@ function buildCity(rng: () => number, rows: number, cols: number): Building[] {
       }
 
       const b: Building = {
-        wx1: col * CELL + padX1 - halfW,
-        wx2: (col + 1) * CELL - padX2 - halfW,
+        wx1: col * CELL + padX1 - halfSpan,
+        wx2: (col + 1) * CELL - padX2 - halfSpan,
         wz1: row * CELL + padZ1,
         wz2: (row + 1) * CELL - padZ2,
         h, district, type,
@@ -542,13 +655,21 @@ export default function CityCanvas() {
     const smallCtx = small.getContext("2d");
     const blurBuf  = document.createElement("canvas");
     const blurCtx  = blurBuf.getContext("2d");
-    if (!smallCtx || !blurCtx) return;
+    // A strip has to be lifted out before it can be put back somewhere else:
+    // drawing the canvas onto itself only ever adds a second copy, and on a
+    // transparent canvas a second copy of near-transparent pixels is nothing.
+    const tearBuf  = document.createElement("canvas");
+    const tearCtx  = tearBuf.getContext("2d");
+    if (!smallCtx || !blurCtx || !tearCtx) return;
 
     // ── Grid dimensions based on device capability ──────────────────────────
     const activeRows = lowPower ? LP_ROWS : ROWS;
     const activeCols = lowPower ? LP_COLS : COLS;
     const maxView    = activeRows * CELL;
     const citySpan   = activeCols * CELL;
+    const halfSpan   = ((activeCols - 1) * CELL) / 2;
+    const nSecX      = Math.max(1, Math.floor(activeCols / STREET_N));
+    const nSecZ      = Math.max(1, Math.floor(activeRows / STREET_N));
 
     // ── Depth as the eye reads it ───────────────────────────────────────────
     // Ramping on world distance spends four fifths of the ramp on the near
@@ -560,7 +681,7 @@ export default function CityCanvas() {
     // The root softens the result, which is otherwise so steep that a building
     // two blocks back would already be half gone.
     const S_NEAR = FOV / CAM_Z;
-    const S_FAR  = FOV / (maxView * 0.72 + CAM_Z);
+    const S_FAR  = FOV / (maxView * CULL_Z + CAM_Z);
     const S_SPAN = S_NEAR - S_FAR;
     const depthAt = (wz: number) =>
       Math.pow(clamp01((FOV / (wz + CAM_Z) - S_FAR) / S_SPAN), 0.55);
@@ -570,8 +691,37 @@ export default function CityCanvas() {
     let rafId: number;
     let offset  = 0;
     let lastT   = 0;
+    let prevT   = 0;   // previous frame's timestamp, for the scroll step
     let frameT  = 0;   // ms, shared by the beacons, the traffic and every pulse
     let city: Building[] = [];
+    // Scratch for the per-frame visible set, sized once in rebuild()
+    let visB: Building[] = [];
+    let visZ = new Float64Array(0);
+    let visN = 0;
+    const trkFromScratch = new Float64Array(4);
+    let scrollModRef = 0;
+
+    // Reticle: the building being framed, when the lock expires, and the box it
+    // is travelling from so a hand-over reads as a move rather than a jump.
+    let trkB: Building | null = null;
+    let trkUntil = 0;
+    let trkT0 = -1e9;
+    const trkFrom = new Float64Array(4);
+    const trkShown = new Float64Array(4);
+
+    // Instability: one burst at a time, with a long wait behind it
+    let glitchAt = 3000;
+    let glitchEnd = 0;
+    let glitchKind = 0;
+    let glitchShift = 0;
+    let glitchTearY = 0;
+    let glitchTearH = 0;
+    let glitchTearX = 0;
+    let glitchDropLo = 0;
+    let glitchDropHi = 0;
+
+    // Sweep: -1 when idle, otherwise the world height the band is passing
+    let sweepY = -1;
     let craft: { x: number; z: number; y: number; vx: number; len: number }[] = [];
     let motes: { x: number; y: number; z: number; vy: number; ph: number }[] = [];
 
@@ -582,7 +732,12 @@ export default function CityCanvas() {
       small.height   = Math.max(1, Math.round(canvas.height / BLUR_DIV));
       blurBuf.width  = small.width;
       blurBuf.height = small.height;
+      tearBuf.width  = canvas.width;
+      tearBuf.height = GLITCH_TEAR_H;
       city = buildCity(mkRng(canvas.width * 7 + canvas.height * 13), activeRows, activeCols);
+      visB = new Array(city.length);
+      visZ = new Float64Array(city.length);
+      visN = 0;
 
       // Air traffic — a small fixed pool on fixed lanes, wrapping at the edges
       const cr = mkRng(canvas.width * 31 + 17);
@@ -668,6 +823,22 @@ export default function CityCanvas() {
       arr.push(p1.x, p1.y, p2.x, p2.y);
     };
 
+    /** Same batching as edge(), for marks that live on the glass rather than in
+     *  the world — the reticle is an instrument reading the projection, not a
+     *  thing standing inside it. */
+    const sEdge = (
+      x1: number, y1: number, x2: number, y2: number,
+      alpha: number, lw: number, ci = 0
+    ) => {
+      if (alpha < 0.006) return;
+      const qa = Math.min(255, Math.round(alpha * A_STEPS));
+      const ql = Math.min(255, Math.round(lw * W_STEPS));
+      const key = (ci << 16) | (qa << 8) | ql;
+      let arr = segs.get(key);
+      if (!arr) { arr = []; segs.set(key, arr); }
+      arr.push(x1, y1, x2, y2);
+    };
+
     const dot = (x: number, y: number, r: number, alpha: number, ci = 0) => {
       if (alpha < 0.01) return;
       const qa = Math.min(255, Math.round(alpha * A_STEPS));
@@ -710,8 +881,28 @@ export default function CityCanvas() {
     // at ~500 visible a frame the garbage would outweigh the work.
     const dep: Depth = {
       t: 0, tb: 0, solid: 1, frag: 0, hold: FADE_HOLD_NEAR, min: FADE_MIN_NEAR,
-      rim: 0, volume: true, foot: true, back: true, detail: false,
-      face: FACE_RGB, side: SIDE_RGB, roof: ROOF_RGB, seed: 0, pulse: 1,
+      rim: 0, lat: 1, volume: true, foot: true, back: true, detail: false,
+      face: FACE_RGB, side: SIDE_RGB, roof: ROOF_RGB, seed: 0, tseed: 0, pulse: 1,
+    };
+
+    /** 1 across the middle of the city, easing to EDGE_MIN at its lateral edge. */
+    const lateral = (cx: number) => {
+      const u = Math.abs(cx) / halfSpan;
+      if (u <= EDGE_HOLD) return 1;
+      const k = (u - EDGE_HOLD) / (1 - EDGE_HOLD);
+      const e = k * k * (3 - 2 * k);          // smoothstep
+      return 1 - e * (1 - EDGE_MIN);
+    };
+
+    /** Edge brightness multiplier for a given world height while the re-render
+     *  band is passing through it. Returns 1 — and costs one compare — for the
+     *  four fifths of the cycle when nothing is sweeping. */
+    const sweepAt = (wy: number) => {
+      if (sweepY < 0) return 1;
+      const d = Math.abs(wy - sweepY);
+      if (d >= SWEEP_BAND) return 1;
+      const k = 1 - d / SWEEP_BAND;
+      return 1 + SWEEP_A * k * k;
     };
 
     const setDepth = (wz: number, b: Building) => {
@@ -724,11 +915,14 @@ export default function CityCanvas() {
       dep.t      = t;
       dep.tb     = tb;
       dep.seed   = b.seed;
+      dep.tseed  = b.seed;
       dep.solid  = SOLID_FAR + Math.pow(tb, SOLID_CURVE) * (SOLID_NEAR - SOLID_FAR);
       dep.frag   = tb >= FRAG_START ? 0 : FRAG_MAX * Math.pow((FRAG_START - tb) / FRAG_START, 0.70);
       dep.hold   = mix(FADE_HOLD_FAR, FADE_HOLD_NEAR, tb);
       dep.min    = mix(FADE_MIN_FAR,  FADE_MIN_NEAR,  tb);
       dep.rim    = clamp01((tb - RIM_START) / (1 - RIM_START));
+      dep.lat    = lateral((b.wx1 + b.wx2) / 2);
+      dep.solid *= dep.lat;
       // Losing the receding face is what takes the last of the volume away, so
       // only the least intact of the far buildings ever do
       dep.volume = tb > VOL_MIN || b.integrity > 0.45;
@@ -779,12 +973,12 @@ export default function CityCanvas() {
         const y0 = yBase + span * (i / FRAG_BANDS);
         const y1 = yBase + span * ((i + 1) / FRAG_BANDS);
         const ym = (y0 + y1) / 2;
-        const hv = hash3(dep.seed, salt, i);
+        const hv = hash3(dep.tseed, salt, i);
         const k  = (hv - dep.frag) / FRAG_SOFT;
 
         if (k <= 0) {
           // Nothing rendered here. What is left is the readout of a wall.
-          const h2 = hash3(dep.seed, salt + 40, i);
+          const h2 = hash3(dep.tseed, salt + 40, i);
           if (h2 > 0.28) {
             const pa = project(ax + (bx - ax) * 0.18, ym, az + (bz - az) * 0.18, W, H);
             const pb = project(ax + (bx - ax) * 0.78, ym, az + (bz - az) * 0.78, W, H);
@@ -812,9 +1006,9 @@ export default function CityCanvas() {
       yBase: number, yTop: number,
       base: number, isTopTier: boolean,
       W: number, H: number, lw: number,
-      bTotal = 0
+      total: number, tier: number
     ) => {
-      const total = bTotal || yTop;
+      dep.tseed = dep.seed + tier * 7919;
       const rf = ROOF_DEPTH_FLOOR + (1 - ROOF_DEPTH_FLOOR) * dep.tb;
       const roofA = isTopTier
         ? Math.min(base * EDGE_MUL.roofTop * rf, ROOF_CAP * rf)
@@ -857,9 +1051,9 @@ export default function CityCanvas() {
           const a0 = yBase + (yTop - yBase) * (i / steps);
           const a1 = yBase + (yTop - yBase) * ((i + 1) / steps);
           const am = (a0 + a1) / 2;
-          const fade = heightFade(am, total, dep.hold, dep.min);
+          const fade = heightFade(am, total, dep.hold, dep.min) * sweepAt(am);
           if (frag > 0.03) {
-            const hv = hash3(dep.seed, salt + 60, i);
+            const hv = hash3(dep.tseed, salt + 60, i);
             if (hv < frag) {
               if (hv > frag * 0.5) {
                 const pm = project(x, am, z, W, H);
@@ -878,8 +1072,10 @@ export default function CityCanvas() {
       if (dep.rim > 0.02) {
         const ra = wallA * RIM_A * dep.rim;
         const rw = lw * RIM_W;
-        vEdge(wx1, wz1, ra, rw, 1, V_RIM_STEPS);
-        vEdge(wx2, wz1, ra, rw, 2, V_RIM_STEPS);
+        // Same salt and the same step count as the sharp uprights below, so a
+        // halo can never survive where the line it belongs to was dropped.
+        vEdge(wx1, wz1, ra, rw, 1);
+        vEdge(wx2, wz1, ra, rw, 2);
         edge(wx1, yTop, wz1, wx2, yTop, wz1,
           roofA * RIM_A * 1.6 * dep.rim * heightFade(yTop, total, dep.hold, dep.min), rw, W, H);
       }
@@ -893,10 +1089,11 @@ export default function CityCanvas() {
         alpha: number, lwv: number, salt: number
       ) => {
         const frag = dep.frag * 0.85;
+        alpha *= sweepAt(y);
         if (frag < 0.03) { edge(x1, y, z1, x2, y, z2, alpha, lwv, W, H); return; }
         const N = fine ? 4 : 2;
         for (let i = 0; i < N; i++) {
-          const hv = hash3(dep.seed, salt + 90, i);
+          const hv = hash3(dep.tseed, salt + 90, i);
           const u0 = i / N, u1 = (i + 1) / N;
           if (hv < frag) {
             if (hv > frag * 0.55) {
@@ -1039,47 +1236,299 @@ export default function CityCanvas() {
       }
     };
 
+    // ── Tracking reticle ─────────────────────────────────────────────────────
+    /** Screen-space bounds of a building's whole silhouette. Eight corners is
+     *  all a box has, and only one building is ever measured per frame. Writes
+     *  into `out` and returns false if any corner is behind the camera. */
+    const silhouette = (b: Building, wz: number, W: number, H: number, out: Float64Array) => {
+      const z2 = wz + (b.wz2 - b.wz1);
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (let i = 0; i < 8; i++) {
+        const p = project(
+          i & 1 ? b.wx2 : b.wx1,
+          i & 2 ? b.h : 0,
+          i & 4 ? z2 : wz, W, H,
+        );
+        if (!p) return false;
+        if (p.x < x0) x0 = p.x;
+        if (p.y < y0) y0 = p.y;
+        if (p.x > x1) x1 = p.x;
+        if (p.y > y1) y1 = p.y;
+      }
+      out[0] = x0; out[1] = y0; out[2] = x1; out[3] = y1;
+      return true;
+    };
+
+    /** The corner of a HUD frame: two arms meeting at an elbow, with a dot on
+     *  the elbow. `sx`/`sy` are ±1 for which way the arms run. */
+    const bracket = (x: number, y: number, sx: number, sy: number, a: number) => {
+      sEdge(x, y, x + sx * TRK_ARM, y, a, TRK_LW, 1);
+      sEdge(x, y, x, y + sy * TRK_ARM, a, TRK_LW, 1);
+      dot(x, y, 1, a, 1);
+    };
+
+    const drawReticle = (W: number, H: number) => {
+      // Retarget when the lock expires or the current one has drifted out of
+      // usefulness — the city is always moving toward the camera, so every
+      // target eventually becomes too close or too large to frame.
+      let ok = false;
+      if (trkB) {
+        let wz = trkB.wz1 - scrollModRef;
+        if (wz < -CELL * 2) wz += maxView;
+        const d = depthAt(wz);
+        ok = d >= TRK_DEPTH_LO && d <= TRK_DEPTH_HI
+          && silhouette(trkB, wz, W, H, trkShown)
+          && trkShown[2] - trkShown[0] > 4;
+      }
+
+      if (!ok || frameT > trkUntil) {
+        // Sample a handful of the visible set rather than ranking all of it
+        let best: Building | null = null;
+        let bestScore = -1;
+        for (let n = 0; n < 14 && visN > 0; n++) {
+          const cand = visB[(Math.random() * visN) | 0];
+          let wz = cand.wz1 - scrollModRef;
+          if (wz < -CELL * 2) wz += maxView;
+          const d = depthAt(wz);
+          if (d < TRK_DEPTH_LO || d > TRK_DEPTH_HI) continue;
+          if (!silhouette(cand, wz, W, H, trkFromScratch)) continue;
+          const h = trkFromScratch[3] - trkFromScratch[1];
+          if (h < TRK_MIN_PX) continue;
+          // Prefer the right-centre band, the one region of the Hero that no
+          // DOM element covers at any breakpoint
+          const cx = (trkFromScratch[0] + trkFromScratch[2]) / 2 / W;
+          const cy = (trkFromScratch[1] + trkFromScratch[3]) / 2 / H;
+          if (cx < 0.5 || cx > 0.97 || cy < 0.3 || cy > 0.75) continue;
+          const score = h;
+          if (score > bestScore) { bestScore = score; best = cand; }
+        }
+        if (best) {
+          if (ok) { trkFrom.set(trkShown); } else { trkFrom[0] = trkFrom[2] = W * 0.75; trkFrom[1] = trkFrom[3] = H * 0.5; }
+          trkB = best;
+          trkT0 = frameT;
+          trkUntil = frameT + TRK_HOLD;
+          let wz = best.wz1 - scrollModRef;
+          if (wz < -CELL * 2) wz += maxView;
+          if (!silhouette(best, wz, W, H, trkShown)) return;
+        } else if (!ok) {
+          return;
+        }
+      }
+
+      // Travel: ease from the box we left toward the one we are on
+      const k = clamp01((frameT - trkT0) / TRK_TRAVEL);
+      const e = k * k * (3 - 2 * k);
+      const x0 = mix(trkFrom[0], trkShown[0], e) - TRK_PAD;
+      const y0 = mix(trkFrom[1], trkShown[1], e) - TRK_PAD;
+      const x1 = mix(trkFrom[2], trkShown[2], e) + TRK_PAD;
+      const y1 = mix(trkFrom[3], trkShown[3], e) + TRK_PAD;
+
+      // Dimmer while travelling, settled once it arrives
+      const a = TRK_A * (0.35 + 0.65 * e);
+      bracket(x0, y0,  1,  1, a);
+      bracket(x1, y0, -1,  1, a);
+      bracket(x0, y1,  1, -1, a);
+      bracket(x1, y1, -1, -1, a);
+
+      // Centre mark, gapped exactly as Crosshair draws it
+      const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+      const ca = a * 0.7;
+      sEdge(cx, cy - TRK_GAP, cx, cy - TRK_GAP - TRK_CROSS, ca, TRK_LW, 1);
+      sEdge(cx, cy + TRK_GAP, cx, cy + TRK_GAP + TRK_CROSS, ca, TRK_LW, 1);
+      sEdge(cx - TRK_GAP, cy, cx - TRK_GAP - TRK_CROSS, cy, ca, TRK_LW, 1);
+      sEdge(cx + TRK_GAP, cy, cx + TRK_GAP + TRK_CROSS, cy, ca, TRK_LW, 1);
+      dot(cx, cy, 1.25, ca, 1);
+    };
+
     const draw = (t = 0) => {
       // FPS cap: skip frame if not enough time has passed
       if (fpsInterval > 0 && t - lastT < fpsInterval) {
         rafId = requestAnimationFrame(draw);
         return;
       }
+      // Clamp the step: a backgrounded tab resumes with a gap of seconds, and
+      // an unclamped catch-up would teleport the city forward.
+      const dt = prevT === 0 ? 16.7 : Math.min(64, t - prevT);
+      prevT  = t;
       lastT  = t;
       frameT = t;
+
+      // ── Sweep and instability bookkeeping ───────────────────────────────
+      const sweepPh = (frameT % SWEEP_PERIOD) / SWEEP_RISE;
+      sweepY = !lowPower && sweepPh < 1 ? sweepPh * SWEEP_TOP : -1;
+
+      if (!lowPower && frameT >= glitchAt) {
+        glitchEnd  = frameT + GLITCH_MS;
+        glitchAt   = frameT + GLITCH_GAP_MIN + Math.random() * GLITCH_GAP_VAR;
+        glitchKind = Math.floor(Math.random() * 3);
+        glitchShift = (Math.random() < 0.5 ? -1 : 1) * (1 + Math.random() * GLITCH_SHIFT);
+        glitchTearY = Math.random();
+        glitchTearH = Math.random();
+        glitchTearX = (Math.random() < 0.5 ? -1 : 1) * GLITCH_TEAR;
+        glitchDropLo = Math.random() * 0.7;
+        glitchDropHi = glitchDropLo + 0.12 + Math.random() * 0.18;
+      }
+      const glitching = frameT < glitchEnd;
+      const judder = glitching && glitchKind === 0 ? glitchShift : 0;
+      const dropping = glitching && glitchKind === 2;
 
       const { width, height } = canvas;
       ctx.clearRect(0, 0, width, height);
 
-      offset += SCROLL_SPEED;
+      offset += SCROLL_SPEED * dt;
       const scrollMod = offset % maxView;
-      const halfW     = ((activeCols - 1) * CELL) / 2;
+      scrollModRef = scrollMod;
 
-      // Wet-asphalt glow along the ground plane, under everything
+      // The emitter the city stands in, under everything
       const horizonY = height * HORIZON_Y;
-      const groundG = ctx.createLinearGradient(0, horizonY, 0, height);
-      groundG.addColorStop(0,    fillOf(GLOW_RGB, 0));
-      groundG.addColorStop(0.45, fillOf(GLOW_RGB, GLOW_A));
-      groundG.addColorStop(1,    fillOf(GLOW_RGB, 0));
-      ctx.fillStyle = groundG;
-      ctx.fillRect(0, horizonY, width, height - horizonY);
+      ctx.save();
+      ctx.translate(width / 2, horizonY + height * EMIT_DROP);
+      ctx.scale(1, EMIT_SQUASH);
+      const eR = width * EMIT_R;
+      const emitG = ctx.createRadialGradient(0, 0, 0, 0, 0, eR);
+      emitG.addColorStop(0,    fillOf(EMIT_RGB, EMIT_A));
+      emitG.addColorStop(0.45, fillOf(EMIT_RGB, EMIT_A * 0.38));
+      emitG.addColorStop(1,    fillOf(EMIT_RGB, 0));
+      ctx.fillStyle = emitG;
+      ctx.fillRect(-eR, -eR, eR * 2, eR * 2);
+      ctx.restore();
+
+      // Everything that lives in the projection judders together; the haze and
+      // the emitter are atmosphere on the glass and stay put.
+      if (judder !== 0) { ctx.save(); ctx.translate(judder, 0); }
 
       if (!lowPower) {
         drawWireLayer(scrollMod, width, height);
         flushInk();
       }
 
-      const visible = city
-        .map((b) => {
-          let wz = b.wz1 - scrollMod;
-          if (wz < -CELL * 2) wz += maxView;
-          return { b, wz };
-        })
-        .filter(({ wz }) => wz + CAM_Z > 8 && wz < maxView * 0.72)
-        .sort((a, b) => b.wz - a.wz);
+      // ── Surface grid ────────────────────────────────────────────────────
+      const gridFar = maxView * 0.88;
+      const xEnd    = (activeCols - 1) * CELL - halfSpan;
+
+      // Lateral rungs — one segment each, whatever the city's width
+      for (let row = 0; row < activeRows; row++) {
+        let wz = row * CELL - scrollMod;
+        if (wz < -CELL) wz += maxView;
+        if (wz + CAM_Z <= 8 || wz > gridFar) continue;
+        const alpha = (GRID_A_FAR + depthAt(wz) * GRID_A_NEAR)
+                    * (row % STREET_N === 0 ? SECTOR_MUL : 1);
+        edge(-halfSpan, 0, wz, xEnd, 0, wz, alpha, GRID_LW, width, height);
+      }
+
+      // Longitudinal runs — the half that was missing
+      for (let col = 0; col < activeCols; col++) {
+        const wx  = col * CELL - halfSpan;
+        const sec = col % STREET_N === 0 ? SECTOR_MUL : 1;
+        for (let k = 0; k < GRID_Z_STEPS; k++) {
+          const z0 = (gridFar * k) / GRID_Z_STEPS;
+          const z1 = (gridFar * (k + 1)) / GRID_Z_STEPS;
+          const alpha = (GRID_A_FAR + depthAt((z0 + z1) / 2) * GRID_A_NEAR)
+                      * GRID_Z_MUL * sec;
+          edge(wx, 0, z0, wx, 0, z1, alpha, GRID_LW, width, height);
+        }
+      }
+
+      // ── Volume rails and far corner brackets ────────────────────────────
+      const railX = halfSpan + CELL * RAIL_OUT;
+      /** The rail's own ramp, floored so the boundary survives to the far end. */
+      const railA = (z: number) => RAIL_A * (RAIL_A_MIN + (1 - RAIL_A_MIN) * depthAt(z));
+
+      for (let sgn = -1; sgn <= 1; sgn += 2) {
+        const rx = sgn * railX;
+        for (let k = 0; k < GRID_Z_STEPS; k++) {
+          const z0 = (gridFar * k) / GRID_Z_STEPS;
+          const z1 = (gridFar * (k + 1)) / GRID_Z_STEPS;
+          edge(rx, 0, z0, rx, 0, z1, railA((z0 + z1) / 2), RAIL_LW, width, height);
+        }
+
+        // Posts every sector, scrolling with the world so the rail reads as
+        // measured rather than as a bare converging line
+        for (let row = 0; row < activeRows; row += STREET_N) {
+          let pz = row * CELL - scrollMod;
+          if (pz < -CELL) pz += maxView;
+          if (pz + CAM_Z <= 8 || pz > gridFar) continue;
+          edge(rx, 0, pz, rx, POST_H, pz, railA(pz) * POST_A, RAIL_LW, width, height);
+        }
+
+        // Far corner: a stair inward and a post upward, so the corner reads as
+        // the edge of a volume and not as where two lines happen to cross
+        const arm  = CELL * BRACKET_ARM;
+        const step = CELL * BRACKET_STEP;
+        const aF   = railA(gridFar) * 1.5;
+        edge(rx, 0, gridFar, rx, 0, gridFar - arm, aF, RAIL_LW, width, height);
+        edge(rx, 0, gridFar, rx - sgn * step, 0, gridFar, aF, RAIL_LW, width, height);
+        edge(rx - sgn * step, 0, gridFar, rx - sgn * step, 0, gridFar - step, aF, RAIL_LW, width, height);
+        edge(rx - sgn * step, 0, gridFar - step, rx - sgn * arm, 0, gridFar - step, aF, RAIL_LW, width, height);
+        edge(rx, 0, gridFar, rx, BRACKET_RISE, gridFar, aF * 0.85, RAIL_LW, width, height);
+      }
+      // The far edge itself, joining the two rails
+      edge(-railX, 0, gridFar, railX, 0, gridFar, railA(gridFar) * 1.2, RAIL_LW, width, height);
+
+      // ── Lit sector cells ────────────────────────────────────────────────
+      // Whichever cells the clock happens to land on, rising and falling on
+      // their own so no two are at the same brightness.
+      if (!lowPower) {
+        const secW = STREET_N * CELL;
+        for (let k = 0; k < CELL_N; k++) {
+          const u    = frameT / CELL_PERIOD + k * 0.61;
+          const tick = Math.floor(u);
+          const a    = CELL_A * Math.sin((u - tick) * Math.PI);
+          if (a < 0.004) continue;
+          const sx = Math.floor(hash3(tick, k + 1, 3) * nSecX);
+          const sz = Math.floor(hash3(tick, k + 1, 7) * nSecZ);
+          let z0 = sz * secW - scrollMod;
+          if (z0 < -secW) z0 += maxView;
+          const z1 = z0 + secW;
+          if (z0 + CAM_Z <= 8 || z0 > gridFar) continue;
+          const x0 = sx * secW - halfSpan;
+          const x1 = Math.min(x0 + secW, xEnd);
+          fillQuad(x0, 0, z0, x1, 0, z0, x1, 0, z1, x0, 0, z1,
+            fillOf(CELL_RGB, a), width, height);
+        }
+      }
+
+      // Street lamps
+      for (let row = 0; row < activeRows; row += STREET_N) {
+        for (let col = 0; col < activeCols; col += STREET_N) {
+          let wz = row * CELL - scrollMod;
+          if (wz < -CELL) wz += maxView;
+          if (wz + CAM_Z <= 8 || wz > maxView * 0.75) continue;
+          const depthT = depthAt(wz);
+          edge(col*CELL - halfSpan, 0, wz, col*CELL - halfSpan, 10, wz,
+            LAMP_A_FAR + depthT * LAMP_A_NEAR, LAMP_LW, width, height);
+        }
+      }
+
+      flushInk();
+
+
+      // Filled and sorted in place. Rebuilding this with map/filter/sort was
+      // allocating a wrapper object per visible building — several hundred a
+      // frame, every frame, all of it garbage by the next one.
+      visN = 0;
+      for (let i = 0; i < city.length; i++) {
+        const b = city[i];
+        let wz = b.wz1 - scrollMod;
+        if (wz < -CELL * 2) wz += maxView;
+        if (wz + CAM_Z <= 8 || wz >= maxView * CULL_Z) continue;
+        visB[visN] = b;
+        visZ[visN] = wz;
+        visN++;
+      }
+      // Insertion sort, far to near: the array is nearly sorted every frame
+      // because it is built in city order and the city scrolls slowly, so this
+      // runs close to linear where a comparator sort pays full price.
+      for (let i = 1; i < visN; i++) {
+        const bz = visZ[i], bb = visB[i];
+        let j = i - 1;
+        while (j >= 0 && visZ[j] < bz) { visZ[j + 1] = visZ[j]; visB[j + 1] = visB[j]; j--; }
+        visZ[j + 1] = bz; visB[j + 1] = bb;
+      }
 
       let bandCount = 0;
-      for (const { b, wz } of visible) {
+      for (let vi = 0; vi < visN; vi++) {
+        const b = visB[vi], wz = visZ[vi];
         // Band size trades stroke calls against occlusion fidelity. These are
         // consecutive in depth, so an edge drawing over a neighbour's facade
         // within a band is a sub-pixel concern.
@@ -1087,7 +1536,10 @@ export default function CityCanvas() {
         const wz1 = wz;
         const wz2 = wz + (b.wz2 - b.wz1);
         setDepth(wz, b);
-        const base = (EDGE_A_FAR + Math.pow(dep.t, EDGE_A_CURVE) * EDGE_A_NEAR) * dep.pulse;
+        let base = (EDGE_A_FAR + Math.pow(dep.t, EDGE_A_CURVE) * EDGE_A_NEAR)
+                 * dep.pulse * dep.lat;
+        // A slice of the city that did not finish rendering this pass
+        if (dropping && dep.t >= glitchDropLo && dep.t <= glitchDropHi) base *= GLITCH_DROP;
         const lw   = EDGE_W_FAR + dep.t * EDGE_W_NEAR;
 
         // Phantom box: the projection's own guess at the volume, standing a
@@ -1110,12 +1562,12 @@ export default function CityCanvas() {
 
         if (b.type === "tower" && b.tier2H !== null) {
           const t2 = b.tier2H, t3 = b.tier3H, i2 = b.ins2, i3 = b.ins3;
-          drawTier(b.wx1,    b.wx2,    wz1,          wz2,          0,  t2,      base,       false,    width, height, lw, b.h);
-          drawTier(b.wx1+i2, b.wx2-i2, wz1+i2*0.45, wz2-i2*0.45, t2, t3??b.h, base*0.92, t3===null, width, height, lw*0.9, b.h);
+          drawTier(b.wx1,    b.wx2,    wz1,          wz2,          0,  t2,      base,       false,    width, height, lw, b.h, 0);
+          drawTier(b.wx1+i2, b.wx2-i2, wz1+i2*0.45, wz2-i2*0.45, t2, t3??b.h, base*0.92, t3===null, width, height, lw*0.9, b.h, 1);
           if (t3 !== null)
-            drawTier(b.wx1+i3, b.wx2-i3, wz1+i3*0.45, wz2-i3*0.45, t3, b.h,   base*0.82, true,      width, height, lw*0.8, b.h);
+            drawTier(b.wx1+i3, b.wx2-i3, wz1+i3*0.45, wz2-i3*0.45, t3, b.h,   base*0.82, true,      width, height, lw*0.8, b.h, 2);
         } else {
-          drawTier(b.wx1, b.wx2, wz1, wz2, 0, b.h, base, true, width, height, lw, b.h);
+          drawTier(b.wx1, b.wx2, wz1, wz2, 0, b.h, base, true, width, height, lw, b.h, 0);
         }
 
         if (dep.foot) {
@@ -1192,31 +1644,6 @@ export default function CityCanvas() {
 
       flushInk();
 
-      // Street grid
-      for (let row = 0; row < activeRows; row++) {
-        let wz = row * CELL - scrollMod;
-        if (wz < -CELL) wz += maxView;
-        if (wz + CAM_Z <= 8 || wz > maxView * 0.88) continue;
-        const depthT = depthAt(wz);
-        const alpha  = GRID_A_FAR + depthT * GRID_A_NEAR;
-        for (let col = 0; col < activeCols - 1; col++) {
-          const wx1 = col * CELL - halfW;
-          edge(wx1, 0, wz, wx1+CELL, 0, wz, alpha, GRID_LW, width, height);
-        }
-      }
-
-      // Street lamps
-      for (let row = 0; row < activeRows; row += STREET_N) {
-        for (let col = 0; col < activeCols; col += STREET_N) {
-          let wz = row * CELL - scrollMod;
-          if (wz < -CELL) wz += maxView;
-          if (wz + CAM_Z <= 8 || wz > maxView * 0.75) continue;
-          const depthT = depthAt(wz);
-          edge(col*CELL - halfW, 0, wz, col*CELL - halfW, 10, wz,
-            LAMP_A_FAR + depthT * LAMP_A_NEAR, LAMP_LW, width, height);
-        }
-      }
-
       // ── Motes ───────────────────────────────────────────────────────────
       // Drifting up through the city and wrapping in depth along with it.
       for (const p of motes) {
@@ -1282,6 +1709,15 @@ export default function CityCanvas() {
           ctx.arc(head.x, head.y, 0.6 + dT * 1.1, 0, TAU);
           ctx.fill();
         }
+      }
+
+      // The projection stops juddering here: what follows is either atmosphere
+      // or instrumentation, and neither rides on the emitter.
+      if (judder !== 0) ctx.restore();
+
+      if (!lowPower) {
+        drawReticle(width, height);
+        flushInk();
       }
 
       // ── Scan sweeps ─────────────────────────────────────────────────────
@@ -1360,14 +1796,23 @@ export default function CityCanvas() {
       ctx.fillRect(0, horizonY - height * 0.05, width, height * 0.22);
       ctx.globalCompositeOperation = "source-over";
 
-      // ── Bloom and depth of field ────────────────────────────────────────
-      // Both run off one read-back — the finished frame, downscaled and
-      // blurred. Bloom adds it over the whole frame, weighted toward the
-      // horizon, and because the canvas is transparent only what is actually
-      // lit contributes: edges, readouts, motes, the sweeps. The depth pass
-      // then composites the same buffer over the top and bottom bands, where
-      // the far horizon and the ground underfoot are what make this read as a
-      // projection rather than a place.
+      // ── Torn strip ──────────────────────────────────────────────────────
+      // A slice of the finished frame re-composited a few pixels across. The
+      // original stays underneath, so it reads as a signal doubling on itself
+      // rather than as a band that went missing.
+      if (glitching && glitchKind === 1) {
+        const th = 4 + glitchTearH * (GLITCH_TEAR_H - 4);
+        const ty = glitchTearY * (height - th);
+        tearCtx.clearRect(0, 0, width, th);
+        tearCtx.drawImage(canvas, 0, ty, width, th, 0, 0, width, th);
+        ctx.clearRect(0, ty, width, th);
+        ctx.drawImage(tearBuf, 0, 0, width, th, glitchTearX, ty, width, th);
+      }
+
+      // ── Depth of field ──────────────────────────────────────────────────
+      // The finished frame, downscaled and blurred, composited back over the
+      // top and bottom bands. Blurring the far horizon and the ground underfoot
+      // is what makes this read as a projection rather than a place.
       //
       // The bands are strips of rising alpha rather than a gradient mask.
       // Masking would need a second full-size canvas and a destination-in pass;
@@ -1377,7 +1822,6 @@ export default function CityCanvas() {
         smallCtx.clearRect(0, 0, small.width, small.height);
         smallCtx.drawImage(canvas, 0, 0, small.width, small.height);
 
-        blurCtx.filter = "none";
         blurCtx.clearRect(0, 0, blurBuf.width, blurBuf.height);
         blurCtx.filter = `blur(${DOF_BLUR}px)`;
         blurCtx.drawImage(small, 0, 0);
@@ -1385,11 +1829,11 @@ export default function CityCanvas() {
 
         const sy = blurBuf.height / height;   // full-res y -> buffer y
 
-        const band = (from: number, to: number, aFrom: number, aTo: number, strips = DOF_STRIPS) => {
+        const band = (from: number, to: number, aFrom: number, aTo: number) => {
           const y0 = height * from;
-          const h  = (height * to - y0) / strips;
-          for (let i = 0; i < strips; i++) {
-            const t = (i + 0.5) / strips;
+          const h  = (height * to - y0) / DOF_STRIPS;
+          for (let i = 0; i < DOF_STRIPS; i++) {
+            const t = (i + 0.5) / DOF_STRIPS;
             ctx.globalAlpha = aFrom + (aTo - aFrom) * t;
             const dy = y0 + i * h;
             ctx.drawImage(
@@ -1400,10 +1844,6 @@ export default function CityCanvas() {
           }
           ctx.globalAlpha = 1;
         };
-
-        ctx.globalCompositeOperation = "lighter";
-        band(0, DOF_SHARP_BOT, BLOOM_A_FAR, BLOOM_A_NEAR, BLOOM_STRIPS);
-        ctx.globalCompositeOperation = "source-over";
 
         band(0, DOF_SHARP_TOP, DOF_A_TOP, 0);   // far: hardest at the horizon
         band(DOF_SHARP_BOT, 1, 0, 1);           // near: hardest underfoot
