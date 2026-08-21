@@ -834,9 +834,17 @@ export default function CityCanvas() {
     // Buckets are flushed in depth bands rather than once at the end: buildings
     // are painted back-to-front over near-opaque fills, so deferring every mark
     // to the end would let distant ones draw over near facades.
-    const INK = [EDGE_RGB, DATA_RGB, FRAG_MARK_RGB, PART_RGB] as const;
+    //
+    // A bucket that has taken a mark since the last flush records its key, and
+    // the flush walks that list rather than the whole map. Without it the cost
+    // of a flush is the number of buckets the frame has ever opened — several
+    // hundred, nearly all empty — which is what made flushing often expensive
+    // enough to be worth trading occlusion accuracy for. It is not.
+    const INK = [EDGE_RGB, DATA_RGB, FRAG_MARK_RGB, PART_RGB, BEACON_RGB] as const;
     const segs = new Map<number, number[]>();
     const dots = new Map<number, number[]>();
+    const dirtySeg: number[] = [];
+    const dirtyDot: number[] = [];
 
     const edge = (
       ax: number, ay: number, az: number,
@@ -852,6 +860,7 @@ export default function CityCanvas() {
       const key = (ci << 16) | (qa << 8) | ql;
       let arr = segs.get(key);
       if (!arr) { arr = []; segs.set(key, arr); }
+      if (arr.length === 0) dirtySeg.push(key);
       arr.push(p1.x, p1.y, p2.x, p2.y);
     };
 
@@ -868,6 +877,7 @@ export default function CityCanvas() {
       const key = (ci << 16) | (qa << 8) | ql;
       let arr = segs.get(key);
       if (!arr) { arr = []; segs.set(key, arr); }
+      if (arr.length === 0) dirtySeg.push(key);
       arr.push(x1, y1, x2, y2);
     };
 
@@ -878,34 +888,37 @@ export default function CityCanvas() {
       const key = (ci << 12) | (qa << 4) | qr;
       let arr = dots.get(key);
       if (!arr) { arr = []; dots.set(key, arr); }
+      if (arr.length === 0) dirtyDot.push(key);
       arr.push(x, y);
     };
 
-    // Flat [x, y, alpha, ...] gathered during the building pass
-    const beacons: number[] = [];
-
     const flushInk = () => {
-      for (const [key, arr] of segs) {
-        if (arr.length === 0) continue;
+      for (let i = 0; i < dirtySeg.length; i++) {
+        const key = dirtySeg[i];
+        const arr = segs.get(key)!;
         ctx.lineWidth   = (key & 255) / W_STEPS;
         ctx.strokeStyle = `rgba(${INK[key >>> 16]},${(((key >> 8) & 255) / A_STEPS).toFixed(4)})`;
         ctx.beginPath();
-        for (let i = 0; i < arr.length; i += 4) {
-          ctx.moveTo(arr[i], arr[i + 1]);
-          ctx.lineTo(arr[i + 2], arr[i + 3]);
+        for (let j = 0; j < arr.length; j += 4) {
+          ctx.moveTo(arr[j], arr[j + 1]);
+          ctx.lineTo(arr[j + 2], arr[j + 3]);
         }
         ctx.stroke();
         arr.length = 0;                     // reuse the array, avoid GC churn
       }
-      for (const [key, arr] of dots) {
-        if (arr.length === 0) continue;
+      dirtySeg.length = 0;
+
+      for (let i = 0; i < dirtyDot.length; i++) {
+        const key = dirtyDot[i];
+        const arr = dots.get(key)!;
         const r = (key & 15) / R_STEPS;
         ctx.fillStyle = `rgba(${INK[key >>> 12]},${(((key >> 4) & 255) / A_STEPS).toFixed(4)})`;
         ctx.beginPath();
-        for (let i = 0; i < arr.length; i += 2) ctx.rect(arr[i] - r, arr[i + 1] - r, r * 2, r * 2);
+        for (let j = 0; j < arr.length; j += 2) ctx.rect(arr[j] - r, arr[j + 1] - r, r * 2, r * 2);
         ctx.fill();
         arr.length = 0;
       }
+      dirtyDot.length = 0;
     };
 
     // ── Depth ────────────────────────────────────────────────────────────────
@@ -1627,13 +1640,18 @@ export default function CityCanvas() {
         visZ[j + 1] = bz; visB[j + 1] = bb;
       }
 
-      let bandCount = 0;
+      // Ink is flushed when the depth steps down to the next row of the grid,
+      // not every N buildings. Everything in one row sits within a third of a
+      // cell of everything else in it, so ink deferred across a row really is
+      // sub-pixel — but a row boundary is a whole cell, and close to the camera
+      // that is a large displacement on screen. Deferring across one is what
+      // let a far building's uprights, roof outline and floor lines land on top
+      // of a nearer facade. Rows never overlap in depth, so they arrive as
+      // contiguous runs in the sorted list and a gap test finds the boundary.
+      let bandZ = Infinity;
       for (let vi = 0; vi < visN; vi++) {
         const b = visB[vi], wz = visZ[vi];
-        // Band size trades stroke calls against occlusion fidelity. These are
-        // consecutive in depth, so an edge drawing over a neighbour's facade
-        // within a band is a sub-pixel concern.
-        if (++bandCount % 24 === 0) flushInk();
+        if (bandZ - wz > CELL * 0.5) { flushInk(); bandZ = wz; }
         const wz1 = wz;
         const wz2 = wz + (b.wz2 - b.wz1);
         setDepth(wz, b);
@@ -1687,14 +1705,15 @@ export default function CityCanvas() {
           edge(cx, b.h+18, wz1, cx, b.h+27, wz1, ant*0.4, 0.45, width, height);
 
           // Aircraft warning beacon. The only red in an all-green scene, so it
-          // stays small and sparse rather than becoming the subject.
+          // stays small and sparse rather than becoming the subject. It goes
+          // through the batcher like everything else so that it is occluded by
+          // whatever stands in front of it; it used to be held back and drawn
+          // over the finished city, which put far beacons on near facades.
           if (!lowPower && dep.tb > 0.3) {
             const on = ((frameT / 1500 + b.phase) % 1) < 0.42;
             if (on) {
               const pt = project(cx, b.h + 28, wz1, width, height);
-              if (pt) {
-                beacons.push(pt.x, pt.y, Math.min(0.75, 0.25 + dep.tb * 0.7));
-              }
+              if (pt) dot(pt.x, pt.y, 1.5, Math.min(0.75, 0.25 + dep.tb * 0.7), 4);
             }
           }
         }
@@ -1764,17 +1783,6 @@ export default function CityCanvas() {
       }
 
       flushInk();
-
-      // ── Aircraft beacons ────────────────────────────────────────────────
-      if (beacons.length) {
-        for (let i = 0; i < beacons.length; i += 3) {
-          ctx.fillStyle = fillOf(BEACON_RGB, beacons[i + 2]);
-          ctx.beginPath();
-          ctx.arc(beacons[i], beacons[i + 1], 1.5, 0, TAU);
-          ctx.fill();
-        }
-        beacons.length = 0;
-      }
 
       // ── Air traffic ─────────────────────────────────────────────────────
       // Drawn after the city: these fly above it, so occlusion is not worth
