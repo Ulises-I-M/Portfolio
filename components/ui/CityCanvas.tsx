@@ -332,15 +332,18 @@ const SWEEP_A      = 1.5;    // peak multiplier on edge brightness
 // wrapping against scrollMod: the projector emits it, not the city.
 const PULSE_PERIOD = 29000;  // ms between pulses — see below on why not 30000
 const PULSE_FIRST  = 2200;   // ms to the first one
-const PULSE_MS     = 4200;   // ms from the camera to the far edge
+const PULSE_MS     = 5200;   // ms from the camera to the far edge
 const PULSE_MAX_R  = 2100;   // world units; the far cull sits at ~1919 out
 const PULSE_SEGS   = 56;     // samples along the arc
 const PULSE_ARCS   = 4;      // leading edge plus three of wake
-const PULSE_WAKE   = 190;    // world units the wake trails behind the front
+const PULSE_WAKE   = 430;    // world units the wake trails behind the front
 const PULSE_BAND   = 70;     // world units of falloff ahead of the front
-const PULSE_A      = 1.9;    // peak multiplier on what the front crosses
-const PULSE_ARC_A  = 0.30;   // alpha of the leading arc on the ground
-const PULSE_ARC_LW = 0.85;
+const PULSE_A      = 2.8;    // peak multiplier on the edges it crosses
+/** And a gentler one on the bodies. Lines alone read as a flicker; it is the
+ *  mass changing that reads as a wave going through the city. */
+const PULSE_SOLID  = 0.45;   // fraction of PULSE_A applied to face alpha
+const PULSE_ARC_A  = 0.55;   // alpha of the leading arc on the ground
+const PULSE_ARC_LW = 1.25;
 
 // ── Instability ──────────────────────────────────────────────────────────────
 // Long waits, short bursts — the scheduling shape GlitchScanlines uses, in ms
@@ -498,6 +501,7 @@ interface Depth {
   hold: number;     // height fraction above which the body is opaque
   min: number;      // what is left of the body at street level
   rim: number;      // 0 until the near band, then up to 1
+  scan: number;     // scan-pulse brightening where the front is passing
   lat: number;      // lateral fade toward the edges of the projection
   volume: boolean;  // false once the receding face and roof are gone
   foot: boolean;    // footprint on the ground
@@ -720,6 +724,7 @@ export default function CityCanvas() {
     let offset  = 0;
     let lastT   = 0;
     let prevT   = 0;   // previous frame's timestamp, for the scroll step
+    let t0      = -1;  // rAF timestamp of the first frame, so frameT starts here
     let frameT  = 0;   // ms, shared by the beacons, the traffic and every pulse
     let city: Building[] = [];
     // Scratch for the per-frame visible set, sized once in rebuild()
@@ -926,7 +931,7 @@ export default function CityCanvas() {
     // at ~500 visible a frame the garbage would outweigh the work.
     const dep: Depth = {
       t: 0, tb: 0, solid: 1, frag: 0, hold: FADE_HOLD_NEAR, min: FADE_MIN_NEAR,
-      rim: 0, lat: 1, volume: true, foot: true, back: true, detail: false,
+      rim: 0, lat: 1, scan: 1, volume: true, foot: true, back: true, detail: false,
       face: FACE_RGB, side: SIDE_RGB, roof: ROOF_RGB, seed: 0, tseed: 0, pulse: 1,
     };
 
@@ -988,7 +993,8 @@ export default function CityCanvas() {
       dep.min    = mix(FADE_MIN_FAR,  FADE_MIN_NEAR,  tb);
       dep.rim    = clamp01((tb - RIM_START) / (1 - RIM_START));
       dep.lat    = lateral((b.wx1 + b.wx2) / 2);
-      dep.solid *= dep.lat;
+      dep.scan   = pulseAt((b.wx1 + b.wx2) / 2, wz + (b.wz2 - b.wz1) / 2);
+      dep.solid *= dep.lat * (1 + (dep.scan - 1) * PULSE_SOLID);
       // Losing the receding face is what takes the last of the volume away, so
       // only the least intact of the far buildings ever do
       dep.volume = tb > VOL_MIN || b.integrity > 0.45;
@@ -1406,7 +1412,17 @@ export default function CityCanvas() {
       dot(cx, cy, 1.25, ca, 1);
     };
 
-    const draw = (t = 0) => {
+    const draw = (rafT: number) => {
+      // requestAnimationFrame counts from when the document started loading,
+      // not from when this canvas did, and the two are seconds apart: the boot
+      // sequence and the entry gate both run first. Everything below schedules
+      // against frameT, so it has to be measured from the first frame actually
+      // drawn — otherwise "the first scan pulse goes at 2.2s" means 2.2s into a
+      // page that has not started rendering yet, the window elapses unseen, and
+      // the first one a visitor could possibly see is a full period later.
+      if (t0 < 0) t0 = rafT;
+      const t = rafT - t0;
+
       // FPS cap: skip frame if not enough time has passed
       if (fpsInterval > 0 && t - lastT < fpsInterval) {
         rafId = requestAnimationFrame(draw);
@@ -1656,8 +1672,7 @@ export default function CityCanvas() {
         const wz2 = wz + (b.wz2 - b.wz1);
         setDepth(wz, b);
         let base = (EDGE_A_FAR + Math.pow(dep.t, EDGE_A_CURVE) * EDGE_A_NEAR)
-                 * dep.pulse * dep.lat
-                 * pulseAt((b.wx1 + b.wx2) / 2, (wz1 + wz2) / 2);
+                 * dep.pulse * dep.lat * dep.scan;
         // A slice of the city that did not finish rendering this pass
         if (dropping && dep.t >= glitchDropLo && dep.t <= glitchDropHi) base *= GLITCH_DROP;
         const lw   = EDGE_W_FAR + dep.t * EDGE_W_NEAR;
@@ -1965,7 +1980,9 @@ export default function CityCanvas() {
     const ro = new ResizeObserver(rebuild);
     ro.observe(canvas);
     rebuild();
-    draw();
+    // Started through rAF rather than called directly, so the first frame
+    // carries a real timestamp for t0 to anchor on
+    rafId = requestAnimationFrame(draw);
 
     return () => { cancelAnimationFrame(rafId); ro.disconnect(); };
   }, [prefersReducedMotion, lowPower]);
