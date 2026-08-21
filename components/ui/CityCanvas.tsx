@@ -314,6 +314,34 @@ const SWEEP_TOP    = 210;    // world units it climbs to
 const SWEEP_BAND   = 26;     // world units of falloff either side
 const SWEEP_A      = 1.5;    // peak multiplier on edge brightness
 
+// ── Scan pulse ───────────────────────────────────────────────────────────────
+// A wavefront leaving the camera and running out to the horizon, lighting the
+// ground and the buildings it crosses. Radial, which is what separates it from
+// the other two: the depth sweep is a plane of constant z, the re-render sweep
+// is a band of constant height, and neither expands.
+//
+// The origin sits on the ground under the camera — world (0, 0, -CAM_Z), since
+// project() works from `wz + CAM_Z`. That has a consequence worth knowing before
+// reading the drawing code: a point on the circle is
+// (R·cosθ, 0, -CAM_Z + R·sinθ), so it only projects while R·sinθ > 0. **Only the
+// forward half of the circle exists on screen**, and as θ approaches 0 or π the
+// point closes on the camera plane and its projected scale runs away. The arc is
+// therefore swept between asin(zMin/R) and π - asin(zMin/R).
+//
+// Being anchored to the camera rather than to the world, it also needs no
+// wrapping against scrollMod: the projector emits it, not the city.
+const PULSE_PERIOD = 29000;  // ms between pulses — see below on why not 30000
+const PULSE_FIRST  = 2200;   // ms to the first one
+const PULSE_MS     = 4200;   // ms from the camera to the far edge
+const PULSE_MAX_R  = 2100;   // world units; the far cull sits at ~1919 out
+const PULSE_SEGS   = 56;     // samples along the arc
+const PULSE_ARCS   = 4;      // leading edge plus three of wake
+const PULSE_WAKE   = 190;    // world units the wake trails behind the front
+const PULSE_BAND   = 70;     // world units of falloff ahead of the front
+const PULSE_A      = 1.9;    // peak multiplier on what the front crosses
+const PULSE_ARC_A  = 0.30;   // alpha of the leading arc on the ground
+const PULSE_ARC_LW = 0.85;
+
 // ── Instability ──────────────────────────────────────────────────────────────
 // Long waits, short bursts — the scheduling shape GlitchScanlines uses, in ms
 // rather than frames now that the clock drives everything else too.
@@ -722,6 +750,10 @@ export default function CityCanvas() {
 
     // Sweep: -1 when idle, otherwise the world height the band is passing
     let sweepY = -1;
+    // Pulse: -1 when idle, otherwise the radius the front has reached, with a
+    // separate fade so it can come up and go down without the radius lying
+    let pulseR = -1;
+    let pulseFade = 0;
     let craft: { x: number; z: number; y: number; vx: number; len: number }[] = [];
     let motes: { x: number; y: number; z: number; vy: number; ph: number }[] = [];
 
@@ -903,6 +935,27 @@ export default function CityCanvas() {
       if (d >= SWEEP_BAND) return 1;
       const k = 1 - d / SWEEP_BAND;
       return 1 + SWEEP_A * k * k;
+    };
+
+    /** Brightness multiplier for something standing at (cx, cz) while the scan
+     *  pulse is passing over it. The envelope is deliberately lopsided — a short
+     *  ramp ahead of the front and a long decay behind it — because a symmetric
+     *  band reads as a moving stripe, and what this wants to read as is a front
+     *  with a wake. Returns 1, at the cost of one compare, when no pulse is out. */
+    const pulseAt = (cx: number, cz: number) => {
+      if (pulseR < 0) return 1;
+      const dz = cz + CAM_Z;
+      const d  = Math.sqrt(cx * cx + dz * dz);
+      const behind = pulseR - d;
+      let k: number;
+      if (behind >= 0) {
+        if (behind >= PULSE_WAKE) return 1;
+        k = 1 - behind / PULSE_WAKE;
+      } else {
+        if (-behind >= PULSE_BAND) return 1;
+        k = 1 + behind / PULSE_BAND;
+      }
+      return 1 + PULSE_A * pulseFade * k * k;
     };
 
     const setDepth = (wz: number, b: Building) => {
@@ -1353,9 +1406,23 @@ export default function CityCanvas() {
       lastT  = t;
       frameT = t;
 
-      // ── Sweep and instability bookkeeping ───────────────────────────────
+      // ── Sweep, pulse and instability bookkeeping ────────────────────────
       const sweepPh = (frameT % SWEEP_PERIOD) / SWEEP_RISE;
       sweepY = !lowPower && sweepPh < 1 ? sweepPh * SWEEP_TOP : -1;
+
+      // PULSE_PERIOD is 29s rather than a round 30 on purpose: the height sweep
+      // runs on 15s, and any multiple of it would leave the two firing together
+      // for ever. Coprime periods let them drift past each other instead.
+      pulseR = -1;
+      if (!lowPower && frameT >= PULSE_FIRST) {
+        const ph = ((frameT - PULSE_FIRST) % PULSE_PERIOD) / PULSE_MS;
+        if (ph < 1) {
+          pulseR = PULSE_MAX_R * Math.pow(ph, 0.85);
+          // Full for most of the run, easing out over the last fifth so the
+          // front leaves rather than switching off at the far edge
+          pulseFade = ph > 0.8 ? (1 - ph) / 0.2 : 1;
+        }
+      }
 
       if (!lowPower && frameT >= glitchAt) {
         glitchEnd  = frameT + GLITCH_MS;
@@ -1411,8 +1478,12 @@ export default function CityCanvas() {
         let wz = row * CELL - scrollMod;
         if (wz < -CELL) wz += maxView;
         if (wz + CAM_Z <= 8 || wz > gridFar) continue;
+        // A rung runs the full width, so the pulse is sampled at the middle of
+        // the city rather than at one end: close enough at this line weight,
+        // and it keeps the cost to one distance per rung.
         const alpha = (GRID_A_FAR + depthAt(wz) * GRID_A_NEAR)
-                    * (row % STREET_N === 0 ? SECTOR_MUL : 1);
+                    * (row % STREET_N === 0 ? SECTOR_MUL : 1)
+                    * pulseAt(0, wz);
         edge(-halfSpan, 0, wz, xEnd, 0, wz, alpha, GRID_LW, width, height);
       }
 
@@ -1424,7 +1495,7 @@ export default function CityCanvas() {
           const z0 = (gridFar * k) / GRID_Z_STEPS;
           const z1 = (gridFar * (k + 1)) / GRID_Z_STEPS;
           const alpha = (GRID_A_FAR + depthAt((z0 + z1) / 2) * GRID_A_NEAR)
-                      * GRID_Z_MUL * sec;
+                      * GRID_Z_MUL * sec * pulseAt(wx, (z0 + z1) / 2);
           edge(wx, 0, z0, wx, 0, z1, alpha, GRID_LW, width, height);
         }
       }
@@ -1488,6 +1559,36 @@ export default function CityCanvas() {
         }
       }
 
+      // ── Scan pulse, on the ground ───────────────────────────────────────
+      // Drawn here, with the rest of the surface and before any building, so
+      // near facades occlude the front instead of it being painted over them.
+      if (pulseR > 0) {
+        const zMin = 8;
+        for (let arc = 0; arc < PULSE_ARCS; arc++) {
+          const r = pulseR - (PULSE_WAKE * arc) / PULSE_ARCS;
+          if (r <= zMin) continue;
+          // Leading edge full strength, wake falling away behind it
+          const fall = 1 - arc / PULSE_ARCS;
+          const a  = PULSE_ARC_A * pulseFade * fall * fall;
+          const ci = arc === 0 ? 1 : 0;
+          if (a < 0.006) continue;
+
+          // Only the forward half of the circle projects at all, and its ends
+          // run away as they close on the camera plane, so the sweep stops
+          // short of both
+          const th0 = Math.asin(Math.min(1, zMin / r));
+          const dth = (Math.PI - 2 * th0) / PULSE_SEGS;
+          let px = 0, py = 0, have = false;
+          for (let i = 0; i <= PULSE_SEGS; i++) {
+            const th = th0 + dth * i;
+            const p = project(r * Math.cos(th), 0, -CAM_Z + r * Math.sin(th), width, height);
+            if (!p) { have = false; continue; }
+            if (have) sEdge(px, py, p.x, p.y, a, PULSE_ARC_LW, ci);
+            px = p.x; py = p.y; have = true;
+          }
+        }
+      }
+
       // Street lamps
       for (let row = 0; row < activeRows; row += STREET_N) {
         for (let col = 0; col < activeCols; col += STREET_N) {
@@ -1537,7 +1638,8 @@ export default function CityCanvas() {
         const wz2 = wz + (b.wz2 - b.wz1);
         setDepth(wz, b);
         let base = (EDGE_A_FAR + Math.pow(dep.t, EDGE_A_CURVE) * EDGE_A_NEAR)
-                 * dep.pulse * dep.lat;
+                 * dep.pulse * dep.lat
+                 * pulseAt((b.wx1 + b.wx2) / 2, (wz1 + wz2) / 2);
         // A slice of the city that did not finish rendering this pass
         if (dropping && dep.t >= glitchDropLo && dep.t <= glitchDropHi) base *= GLITCH_DROP;
         const lw   = EDGE_W_FAR + dep.t * EDGE_W_NEAR;
