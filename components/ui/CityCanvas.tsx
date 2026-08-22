@@ -243,6 +243,22 @@ const BRACKET_ARM  = 1.15;   // in cells
 const BRACKET_STEP = 0.42;   // in cells
 const BRACKET_RISE = 46;     // world units the corner post climbs
 
+/** Corners laid flat on the ground: on the footprint of the tall towers, and
+ *  on whichever sector cell is lit. The same stair the rails turn at the far
+ *  edge, so a flagged thing on the plan is marked the way the volume itself is.
+ *  Rings were the other option and cost forty segments a tower against three,
+ *  on a surface that already carries a grid. */
+const GC_ARM  = 0.30;   // fraction of the thing being cornered
+const GC_STEP = 0.12;
+const FOOT_FLAG_A = 2.2;   // multiple of the footprint line it sits on
+const CELL_GC_A   = 0.16;  // absolute, the lit cell's own corners
+
+/** Every third rail post runs long and takes a cross tick, which turns the
+ *  boundary from a line with beads on it into a scale. */
+const POST_MAJOR   = 3;
+const POST_MAJOR_H = 2.1;  // multiple of POST_H
+const POST_CROSS   = 9;    // world units of the cross arm
+
 /** A few sector cells lit at a time, cycling slowly. Never all of them: the
  *  whole look depends on selective accents over dark mass. */
 const CELL_N       = 4;
@@ -261,6 +277,18 @@ const CRAFT_DOT_CAP  = 0.85;
 // ── Aircraft beacons ─────────────────────────────────────────────────────────
 // The only red in an all-green scene, so it stays small and sparse
 const BEACON_RGB = "255,60,45";
+
+// ── Alert flag ───────────────────────────────────────────────────────────────
+// Now and then the system takes exception to one building and marks it with
+// WarningBadge's nested triangle, standing over the roof. This is the second
+// and last red in the scene, and it is deliberately rarer than the beacons: a
+// structure is picked by the clock, and if it happens not to be on screen that
+// cycle then nothing shows at all, which is the right kind of scarce.
+const ALERT_PERIOD = 21000;  // ms between picks
+const ALERT_MS     = 4500;   // ms it stays flagged
+const ALERT_BLINK  = 480;    // ms per blink
+const ALERT_SIZE   = 11;     // world units, the triangle's half-width
+const ALERT_A      = 0.62;
 
 // ── Motes ────────────────────────────────────────────────────────────────────
 // Single pixels drifting upward through the city, brightest close in. Slow
@@ -298,6 +326,27 @@ const TRK_HOLD    = 4600;    // ms on one target
 const TRK_TRAVEL  = 520;     // ms crossing to the next
 /** Only lock onto something with enough presence to be worth framing. */
 const TRK_MIN_PX  = 34;
+/** The lock is a movement, not a state: the brackets come in from outside the
+ *  silhouette and close on it, and only once they arrive does the instrument
+ *  start reporting — inner frame, height rule, readout, leader. A frame that
+ *  simply appears reads as decoration; one that converges reads as a lock. */
+const TRK_APPROACH  = 26;    // px outside the box the brackets start from
+const TRK_LOCK_MS   = 280;   // ms for the confirm to come up once it arrives
+const TRK_INSET     = 5;     // px the confirm frame sits inside the outer one
+const TRK_RULE_OFF  = 10;    // px the height rule stands off the box
+const TRK_RULE_STEP = 22;    // world units between graduations
+const TRK_RULE_TICK = 4;     // px of a minor tick, every fourth one double
+const TRK_SCAN_MS   = 1600;  // ms for the target's own scan line to climb
+const TRK_LEAD_MARGIN = 26;  // px from the viewport edge the leader line ends
+/** Readouts. Two lines, in the grammar the rest of the chrome already uses:
+ *  a 0x tag as CyberDivider and DataTicker write them, and a KEY:VALUE
+ *  measurement as the Hero's own LAT/LNG block does. Decorative strings stay
+ *  hard-coded English here, which is the established convention — only
+ *  user-facing copy goes through i18n. */
+const TXT_FONT  = '9px "Space Mono", ui-monospace, monospace';
+const TXT_TRACK = "1.6px";
+const TXT_A     = 0.62;
+
 const TRK_DEPTH_LO = 0.30;
 const TRK_DEPTH_HI = 0.86;
 
@@ -460,8 +509,10 @@ function mkRng(seed: number) {
 type District = "downtown" | "midtown" | "suburb";
 type BldType  = "tower" | "block" | "slab" | "stub";
 
-/** 0 dot column, 1 stacked ticks, 2 a single lit run */
-interface DataMark { kind: 0 | 1 | 2; u: number; v: number; n: number; len: number; ph: number }
+/** Where a building's mark sits on its lit face, how long the run is, and the
+ *  phase it breathes on. Which glyph gets drawn is the district's business, so
+ *  it is not carried here. */
+interface DataMark { u: number; v: number; len: number; ph: number }
 
 interface Building {
   wx1: number; wx2: number;
@@ -622,14 +673,11 @@ function buildCity(rng: () => number, rows: number, cols: number): Building[] {
       // A readout on roughly a third of them, placed on the lit face
       let data: DataMark | null = null;
       if (rng() > 0.64) {
-        const k = rng();
         data = {
-          kind: k < 0.46 ? 0 : k < 0.78 ? 1 : 2,
-          u:    0.16 + rng() * 0.66,
-          v:    0.24 + rng() * 0.52,
-          n:    3 + Math.floor(rng() * 4),
-          len:  0.10 + rng() * 0.18,
-          ph:   rng(),
+          u:   0.16 + rng() * 0.66,
+          v:   0.24 + rng() * 0.52,
+          len: 0.10 + rng() * 0.18,
+          ph:  rng(),
         };
       }
 
@@ -825,6 +873,25 @@ export default function CityCanvas() {
       ctx.fillStyle = style;
       ctx.fill();
     };
+
+    /** Small chrome type. Not batched — there are never more than a couple of
+     *  these on screen, and text cannot share a path with strokes anyway.
+     *  letterSpacing is what carries the house's wide tracking; where a browser
+     *  does not support it the assignment is ignored and the text still reads,
+     *  just tighter, which is an acceptable way to lose. */
+    const ctxLS = ctx as CanvasRenderingContext2D & { letterSpacing?: string };
+    const label = (str: string, x: number, y: number, a: number, rgb: string = DATA_RGB) => {
+      if (a < 0.02) return;
+      ctx.font = TXT_FONT;
+      ctxLS.letterSpacing = TXT_TRACK;
+      ctx.fillStyle = fillOf(rgb, a);
+      ctx.fillText(str, x, y);
+      ctxLS.letterSpacing = "0px";
+    };
+
+    /** The 0x tag the rest of the chrome writes, from a building's own seed. */
+    const hexTag = (seed: number) =>
+      "0x" + ((seed * 0x0a3f + 0x1000) & 0xffff).toString(16).toUpperCase().padStart(4, "0");
 
     // ── Batched ink ──────────────────────────────────────────────────────────
     // Previously every segment did its own beginPath/stroke: at ~500 buildings
@@ -1250,21 +1317,47 @@ export default function CityCanvas() {
       const y0 = b.h * m.v;
       const r  = 0.5 + dep.tb * 0.7;
 
-      if (m.kind === 0) {
-        const step = b.h * 0.055;
-        for (let i = 0; i < m.n; i++) {
-          const p = project(x0, y0 + i * step, wz1, W, H);
-          if (p) dot(p.x, p.y, r, i === 0 ? a : a * 0.7, 1);
+      // Which mark a building carries is its district's, not a roll of the
+      // dice: the field was already being computed and stored for every
+      // building and then never read at draw time. Three zones, three glyphs,
+      // each lifted from a component the rest of the page already uses, so the
+      // city ends up classified rather than merely speckled.
+      //
+      // Anything below the near band falls back to the plainest of the three.
+      // A nested square is four segments wide when a far building is three
+      // pixels wide, and the lesson this file already carries is that even line
+      // density everywhere eats the silhouettes.
+      const rich = dep.tb > 0.50;
+
+      if (b.district === "downtown" && rich) {
+        // NestedSquares: concentric rings with a dot at the middle
+        const w1 = bw * 0.16, w2 = w1 * 0.5;
+        const yc = y0 + w1;
+        for (const w of [w1, w2]) {
+          const ay = yc - w / 2, by = yc + w / 2;
+          edge(x0 - w / 2, ay, wz1, x0 + w / 2, ay, wz1, a * 0.8, 0.5, W, H, 1);
+          edge(x0 - w / 2, by, wz1, x0 + w / 2, by, wz1, a * 0.8, 0.5, W, H, 1);
+          edge(x0 - w / 2, ay, wz1, x0 - w / 2, by, wz1, a * 0.8, 0.5, W, H, 1);
+          edge(x0 + w / 2, ay, wz1, x0 + w / 2, by, wz1, a * 0.8, 0.5, W, H, 1);
         }
-      } else if (m.kind === 1) {
-        const step = b.h * 0.05;
-        for (let i = 0; i < m.n; i++) {
-          const y = y0 + i * step;
-          edge(x0, y, wz1, x0 + bw * m.len, y, wz1, a * 0.75, 0.5, W, H, 1);
+        const p = project(x0, yc, wz1, W, H);
+        if (p) dot(p.x, p.y, r, a, 1);
+      } else if (b.district === "midtown" && rich) {
+        // ChevronCluster, including its opacity ramp: the last one is the lit
+        // one, the ones behind it trail off
+        const cw = bw * 0.15, ch = b.h * 0.035;
+        for (let i = 0; i < 3; i++) {
+          const yb = y0 + i * ch * 1.5;
+          const ca = a * (0.25 + (i / 2) * 0.75);
+          edge(x0 - cw / 2, yb, wz1, x0, yb + ch, wz1, ca, 0.5, W, H, 1);
+          edge(x0, yb + ch, wz1, x0 + cw / 2, yb, wz1, ca, 0.5, W, H, 1);
         }
       } else {
-        edge(x0, y0, wz1, x0, y0 + b.h * m.len * 1.8, wz1, a, 0.65, W, H, 1);
-        const p = project(x0, y0 + b.h * m.len * 1.8, wz1, W, H);
+        // The suburbs get a single lit run capped with a node, which is also
+        // what everything too far to resolve falls back to
+        const top = y0 + b.h * m.len * 1.8;
+        edge(x0, y0, wz1, x0, top, wz1, a, 0.65, W, H, 1);
+        const p = project(x0, top, wz1, W, H);
         if (p) dot(p.x, p.y, r, a, 1);
       }
     };
@@ -1331,6 +1424,18 @@ export default function CityCanvas() {
       return true;
     };
 
+    /** A corner drawn flat on the ground, arms running inward along both axes
+     *  with a short step set in from the elbow. `sx`/`sz` are ±1. */
+    const groundCorner = (
+      cx: number, cz: number, sx: number, sz: number,
+      arm: number, step: number, a: number, lw: number, W: number, H: number
+    ) => {
+      edge(cx, 0, cz, cx + sx * arm, 0, cz, a, lw, W, H);
+      edge(cx, 0, cz, cx, 0, cz + sz * arm, a, lw, W, H);
+      edge(cx + sx * step, 0, cz + sz * step,
+           cx + sx * step * 2.4, 0, cz + sz * step, a * 0.6, lw, W, H);
+    };
+
     /** The corner of a HUD frame: two arms meeting at an elbow, with a dot on
      *  the elbow. `sx`/`sy` are ±1 for which way the arms run. */
     const bracket = (x: number, y: number, sx: number, sy: number, a: number) => {
@@ -1387,13 +1492,15 @@ export default function CityCanvas() {
         }
       }
 
-      // Travel: ease from the box we left toward the one we are on
+      // Travel: ease from the box we left toward the one we are on, with the
+      // brackets still standing off it and closing the last of the way in
       const k = clamp01((frameT - trkT0) / TRK_TRAVEL);
       const e = k * k * (3 - 2 * k);
-      const x0 = mix(trkFrom[0], trkShown[0], e) - TRK_PAD;
-      const y0 = mix(trkFrom[1], trkShown[1], e) - TRK_PAD;
-      const x1 = mix(trkFrom[2], trkShown[2], e) + TRK_PAD;
-      const y1 = mix(trkFrom[3], trkShown[3], e) + TRK_PAD;
+      const app = (1 - e) * TRK_APPROACH;
+      const x0 = mix(trkFrom[0], trkShown[0], e) - TRK_PAD - app;
+      const y0 = mix(trkFrom[1], trkShown[1], e) - TRK_PAD - app;
+      const x1 = mix(trkFrom[2], trkShown[2], e) + TRK_PAD + app;
+      const y1 = mix(trkFrom[3], trkShown[3], e) + TRK_PAD + app;
 
       // Dimmer while travelling, settled once it arrives
       const a = TRK_A * (0.35 + 0.65 * e);
@@ -1410,6 +1517,58 @@ export default function CityCanvas() {
       sEdge(cx - TRK_GAP, cy, cx - TRK_GAP - TRK_CROSS, cy, ca, TRK_LW, 1);
       sEdge(cx + TRK_GAP, cy, cx + TRK_GAP + TRK_CROSS, cy, ca, TRK_LW, 1);
       dot(cx, cy, 1.25, ca, 1);
+
+      // ── Confirmed ────────────────────────────────────────────────────────
+      // Everything from here only exists once the brackets have arrived, so
+      // the sequence reads as approach, lock, then report.
+      const lock = clamp01((frameT - trkT0 - TRK_TRAVEL) / TRK_LOCK_MS);
+      if (lock <= 0 || !trkB) return;
+      const la = a * lock;
+
+      // Inner frame: a plain rectangle inside the bracketed one
+      const i0x = x0 + TRK_INSET, i0y = y0 + TRK_INSET;
+      const i1x = x1 - TRK_INSET, i1y = y1 - TRK_INSET;
+      if (i1x > i0x && i1y > i0y) {
+        const ia = la * 0.42;
+        sEdge(i0x, i0y, i1x, i0y, ia, TRK_LW * 0.8, 1);
+        sEdge(i0x, i1y, i1x, i1y, ia, TRK_LW * 0.8, 1);
+        sEdge(i0x, i0y, i0x, i1y, ia, TRK_LW * 0.8, 1);
+        sEdge(i1x, i0y, i1x, i1y, ia, TRK_LW * 0.8, 1);
+      }
+
+      // Height rule down the outer side. Tick heights come from projecting the
+      // building's own upright, so the graduations are true world steps rather
+      // than an even division of a box that perspective has already skewed.
+      let twz = trkB.wz1 - scrollModRef;
+      if (twz < -CELL * 2) twz += maxView;
+      const rx = x0 - TRK_RULE_OFF;
+      sEdge(rx, y0, rx, y1, la * 0.5, TRK_LW * 0.8, 1);
+      for (let i = 0, wy = 0; wy <= trkB.h; i++, wy += TRK_RULE_STEP) {
+        const p = project(trkB.wx1, wy, twz, W, H);
+        if (!p) continue;
+        const len = i % 4 === 0 ? TRK_RULE_TICK * 2 : TRK_RULE_TICK;
+        sEdge(rx, p.y, rx - len, p.y, la * (i % 4 === 0 ? 0.75 : 0.45), TRK_LW * 0.8, 1);
+      }
+
+      // The target's own scan, climbing its face while the lock holds
+      const sph = ((frameT - trkT0) % TRK_SCAN_MS) / TRK_SCAN_MS;
+      const sp = project(trkB.wx1, sph * trkB.h, twz, W, H);
+      if (sp && sp.y > y0 && sp.y < y1) {
+        sEdge(x0, sp.y, x1, sp.y, la * 0.45 * Math.sin(sph * Math.PI), TRK_LW * 0.8, 1);
+      }
+
+      // Leader out to the edge of the glass, as GateTransition runs its status
+      // rule: a line, a stop tick, and a node on the end
+      const lx = W - TRK_LEAD_MARGIN;
+      if (lx > x1 + 8) {
+        sEdge(x1 + 4, cy, lx, cy, la * 0.4, TRK_LW * 0.8, 1);
+        sEdge(lx, cy - 4, lx, cy + 4, la * 0.55, TRK_LW * 0.8, 1);
+        dot(lx, cy, 1.25, la * 0.7, 1);
+      }
+
+      // Readout, stacked above the frame the way HUDCorners offsets its label
+      label(hexTag(trkB.seed), x0, y0 - 15, TXT_A * lock);
+      label(`H:${Math.round(trkB.h)}`, x0, y0 - 4, TXT_A * lock * 0.8);
     };
 
     const draw = (rafT: number) => {
@@ -1464,6 +1623,15 @@ export default function CityCanvas() {
         glitchDropLo = Math.random() * 0.7;
         glitchDropHi = glitchDropLo + 0.12 + Math.random() * 0.18;
       }
+      // Which building the system is unhappy with this cycle, and how far
+      // through its moment it is
+      const alertTick = Math.floor(frameT / ALERT_PERIOD);
+      const alertPh   = (frameT % ALERT_PERIOD) / ALERT_MS;
+      const alertFade = !lowPower && alertPh < 1 ? Math.sin(alertPh * Math.PI) : 0;
+      const alertSeed = alertFade > 0 && city.length
+        ? 1 + Math.floor(hash3(alertTick, 11, 3) * city.length)
+        : -1;
+
       const glitching = frameT < glitchEnd;
       const judder = glitching && glitchKind === 0 ? glitchShift : 0;
       const dropping = glitching && glitchKind === 2;
@@ -1543,12 +1711,20 @@ export default function CityCanvas() {
         }
 
         // Posts every sector, scrolling with the world so the rail reads as
-        // measured rather than as a bare converging line
-        for (let row = 0; row < activeRows; row += STREET_N) {
+        // measured rather than as a bare converging line. Every third runs long
+        // and carries a cross, the way a scale marks its major graduations.
+        for (let row = 0, n = 0; row < activeRows; row += STREET_N, n++) {
           let pz = row * CELL - scrollMod;
           if (pz < -CELL) pz += maxView;
           if (pz + CAM_Z <= 8 || pz > gridFar) continue;
-          edge(rx, 0, pz, rx, POST_H, pz, railA(pz) * POST_A, RAIL_LW, width, height);
+          const major = n % POST_MAJOR === 0;
+          const ph = major ? POST_H * POST_MAJOR_H : POST_H;
+          const pa = railA(pz) * POST_A;
+          edge(rx, 0, pz, rx, ph, pz, pa, RAIL_LW, width, height);
+          if (major) {
+            edge(rx - sgn * POST_CROSS, ph, pz, rx + sgn * POST_CROSS * 0.4, ph, pz,
+              pa * 0.75, RAIL_LW, width, height);
+          }
         }
 
         // Far corner: a stair inward and a post upward, so the corner reads as
@@ -1585,6 +1761,14 @@ export default function CityCanvas() {
           const x1 = Math.min(x0 + secW, xEnd);
           fillQuad(x0, 0, z0, x1, 0, z0, x1, 0, z1, x0, 0, z1,
             fillOf(CELL_RGB, a), width, height);
+          // Cornered rather than left as a plain lit rectangle, which is the
+          // one thing on this surface that was not speaking the HUD's language
+          const ca = (a / CELL_A) * CELL_GC_A;
+          const arm = (x1 - x0) * GC_ARM, stp = (x1 - x0) * GC_STEP;
+          groundCorner(x0, z0,  1,  1, arm, stp, ca, GRID_LW * 2, width, height);
+          groundCorner(x1, z0, -1,  1, arm, stp, ca, GRID_LW * 2, width, height);
+          groundCorner(x0, z1,  1, -1, arm, stp, ca, GRID_LW * 2, width, height);
+          groundCorner(x1, z1, -1, -1, arm, stp, ca, GRID_LW * 2, width, height);
         }
       }
 
@@ -1709,6 +1893,16 @@ export default function CityCanvas() {
           edge(b.wx1, 0, wz1, b.wx2, 0, wz1, base * EDGE_MUL.footFront, EDGE_LW.foot, width, height);
           edge(b.wx1, 0, wz1, b.wx1, 0, wz2, base * EDGE_MUL.footSide, EDGE_LW.foot, width, height);
           edge(b.wx2, 0, wz1, b.wx2, 0, wz2, base * EDGE_MUL.footSide, EDGE_LW.foot, width, height);
+
+          // The tall ones are flagged on the plan, at their own footprint
+          if (b.hasTower) {
+            const fw = b.wx2 - b.wx1, fd = wz2 - wz1;
+            const fa = base * EDGE_MUL.footFront * FOOT_FLAG_A;
+            groundCorner(b.wx1, wz1,  1,  1, fw * GC_ARM, fw * GC_STEP, fa, EDGE_LW.foot, width, height);
+            groundCorner(b.wx2, wz1, -1,  1, fw * GC_ARM, fw * GC_STEP, fa, EDGE_LW.foot, width, height);
+            groundCorner(b.wx1, wz2,  1, -1, fd * GC_ARM, fd * GC_STEP, fa, EDGE_LW.foot, width, height);
+            groundCorner(b.wx2, wz2, -1, -1, fd * GC_ARM, fd * GC_STEP, fa, EDGE_LW.foot, width, height);
+          }
         }
 
         if (!lowPower && b.data) drawData(b, wz1, width, height);
@@ -1766,6 +1960,25 @@ export default function CityCanvas() {
             edge(b.wx2, y,   zc - 4, b.wx2,   y+7, zc - 4, a*0.7, lw*0.6, width, height);
             edge(b.sky.x, y, zc - 4, b.sky.x, y+7, zc - 4, a*0.7, lw*0.6, width, height);
           }
+        }
+
+        // Flagged by the system this cycle
+        if (alertSeed === b.seed && dep.tb > 0.22) {
+          const cx = (b.wx1 + b.wx2) / 2;
+          const y0 = b.h + ALERT_SIZE * 0.5;
+          const y1 = y0 + ALERT_SIZE * 1.5;
+          const w  = ALERT_SIZE;
+          const aa = ALERT_A * alertFade
+                   * (((frameT / ALERT_BLINK) % 1) < 0.55 ? 1 : 0.28);
+          // Outer triangle, then the smaller one nested inside it
+          edge(cx, y1, wz1, cx + w, y0, wz1, aa, 0.8, width, height, 4);
+          edge(cx + w, y0, wz1, cx - w, y0, wz1, aa, 0.8, width, height, 4);
+          edge(cx - w, y0, wz1, cx, y1, wz1, aa, 0.8, width, height, 4);
+          const iy0 = y0 + ALERT_SIZE * 0.42, iy1 = y1 - ALERT_SIZE * 0.42;
+          const iw = w * 0.5;
+          edge(cx, iy1, wz1, cx + iw, iy0, wz1, aa * 0.4, 0.6, width, height, 4);
+          edge(cx + iw, iy0, wz1, cx - iw, iy0, wz1, aa * 0.4, 0.6, width, height, 4);
+          edge(cx - iw, iy0, wz1, cx, iy1, wz1, aa * 0.4, 0.6, width, height, 4);
         }
 
         if (b.hasHelip) {
