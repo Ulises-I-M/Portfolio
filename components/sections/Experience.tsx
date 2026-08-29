@@ -161,6 +161,14 @@ export default function Experience() {
                                         <p className="font-mono text-xs leading-loose text-[#aaaaaa]">
                                           {lang === "es" && ach.descriptionEs ? ach.descriptionEs : ach.description}
                                         </p>
+                                        {ach.linkHref && (
+                                          <a
+                                            href={ach.linkHref}
+                                            className="inline-block mt-4 font-mono text-[10px] tracking-[0.2em] text-[#a8ff00] hover:underline"
+                                          >
+                                            {tr.experience.seeProjects}
+                                          </a>
+                                        )}
                                       </div>
                                     </motion.div>
                                   )}

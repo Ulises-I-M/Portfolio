@@ -823,6 +823,93 @@ function ProjectCard({
   );
 }
 
+// ─── Compact index row ───────────────────────────────────────────────────────
+
+/**
+ * Thirteen cards of equal weight give a reader no entry point and run to eight
+ * screens on a phone. The strongest six keep the full card; the rest list here
+ * at a fraction of the height and open the same detail panel, so the breadth of
+ * the work stays visible without being scrolled through.
+ */
+function ProjectIndexRow({
+  project,
+  onSelect,
+  lang,
+}: {
+  project: Project;
+  onSelect: (p: Project, morph: boolean) => void;
+  lang: Lang;
+}) {
+  const [hovered, setHovered] = useState(false);
+  const { tr } = useLang();
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(project, false)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onFocus={() => setHovered(true)}
+      onBlur={() => setHovered(false)}
+      className="group relative w-full text-left flex items-center gap-3 sm:gap-5 pl-4 pr-3 py-3 border transition-colors duration-200 cursor-pointer chamfered-sm"
+      style={{
+        borderColor: hovered ? "rgba(168,255,0,0.35)" : "#1e1e1e",
+        background: hovered ? "rgba(168,255,0,0.03)" : "transparent",
+      }}
+      aria-label={`${project.title} — ${lang === "es" ? "ver detalle" : "view detail"}`}
+    >
+      {/* Left accent, the same tell the cards use */}
+      <span
+        aria-hidden="true"
+        className="absolute left-0 top-0 bottom-0 w-[2px] transition-colors duration-200"
+        style={{ background: hovered ? "#a8ff00" : "rgba(168,255,0,0.15)" }}
+      />
+
+      <span
+        className="font-mono text-[10px] tracking-[0.15em] w-9 flex-shrink-0 transition-colors duration-200"
+        style={{ color: hovered ? "#a8ff00" : "rgba(168,255,0,0.4)" }}
+      >
+        {project.code}
+      </span>
+
+      <span className="min-w-0 flex-1">
+        <span className="block font-mono font-bold text-xs text-[#efefef] tracking-tight uppercase truncate">
+          {project.title}
+        </span>
+        {project.client && (
+          <span className="block sm:hidden font-mono text-[9px] tracking-[0.12em] text-[#555555] truncate mt-0.5">
+            {project.client.toUpperCase()}
+          </span>
+        )}
+      </span>
+
+      {project.client && (
+        <span className="hidden sm:block font-mono text-[9px] tracking-[0.12em] text-[#555555] w-52 flex-shrink-0 truncate">
+          {project.client.toUpperCase()}
+        </span>
+      )}
+
+      <span className="hidden lg:flex gap-2 flex-shrink-0">
+        {project.tags.slice(0, 2).map((tag) => (
+          <span
+            key={tag}
+            className="border border-[#1e1e1e] px-2 py-0.5 font-mono text-[8px] tracking-[0.1em] text-[#555555]"
+          >
+            {tag.toUpperCase()}
+          </span>
+        ))}
+      </span>
+
+      <span
+        className="font-mono text-[9px] tracking-[0.15em] flex-shrink-0 transition-colors duration-200"
+        style={{ color: project.url ? (hovered ? "#a8ff00" : "#555555") : "#3a3a3a" }}
+      >
+        {project.url ? tr.projects.visit : tr.projects.private}
+      </span>
+    </button>
+  );
+}
+
 // ─── Projects Section ────────────────────────────────────────────────────────
 
 // Filtering by tech tag would put ~30 buttons in the bar once the industrial
@@ -833,7 +920,9 @@ type CategoryKey = (typeof CATEGORIES)[number];
 
 export default function Projects() {
   const [activeTag, setActiveTag] = useState<CategoryKey>("all");
-  const [selected, setSelected] = useState<Project | null>(null);
+  // An index row is a 70px strip: morphing it into a full panel reads as a
+  // glitch rather than a lift, so rows fade the panel in and cards morph it.
+  const [selected, setSelected] = useState<{ project: Project; morph: boolean } | null>(null);
   const { tr, lang } = useLang();
   const prefersReducedMotion = useReducedMotion();
   const lowPower = useLowPower();
@@ -866,6 +955,11 @@ export default function Projects() {
 
   const filtered =
     activeTag === "all" ? projects : projects.filter((p) => p.category === activeTag);
+
+  // A short list has nothing to gain from being split in two, so it stays cards.
+  const splitList = filtered.length > 3;
+  const cards = splitList ? filtered.filter((p) => p.featured) : filtered;
+  const indexed = splitList ? filtered.filter((p) => !p.featured) : [];
 
   const categoryLabel: Record<CategoryKey, string> = {
     all: tr.projects.filterAll,
@@ -929,17 +1023,35 @@ export default function Projects() {
                 key={activeTag}
                 className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8"
               >
-                {filtered.map((project) => (
+                {cards.map((project) => (
                   <ProjectCard
                     key={project.title}
                     project={project}
                     index={projects.indexOf(project)}
-                    onSelect={setSelected}
+                    onSelect={(p) => setSelected({ project: p, morph: true })}
                     lang={lang}
                   />
                 ))}
               </motion.div>
             </AnimatePresence>
+
+            {indexed.length > 0 && (
+              <div className="mt-10">
+                <p className="font-mono text-[10px] tracking-[0.25em] text-[#555555] mb-4">
+                  {tr.projects.moreWork}
+                </p>
+                <div className="space-y-2">
+                  {indexed.map((project) => (
+                    <ProjectIndexRow
+                      key={project.title}
+                      project={project}
+                      onSelect={(p, morph) => setSelected({ project: p, morph })}
+                      lang={lang}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
             </motion.div>
 
             {!prefersReducedMotion && (
@@ -956,7 +1068,12 @@ export default function Projects() {
       {/* Modal */}
       <AnimatePresence>
         {selected && (
-          <ProjectModal project={selected} onClose={() => setSelected(null)} lang={lang} morph={morph} />
+          <ProjectModal
+            project={selected.project}
+            onClose={() => setSelected(null)}
+            lang={lang}
+            morph={morph && selected.morph}
+          />
         )}
       </AnimatePresence>
     </>

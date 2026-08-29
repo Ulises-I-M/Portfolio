@@ -52,7 +52,8 @@ export const t = {
       contact: "Contact",
     },
     experience: {
-      achievements: "// KEY PROJECTS & ACHIEVEMENTS",
+      achievements: "// SCOPE OF THE ROLE",
+      seeProjects: "SEE THE PROJECTS →",
     },
     projects: {
       visit: "VISIT →",
@@ -66,6 +67,7 @@ export const t = {
       private: "PRIVATE",
       privateNote: "Enterprise deployment — no public URL",
       overview: "// OVERVIEW",
+      moreWork: "// MORE WORK",
       keyWork: "// KEY WORK",
       stack: "// STACK",
     },
@@ -140,7 +142,8 @@ export const t = {
       contact: "Contacto",
     },
     experience: {
-      achievements: "// PROYECTOS Y LOGROS CLAVE",
+      achievements: "// ALCANCE DEL ROL",
+      seeProjects: "VER LOS PROYECTOS →",
     },
     projects: {
       visit: "VISITAR →",
@@ -154,6 +157,7 @@ export const t = {
       private: "PRIVADO",
       privateNote: "Despliegue enterprise — sin URL pública",
       overview: "// RESUMEN",
+      moreWork: "// MÁS TRABAJO",
       keyWork: "// TRABAJO CLAVE",
       stack: "// STACK",
     },
