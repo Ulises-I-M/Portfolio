@@ -49,7 +49,10 @@ function processCommand(raw: string): Line[] {
     case "projects":
       lines.push({ type: "output", text: "projects:" });
       projects.forEach((p) =>
-        lines.push({ type: "output", text: `  [${p.category.toUpperCase()}] ${p.title} → ${p.url}` })
+        lines.push({
+          type: "output",
+          text: `  [${p.category.toUpperCase()}] ${p.title} → ${p.url ?? "private deployment"}`,
+        })
       );
       break;
 

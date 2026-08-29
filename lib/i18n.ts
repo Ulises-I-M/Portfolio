@@ -1,5 +1,9 @@
 export type Lang = "en" | "es";
 
+/** Resolve a field authored in both languages. */
+export const pick = (b: { en: string; es: string }, lang: Lang) =>
+  lang === "es" ? b.es : b.en;
+
 export const t = {
   en: {
     notFound: {
@@ -44,26 +48,26 @@ export const t = {
     sections: {
       about: "About",
       experience: "Experience",
-      education: "Education",
       projects: "Projects",
       contact: "Contact",
     },
     experience: {
       achievements: "// KEY PROJECTS & ACHIEVEMENTS",
     },
-    education: {
-      formal: "FORMAL",
-      course: "COURSE",
-      self: "SELF-TAUGHT",
-    },
     projects: {
       visit: "VISIT →",
       close: "CLOSE",
       filterAll: "ALL",
+      filterIot: "IOT · INDUSTRIAL",
       filterWeb: "WEB",
       filterPersonal: "PERSONAL",
       project: "PROJECT",
       projects: "PROJECTS",
+      private: "PRIVATE",
+      privateNote: "Enterprise deployment — no public URL",
+      overview: "// OVERVIEW",
+      keyWork: "// KEY WORK",
+      stack: "// STACK",
     },
     contact: {
       heading1: "LET'S BUILD",
@@ -132,26 +136,26 @@ export const t = {
     sections: {
       about: "Sobre Mí",
       experience: "Experiencia",
-      education: "Educación",
       projects: "Proyectos",
       contact: "Contacto",
     },
     experience: {
       achievements: "// PROYECTOS Y LOGROS CLAVE",
     },
-    education: {
-      formal: "FORMAL",
-      course: "CURSO",
-      self: "AUTODIDACTA",
-    },
     projects: {
       visit: "VISITAR →",
       close: "CERRAR",
       filterAll: "TODO",
+      filterIot: "IOT · INDUSTRIAL",
       filterWeb: "WEB",
       filterPersonal: "PERSONAL",
       project: "PROYECTO",
       projects: "PROYECTOS",
+      private: "PRIVADO",
+      privateNote: "Despliegue enterprise — sin URL pública",
+      overview: "// RESUMEN",
+      keyWork: "// TRABAJO CLAVE",
+      stack: "// STACK",
     },
     contact: {
       heading1: "INICIEMOS",

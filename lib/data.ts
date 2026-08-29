@@ -49,17 +49,26 @@ export const skills = [
   { name: "ThingsBoard", icon: null },
 ];
 
+/** A string authored in both site languages. */
+export type Bilingual = { en: string; es: string };
+
+// ─── Experience ──────────────────────────────────────────────────────────────
+
 export type Achievement = {
+  /** Stable key for the accordion — also used as the React key. */
   client: string;
   label: string;
+  labelEs?: string;
   description: string;
   descriptionEs?: string;
 };
 
 export type ExperienceEntry = {
   role: string;
+  roleEs?: string;
   company: string;
   period: string;
+  periodEs?: string;
   periodCode: string;
   description: string;
   descriptionEs?: string;
@@ -69,57 +78,557 @@ export type ExperienceEntry = {
 
 export const experience: ExperienceEntry[] = [
   {
-    role: "Desarrollador Frontend",
+    role: "Full-stack Developer · Frontend Lead",
+    roleEs: "Desarrollador Full-stack · Líder de Frontend",
     company: "Senzary LLC",
-    period: "Jul 2024 — Present",
-    periodCode: "2024.07 — PRESENT",
+    period: "Aug 2024 — Present",
+    periodEs: "Ago 2024 — Actualidad",
+    periodCode: "2024.08 — PRESENT",
     description:
-      "Developed and maintained IoT dashboards using ThingsBoard for enterprise clients in the energy, aviation, and industrial sectors. Responsible for the full frontend of custom real-time widgets, data visualization interfaces, and alerting systems.",
+      "Industrial IoT for enterprise clients in oil & gas, energy, aviation, steel, data centers and environmental monitoring. I led the frontend — and in many cases the backend too — of IoTLogIQ, a Smart Industry product built from the ground up, and supported its migration from ThingsBoard to an in-house Angular + Node.js stack. 10+ solutions delivered across Latin America and the US.",
     descriptionEs:
-      "Desarrollé y mantuve dashboards IoT utilizando ThingsBoard para clientes enterprise en los sectores de energía, aviación e industria. Responsable del frontend completo de widgets en tiempo real, interfaces de visualización de datos y sistemas de alertas.",
-    tags: ["ThingsBoard", "React", "TypeScript", "IoT", "Dashboards"],
+      "IoT industrial para clientes enterprise en oil & gas, energía, aviación, siderurgia, data centers y monitoreo ambiental. Lideré el frontend — y en muchos casos también el backend — de IoTLogIQ, un producto Smart Industry construido desde cero, y acompañé su migración desde ThingsBoard hacia un stack propio en Angular y Node.js. Más de 10 soluciones entregadas en Latinoamérica y EE.UU.",
+    tags: ["ThingsBoard PE", "Angular", "React", "Node.js", "TypeScript", "IoT", "UX/UI"],
     achievements: [
       {
+        client: "IOTLOGIQ",
+        label: "IoTLogIQ — Platform",
+        labelEs: "IoTLogIQ — Plataforma",
+        description:
+          "Smart Industry product built from the ground up: a base platform plus per-client tailored solutions for Shell, ENI, AES, IAC, Jacksonville Airport and Ternium, among others. I worked full-stack leading the frontend and in many cases the backend as well, and supported the product's migration from ThingsBoard towards an in-house Angular and Node.js stack.",
+        descriptionEs:
+          "Producto Smart Industry construido desde cero: una plataforma base más soluciones a medida por cliente — Shell, ENI, AES, IAC, Jacksonville Airport y Ternium, entre otros. Trabajé full-stack liderando el frontend y en muchos casos también el backend, y acompañé la migración del producto desde ThingsBoard hacia un stack propio en Angular y Node.js.",
+      },
+      {
+        client: "SENZARY_PRO",
+        label: "Senzary Pro — Navigation & design system",
+        labelEs: "Senzary Pro — Navegación y design system",
+        description:
+          "Built the reusable navigation system (top bar + sidebar) deployed across every client dashboard, with cross-dashboard routing, dynamic badges for alarm, ticket and device counts, and contextual visibility driven by the services each client has contracted. I also defined the platform design system: palette, typography and visual hierarchy criteria applied across the board.",
+        descriptionEs:
+          "Construí el sistema de navegación reutilizable (top bar + sidebar) desplegado en todos los dashboards de clientes, con navegación entre dashboards, badges dinámicos por conteo de alarmas, tickets y dispositivos, y visibilidad contextual según los servicios contratados por cada cliente. Definí además el design system de la plataforma: paleta, tipografía y criterios de jerarquía visual aplicados de forma transversal.",
+      },
+      {
+        client: "WORKERIQ",
+        label: "WorkerIQ — ENI",
+        labelEs: "WorkerIQ — ENI",
+        description:
+          "Worker safety on site: real-time personnel tracking, geolocated maps, mustering and operational alerts over a deployment of 139 Abeeway badges, H2S sensors and a dozen LoRaWAN gateways. I added polygon geofencing solved inside a rule chain, two-level alarm escalation with email and SMS, and a command-center view designed for a control-room TV.",
+        descriptionEs:
+          "Seguridad de trabajadores en planta: seguimiento de personal en tiempo real, mapas geolocalizados, mustering y alertas operativas sobre un despliegue de 139 badges Abeeway, sensores de H2S y una decena de gateways LoRaWAN. Sumé geofencing por polígonos resuelto en rule chain, escalamiento de alarmas en dos niveles con email y SMS, y una vista de command center pensada para TV en sala de control.",
+      },
+      {
+        client: "TRASHCANS",
+        label: "TrashCans — SF DPW",
+        labelEs: "TrashCans — SF DPW",
+        description:
+          "IoT dashboard for smart waste containers: fill level, temperature, alarms and collection route management over 851 ultrasonic sensors deployed across San Francisco. Includes route planning with HERE Maps, a field installation wizard, user management with roles through the API, and a full mobile adaptation.",
+        descriptionEs:
+          "Dashboard IoT para contenedores de residuos inteligentes: nivel de llenado, temperatura, alarmas y gestión de rutas de recolección sobre 851 sensores ultrasónicos desplegados en San Francisco. Incluye planificación de rutas con HERE Maps, wizard de instalación en campo, gestión de usuarios con roles vía API y adaptación mobile completa.",
+      },
+      {
+        client: "AIRPORTIQ",
+        label: "AirportIQ — Jacksonville Airport",
+        labelEs: "AirportIQ — Jacksonville Airport",
+        description:
+          "Solution for airport operations: air quality, temperature, people counting and flow, queue management and environmental monitoring. Dashboards designed for fast reading in a control room, with threshold alarms, per-terminal views and historical measurements.",
+        descriptionEs:
+          "Solución para operación aeroportuaria: calidad de aire, temperatura, conteo y flujo de personas, gestión de filas y monitoreo ambiental. Dashboards pensados para lectura rápida en sala de control, con alarmas por umbral, vistas por terminal e histórico de mediciones.",
+      },
+      {
+        client: "DUSTIQ",
+        label: "DustIQ — IAC",
+        labelEs: "DustIQ — IAC",
+        description:
+          "Environmental and process monitoring solution: particulate matter measurement together with tank level and volume control, over a fleet of 71 filtration units spread across several plants. I developed the fleet heatmap, the comparison table, the KPI strip and a 3D digital twin of the filtration train in Three.js with live telemetry.",
+        descriptionEs:
+          "Solución de monitoreo ambiental y de proceso: medición de material particulado junto con control de niveles y volumen de tanques, sobre una flota de 71 unidades de filtración distribuidas en varias plantas. Desarrollé el heatmap de flota, la tabla comparativa, el strip de KPIs y un gemelo digital 3D en Three.js del tren de filtración con telemetría en vivo.",
+      },
+      {
+        client: "PUMPIQ",
+        label: "PumpIQ — AWSS Aruba",
+        labelEs: "PumpIQ — AWSS Aruba",
+        description:
+          "Wastewater SCADA for 20 pumping stations: SCADA symbology, per-motor detail with runtime and energy consumption, a fleet analytics section and a twelve-rule alarm engine comparing telemetry against per-station configurable thresholds. It included a UX and accessibility audit that corrected colour semantics with real operational impact.",
+        descriptionEs:
+          "SCADA de aguas residuales para 20 estaciones de bombeo: simbología SCADA, detalle por motor con runtime y consumo energético, sección de analítica de flota y un motor de doce reglas de alarma que comparan telemetría contra umbrales configurables por estación. Incluyó una auditoría de UX y accesibilidad que corrigió semánticas de color con impacto operativo real.",
+      },
+      {
+        client: "RAGASA",
+        label: "Ragasa — Digital plant",
+        labelEs: "Ragasa — Planta digital",
+        description:
+          "Multi-domain suite for an active industrial plant: valve monitoring with LoRaWAN trackers, energy consumption, air quality and predictive maintenance. I redesigned the main view once it became clear the real audience was operational rather than technical, pushing sensor data down to secondary information.",
+        descriptionEs:
+          "Suite multi-dominio para una planta industrial activa: monitoreo de válvulas con trackers LoRaWAN, consumo energético, calidad de aire y mantenimiento predictivo. Rediseñé la vista principal cuando quedó claro que la audiencia real era operativa y no técnica, dejando el dato de sensor como información secundaria.",
+      },
+      {
         client: "AES",
-        label: "AES — Energy Monitoring Platform",
+        label: "AES Energy — Platform redesign",
+        labelEs: "AES Energy — Rediseño de plataforma",
         description:
-          "Built a real-time energy monitoring dashboard for AES, one of the world's largest power companies. Implemented custom ThingsBoard widgets for live sensor telemetry, alarm management panels, and historical trend charts across multiple facilities.",
+          "Complete redesign of the platform for AES Energy, coordinating meetings with the client to map out the application's visual identity and bring it down to a design system applicable across every view. The result was very well received by the client.",
         descriptionEs:
-          "Construí un dashboard de monitoreo energético en tiempo real para AES, una de las compañías eléctricas más grandes del mundo. Implementé widgets personalizados en ThingsBoard para telemetría de sensores, paneles de gestión de alarmas y gráficos históricos en múltiples instalaciones.",
+          "Rediseño completo de la plataforma para AES Energy, coordinando reuniones con el cliente para trazar la identidad visual de la aplicación y bajarla a un sistema de diseño aplicable a todas las vistas. El resultado tuvo muy buena recepción del cliente.",
       },
       {
-        client: "ENI",
-        label: "ENI — Industrial Operations Dashboard",
+        client: "HEAVY_INDUSTRY",
+        label: "Oil & gas, energy and steel",
+        labelEs: "Oil & gas, energía y siderurgia",
         description:
-          "Developed a multi-site industrial dashboard for ENI's operations. Integrated device telemetry streams, geo-mapped asset tracking, and role-based access control panels for field engineers and management.",
+          "Solutions for Shell, AES and Ternium: asset monitoring, digital twin, predictive analytics and KPI boards for industrial operations. Use-case analysis, offsets and thresholds, rule chains and alarms with severity matched to each operation.",
         descriptionEs:
-          "Desarrollé un dashboard industrial multi-sitio para las operaciones de ENI. Integré flujos de telemetría de dispositivos, seguimiento geolocalizado de activos y paneles de control de acceso por roles para ingenieros de campo y management.",
+          "Soluciones para Shell, AES y Ternium: monitoreo de activos, digital twin, analítica predictiva y tableros de KPIs para operación industrial. Análisis de casos de uso, offsets y thresholds, rule chains y alarmas con severidad acorde a cada operación.",
       },
       {
-        client: "SHELL",
-        label: "SHELL Canada — Field Monitoring",
+        client: "AI_ADOPTION",
+        label: "AI adoption across the team",
+        labelEs: "Adopción de IA en el equipo",
         description:
-          "Contributed to operational dashboards for SHELL Canada's field monitoring infrastructure, enabling real-time equipment status tracking and automated alerting for technicians on-site.",
+          "Led the incorporation of AI tooling into the development team's workflow: usage standards, prompts and review criteria, plus training for other developers so we could ship faster without giving up quality.",
         descriptionEs:
-          "Contribuí a los dashboards operacionales de la infraestructura de monitoreo de campo de SHELL Canada, habilitando el seguimiento en tiempo real del estado de equipos y alertas automatizadas para técnicos en sitio.",
+          "Lideré la incorporación de herramientas de IA en el flujo de trabajo del equipo de desarrollo: definición de estándares de uso, prompts y criterios de revisión, además de capacitación a otros desarrolladores para acelerar entregas sin resignar calidad.",
+      },
+      {
+        client: "DOCUMENTATION",
+        label: "Documentation & knowledge transfer",
+        labelEs: "Documentación y transferencia",
+        description:
+          "Produced technical architecture documentation, bilingual (ES/EN) user manuals for plant operators and managers, and automated Excel reports for performance tracking.",
+        descriptionEs:
+          "Produje documentación técnica de arquitectura, manuales de usuario bilingües (ES/EN) para operadores y gerentes de planta, y reportes automatizados en Excel para seguimiento de performance.",
       },
     ],
   },
 ];
 
+// ─── Projects ────────────────────────────────────────────────────────────────
+
+/** Motif drawn behind the sigil when a project has no public screenshot. */
+export type ProjectGlyph =
+  | "nodes"
+  | "radar"
+  | "route"
+  | "wave"
+  | "grid"
+  | "bars"
+  | "scatter"
+  | "flow"
+  | "hex";
+
+export type ProjectMetric = { value: string; label: Bilingual };
+
 export type Project = {
   title: string;
+  /** Three-letter sigil stamped on the generated glyph. */
+  code: string;
+  client?: string;
   description: string;
   descriptionEs?: string;
-  url: string;
-  image: string;
+  longDescription?: string;
+  longDescriptionEs?: string;
+  metrics?: ProjectMetric[];
+  highlights?: Bilingual[];
+  /** Absent when the deployment is private — the card shows no visit link. */
+  url?: string;
+  /** Absent when there is no shareable screenshot — a glyph is drawn instead. */
+  image?: string;
+  glyph?: ProjectGlyph;
   tags: string[];
-  category: "web" | "personal";
+  category: "iot" | "web" | "personal";
 };
 
 export const projects: Project[] = [
   {
+    title: "IoTLogIQ",
+    code: "ILQ",
+    client: "Senzary · Smart Industry",
+    glyph: "nodes",
+    category: "iot",
+    description:
+      "Smart Industry product built from the ground up: a base IoT platform plus tailored solutions for Shell, ENI, AES, IAC, Jacksonville Airport and Ternium.",
+    descriptionEs:
+      "Producto Smart Industry desarrollado desde cero: plataforma IoT base más soluciones a medida para Shell, ENI, AES, IAC, Jacksonville Airport y Ternium.",
+    longDescription:
+      "Industrial IoT platform built on ThingsBoard PE. I worked full-stack across frontend and backend, and supported the product's migration from ThingsBoard towards an in-house Angular and Node.js stack. I also led the adoption of AI tooling inside the development team. 10+ projects delivered for clients in airports, oil & gas, energy, steel, data centers and environmental monitoring, mainly across Latin America and the US.",
+    longDescriptionEs:
+      "Plataforma industrial IoT construida sobre ThingsBoard PE. Trabajé full-stack, tanto en frontend como en backend, y acompañé la migración del producto desde ThingsBoard hacia un stack propio en Angular y Node.js. Lideré además la adopción de herramientas de IA en el equipo de desarrollo. Más de 10 proyectos entregados para clientes en aeropuertos, oil & gas, energía, siderurgia, data centers y monitoreo ambiental, principalmente en Latinoamérica y EE.UU.",
+    metrics: [
+      { value: "10+", label: { en: "SOLUTIONS SHIPPED", es: "SOLUCIONES ENTREGADAS" } },
+      { value: "6", label: { en: "INDUSTRIES", es: "INDUSTRIAS" } },
+      { value: "2", label: { en: "REGIONS · LATAM / US", es: "REGIONES · LATAM / EE.UU." } },
+    ],
+    highlights: [
+      {
+        en: "Senzary Pro — a reusable navigation system (top bar + sidebar) deployed across every client dashboard: cross-dashboard routing, dynamic badges for alarm, ticket and device counts, and contextual visibility per contracted service.",
+        es: "Senzary Pro — sistema de navegación reutilizable (top bar + sidebar) desplegado en todos los dashboards de clientes: navegación cross-dashboard, badges dinámicos por conteo de alarmas, tickets y dispositivos, y visibilidad contextual según los servicios contratados.",
+      },
+      {
+        en: "Custom Alarm Manager widget replacing ThingsBoard's native alarm table, plus a shared gateway-management widget with in-place attribute editing.",
+        es: "Widget custom Alarm Manager que reemplaza la tabla de alarmas nativa de ThingsBoard, más un widget transversal de gestión de gateways con edición de atributos in-place.",
+      },
+      {
+        en: "Platform design system: magenta #E91E8C, navy #2E3192, Plus Jakarta Sans — palette, typography and hierarchy criteria applied across every client view.",
+        es: "Design system de la plataforma: magenta #E91E8C, navy #2E3192, Plus Jakarta Sans — paleta, tipografía y criterios de jerarquía aplicados en todas las vistas de cliente.",
+      },
+      {
+        en: "Tenant migration oldsmart → smart across the Smart Industry module: users, devices and assets at scale, without breaking live client dashboards.",
+        es: "Migración de tenant oldsmart → smart en el módulo Smart Industry: usuarios, devices y assets a escala, sin romper los dashboards de clientes en producción.",
+      },
+      {
+        en: "Cross-client dashboards: multi-tenant pressure monitoring (16 widgets, Ellenex sensors in inWC), IoT network gateway management and industrial door monitoring with Dragino sensors for IAC St. Joseph.",
+        es: "Dashboards transversales: monitoreo de presión multi-cliente (16 widgets, sensores Ellenex en inWC), gestión de gateways de red IoT y monitoreo de puertas industriales con sensores Dragino para IAC St. Joseph.",
+      },
+      {
+        en: "Deep TB PE patterns: markdownTextFunction, custom widget lifecycle (onInit / onDataUpdated), base64 state navigation, ctx.stateController vs ctx.router, and injecting modals into window.parent.document to escape the widget iframe.",
+        es: "Patrones TB PE dominados: markdownTextFunction, ciclo de vida de custom widgets (onInit / onDataUpdated), navegación entre estados con parámetros base64, ctx.stateController vs ctx.router, e inyección en window.parent.document para modales que escapan el iframe.",
+      },
+    ],
+    tags: ["Angular", "Node.js", "React", "ThingsBoard PE", "IoT", "Digital Twin", "Dashboards"],
+  },
+  {
+    title: "WorkerIQ",
+    code: "WIQ",
+    client: "ENI · Puerto Dos Bocas, MX",
+    glyph: "radar",
+    category: "iot",
+    description:
+      "Worker safety platform for ENI: real-time personnel tracking, geolocated maps, mustering, toxic gas monitoring and a control-room command center.",
+    descriptionEs:
+      "Plataforma de seguridad de trabajadores para ENI: seguimiento de personal en tiempo real, mapas geolocalizados, mustering, monitoreo de gas tóxico y command center para sala de control.",
+    longDescription:
+      "End-to-end industrial safety platform for ENI / Roca Port. It combines personnel tracking with Abeeway badges (GPS + BLE + LoRaWAN), H2S/NH3 toxic gas monitoring against OSHA thresholds, emergency detection (man-down, falls, panic button), geofencing by operational zone, and a command center designed for an 80\" TV in the control room.",
+    longDescriptionEs:
+      "Plataforma integral de seguridad industrial para ENI / Roca Port. Combina tracking de personal con badges Abeeway (GPS + BLE + LoRaWAN), monitoreo de gas tóxico H2S/NH3 contra umbrales OSHA, detección de emergencias (man-down, caídas, botón de pánico), geofencing por zonas operativas y un command center diseñado para TV de 80\" en sala de control.",
+    metrics: [
+      { value: "139", label: { en: "SMART BADGES", es: "SMART BADGES" } },
+      { value: "10", label: { en: "LORAWAN GATEWAYS", es: "GATEWAYS LORAWAN" } },
+      { value: "7", label: { en: "OPERATIONAL ZONES", es: "ZONAS OPERATIVAS" } },
+      { value: "66", label: { en: "RULE CHAIN NODES", es: "NODOS DE RULE CHAIN" } },
+    ],
+    highlights: [
+      {
+        en: "Badge Assignment System: real-time monitoring and assignment of 160 badges with state filters, configurable auto-refresh, Excel export and columns for battery, last message, beacon read, mode, current location and condition.",
+        es: "Badge Assignment System: monitoreo y asignación en tiempo real de 160 badges, con filtros por estado, auto-refresh configurable, export a Excel y columnas de batería, último mensaje, beacon leído, modo, ubicación actual y condición.",
+      },
+      {
+        en: "Rule-chain geofencing: a point-in-polygon (ray casting) algorithm over polygons stored as an asset perimeter attribute, writing zoneCurrentDescription as timeseries so the existing SOS notification system picks it up automatically.",
+        es: "Geofencing por rule chain: algoritmo point-in-polygon (ray casting) sobre polígonos definidos como atributo perimeter de assets, guardando zoneCurrentDescription como timeseries para que el sistema de notificación SOS existente lo levante automáticamente.",
+      },
+      {
+        en: "Two-level alarm escalation (primary + secondary) with email/SMS notifications and automatic reminders, wired into a 66-node rule chain without breaking the existing flows.",
+        es: "Escalamiento de alarmas en dos niveles (primario + secundario) con notificaciones email/SMS y recordatorios automáticos, sobre una rule chain de 66 nodos intervenida sin romper los flujos existentes.",
+      },
+      {
+        en: "HERE Maps widget with live badge positions, dynamic iconography by device state and geofence rendering, plus a zone-distribution donut with alias normalisation and an \"out of boundary\" bucket.",
+        es: "Widget de mapa HERE con posiciones de badges en vivo, iconografía dinámica por estado de dispositivo y renderizado de geocercas, más un donut de distribución por zona con normalización de aliases y bucket \"out of boundary\".",
+      },
+      {
+        en: "Command Center TV: dark glassmorphism theme in ENI corporate colours, typography scaled for distance reading (40px KPIs, 44px sensor readouts), designed as a passive no-interaction view.",
+        es: "Command Center TV: dark theme con glassmorphism en colores corporativos ENI, tipografía escalada para lectura a distancia (KPIs 40px, lecturas de sensor 44px), diseñado como vista pasiva sin interacción.",
+      },
+      {
+        en: "H2S thresholds mapped to OSHA bands: 0–10 ppm safe, 10–20 warning, >20 danger, >100 IDLH.",
+        es: "Umbrales de H2S mapeados a bandas OSHA: 0–10 ppm seguro, 10–20 advertencia, >20 peligro, >100 IDLH.",
+      },
+    ],
+    tags: ["ThingsBoard PE", "JavaScript", "HERE Maps", "ECharts", "LoRaWAN", "Rule Chains"],
+  },
+  {
+    title: "TrashCans",
+    code: "TRC",
+    client: "San Francisco Dept. of Public Works",
+    url: "https://trashcans.senzary.com/",
+    glyph: "route",
+    category: "iot",
+    description:
+      "Smart waste management for SF DPW: real-time fill level, temperature, alarms and route planning across 851 deployed ultrasonic sensors.",
+    descriptionEs:
+      "Gestión inteligente de residuos para el SF DPW: nivel de llenado en tiempo real, temperatura, alarmas y planificación de rutas sobre 851 sensores ultrasónicos desplegados.",
+    longDescription:
+      "Smart waste management system for the San Francisco Department of Public Works. Each container carries an ultrasonic sensor that measures free space every ~10 minutes and transmits over NB-IoT. Instead of fixed calendar routes, dispatchers see which containers are full right now and trace optimised routes in real time — saving fuel and avoiding overflows in high-density areas like Mission, SOMA and Castro.",
+    longDescriptionEs:
+      "Sistema de gestión inteligente de residuos para el San Francisco Department of Public Works. Cada contenedor lleva un sensor ultrasónico que mide el espacio libre cada ~10 minutos y transmite por NB-IoT. En vez de rutas fijas por calendario, los despachadores ven qué contenedores están llenos ahora y trazan rutas optimizadas en tiempo real, ahorrando combustible y evitando desbordes en zonas de alta densidad como Mission, SOMA y Castro.",
+    metrics: [
+      { value: "851", label: { en: "SENSORS DEPLOYED", es: "SENSORES DESPLEGADOS" } },
+      { value: "1036", label: { en: "UNITS IN INVENTORY", es: "UNIDADES EN INVENTARIO" } },
+      { value: "13", label: { en: "DASHBOARD STATES", es: "ESTADOS DE DASHBOARD" } },
+      { value: "15+", label: { en: "CUSTOM WIDGETS", es: "WIDGETS CUSTOM" } },
+    ],
+    highlights: [
+      {
+        en: "HERE Maps route planning (Routing API v8 + flexible polyline decoder) with Collection / Critical / Maintenance tabs, each with its own prioritisation: Collection skips units in fire state, Critical dispatches fire alerts first then overflow by descending fill, Maintenance sorts offline units by longest downtime, then tilt, then battery.",
+        es: "Planificación de rutas con HERE Maps (Routing API v8 + decoder de flexible polyline) y tabs Collection / Critical / Maintenance, cada una con su propia priorización: Collection excluye unidades en estado de incendio, Critical despacha primero alertas de fuego y luego overflow por llenado descendente, Maintenance ordena las offline por mayor tiempo caído, luego tilt, luego batería.",
+      },
+      {
+        en: "Five-step Field Install Wizard (mount bracket → scan QR/DevEUI → confirm first uplink → location + 2 photos → deploy) with 16-hex DevEUI validation, Milesight OUI prefix check, real GPS capture and uplink polling.",
+        es: "Field Install Wizard de 5 pasos (montar bracket → escanear QR/DevEUI → confirmar primer uplink → ubicación + 2 fotos → deploy) con validación de DevEUI de 16 hex, chequeo de prefijo OUI Milesight, captura real de GPS y polling de uplink.",
+      },
+      {
+        en: "Users Management widget with full CRUD against the ThingsBoard PE API: per-customer listing, role resolution by entity group, three-step creation wizard with activation mail, role change, edit, delete with self-guard and activation resend.",
+        es: "Widget de Users Management con CRUD completo contra la API de ThingsBoard PE: listado por customer, resolución de roles por entity group, wizard de alta en 3 pasos con mail de activación, cambio de rol, edición, borrado con self-guard y reenvío de activación.",
+      },
+      {
+        en: "Complete mobile adaptation: side menu with a centred Field Install FAB in the tab bar, bottom sheets, 2×2 KPI cards, compact device list, card-format alarm console and inventory card view.",
+        es: "Adaptación mobile completa: side menu con FAB de Field Install centrado en la tab bar, bottom sheets, KPI cards 2×2, device list compacto, consola de alarmas en formato card e inventario con card view.",
+      },
+      {
+        en: "Two critical fixes: fill_level_pct is the real percentage while fillLevel is raw ultrasonic distance in cm; and widget iframes carry their own viewport, so CSS media queries never fire — breakpoints had to be detected in JS off window.parent.innerWidth.",
+        es: "Dos fixes críticos: fill_level_pct es el porcentaje real mientras que fillLevel es distancia cruda del ultrasónico en cm; y los iframes de widget tienen viewport propio, por lo que las media queries CSS no disparan — los breakpoints hay que detectarlos por JS con window.parent.innerWidth.",
+      },
+    ],
+    tags: ["ThingsBoard PE", "JavaScript", "HERE Maps", "ECharts", "NB-IoT", "Milesight"],
+  },
+  {
+    title: "PumpIQ",
+    code: "PIQ",
+    client: "AWSS · Aruba Wastewater Services",
+    glyph: "wave",
+    category: "iot",
+    description:
+      "Wastewater SCADA for 20 lift stations: SCADA symbology, per-motor detail with runtime and energy, fleet analytics and a dynamic alarm engine.",
+    descriptionEs:
+      "SCADA de aguas residuales para 20 estaciones de bombeo: simbología SCADA, detalle por motor con runtime y energía, analítica de flota y motor de alarmas dinámico.",
+    longDescription:
+      "Industrial dashboard on ThingsBoard PE for AWSS, monitoring 20 lift stations spread across the island. Each station carries an ultrasonic level sensor, two pumps instrumented for current and energy, a Siemens S7-1200 PLC and LoRaWAN/D2D communication — sensor EM500-UDL, UC300 controller, Acrel ADW300-WL energy meter per pump over MQTT, Milesight UG65 / Kerlink iStation gateways and Teltonika LTE backhaul.",
+    longDescriptionEs:
+      "Dashboard industrial sobre ThingsBoard PE para AWSS, monitoreando 20 lift stations distribuidas en la isla. Cada estación tiene sensor de nivel ultrasónico, dos bombas instrumentadas con medición de corriente y energía, PLC Siemens S7-1200 y comunicación LoRaWAN/D2D — sensor EM500-UDL, controlador UC300, medidor Acrel ADW300-WL por bomba vía MQTT, gateways Milesight UG65 / Kerlink iStation y backhaul LTE Teltonika.",
+    metrics: [
+      { value: "20", label: { en: "LIFT STATIONS", es: "ESTACIONES DE BOMBEO" } },
+      { value: "81", label: { en: "WIDGETS", es: "WIDGETS" } },
+      { value: "13", label: { en: "DASHBOARD STATES", es: "ESTADOS DE DASHBOARD" } },
+      { value: "12", label: { en: "ALARM RULES", es: "REGLAS DE ALARMA" } },
+    ],
+    highlights: [
+      {
+        en: "Analytics section built as a single custom widget: five KPI cards (fleet uptime, total energy, average level, alarm events, comm health), fleet average-level trend in ECharts, station ranking, pump status bars, energy distribution donut and active alarm list.",
+        es: "Sección Analytics construida como un único widget custom: 5 KPI cards (fleet uptime, energía total, nivel promedio, eventos de alarma, comm health), tendencia de nivel promedio de flota en ECharts, ranking de estaciones, barras de estado de bombas, donut de distribución energética y lista de alarmas activas.",
+      },
+      {
+        en: "Motor Detail widget from scratch: runtime derived from historical pump1_run/pump2_run transitions, ECharts loaded dynamically by CDN, a calendar-style heatmap (0–23h × 30 days), KPIs, energy, flow rates and runtime hours.",
+        es: "Widget de Motor Detail desde cero: runtime derivado de transiciones históricas de pump1_run/pump2_run, carga dinámica de ECharts por CDN, heatmap tipo calendario (0–23h × 30 días), KPIs, energía, caudales y horas de runtime.",
+      },
+      {
+        en: "Twelve alarm rules on the awss-station device profile comparing telemetry against dynamic SERVER_SCOPE attributes: overflow/high level (critical), low level, pump faults, overcurrent, no power / fail to start (30s duration), excessive runtime (120min), comm lost (30min inactivity) and weak signal by RSSI.",
+        es: "Doce alarm rules en el device profile awss-station comparando telemetría contra atributos SERVER_SCOPE dinámicos: overflow/high level (crítica), low level, fallas de bomba, sobrecorriente, no power / fail to start (duración 30s), runtime excesivo (120min), comm lost (inactividad 30min) y señal débil por RSSI.",
+      },
+      {
+        en: "Full UX/UI audit of the 13 states and ~206k characters of controllerScript, surfacing real operational-safety findings: inverted colour semantics on the wet-well tank (red for low level, blue for high — the opposite of the actual overflow risk), pump2_run plotted in red making normal operation read as a fault, and measured WCAG AA contrast failures (nav bar 2.27:1, idle pump LED 1.73:1).",
+        es: "Auditoría UX/UI completa de los 13 estados y ~206k caracteres de controllerScript, con hallazgos reales de seguridad operativa: semántica de color invertida en el tanque de wet well (rojo para nivel bajo, azul para alto — al revés del riesgo real de desborde), pump2_run graficado en rojo haciendo que la operación normal pareciera falla, y fallos de contraste WCAG AA medidos (nav bar 2.27:1, LED de bomba idle 1.73:1).",
+      },
+      {
+        en: "Platform bugs resolved: the currentStation param requires an exact { entityId: { id, entityType }, entityName } shape; TB PE does not re-resolve stateEntity aliases when calling openState on the same state (a fleet→station bounce is needed); and ctx.data mixes items from multiple datasources, so filtering by entityAliasId is mandatory.",
+        es: "Bugs de plataforma resueltos: el parámetro currentStation requiere la estructura exacta { entityId: { id, entityType }, entityName }; TB PE no re-resuelve aliases stateEntity al llamar openState sobre el mismo estado (hace falta un rebote fleet→station); y ctx.data mezcla ítems de múltiples datasources, por lo que filtrar por entityAliasId es obligatorio.",
+      },
+    ],
+    tags: ["ThingsBoard PE", "JavaScript", "ECharts", "SCADA", "LoRaWAN", "MQTT", "Modbus/PLC"],
+  },
+  {
+    title: "DustIQ Baghouse",
+    code: "DIQ",
+    client: "IAC · multi-plant",
+    glyph: "grid",
+    category: "iot",
+    description:
+      "Industrial air filtration monitoring across 71 baghouse units in several plants, with a fleet heatmap, comparison table and a 3D digital twin in Three.js.",
+    descriptionEs:
+      "Monitoreo de filtración industrial de aire sobre 71 unidades baghouse en varias plantas, con heatmap de flota, tabla comparativa y gemelo digital 3D en Three.js.",
+    longDescription:
+      "Monitoring dashboard for baghouse filtration units (industrial dust collectors) modelled as ThingsBoard assets across plants in US Toledo, Geneva IL, Labadie, Hercules and others. I built the whole suite as custom widgets, including a navigable 3D digital twin of the filtration train fed with live telemetry: prefilter and HEPA differential pressure, bag leak detection, airflow, inlet/outlet temperature and motor amperage.",
+    longDescriptionEs:
+      "Dashboard de monitoreo para unidades de filtración baghouse (colectores de polvo industrial) modeladas como assets de ThingsBoard, distribuidas en plantas de US Toledo, Geneva IL, Labadie, Hercules y otras. Desarrollé la suite completa como widgets custom, incluyendo un gemelo digital 3D navegable del tren de filtración con telemetría en vivo: presión diferencial de prefiltro y HEPA, detección de fuga de bolsa, caudal, temperatura de entrada/salida y amperaje de motor.",
+    metrics: [
+      { value: "71", label: { en: "BAGHOUSE UNITS", es: "UNIDADES BAGHOUSE" } },
+      { value: "5+", label: { en: "PLANTS", es: "PLANTAS" } },
+      { value: "7", label: { en: "TELEMETRY CHANNELS", es: "CANALES DE TELEMETRÍA" } },
+      { value: "4", label: { en: "CUSTOM WIDGETS", es: "WIDGETS CUSTOM" } },
+    ],
+    highlights: [
+      {
+        en: "Baghouse Details — a 3D digital twin in Three.js: model of the Polysense FEU/EF filtration train, animated airflow particles, orbital drag/zoom controls and a side panel of live telemetry cards. Split out from the heatmap as a reusable entity-bound widget, using a ResizeObserver instead of media queries and per-instance state in ctx.bdState rather than globals.",
+        es: "Baghouse Details — gemelo digital 3D en Three.js: modelo del tren de filtración Polysense FEU/EF, partículas animadas de flujo de aire, controles orbitales de drag/zoom y panel lateral con cards de telemetría en vivo. Independizado del heatmap como widget reutilizable bindeado a entidad, usando ResizeObserver en vez de media queries y estado por instancia en ctx.bdState en lugar de globals.",
+      },
+      {
+        en: "Fleet Filter Load Heatmap — a card grid per unit with OK / Warning / Alarm severity, backed by explicit thresholds (prefilter DP 0.9/1.0 inWC, HEPA DP 2.9/3.0 inWC, bag leak 8/12%).",
+        es: "Fleet Filter Load Heatmap — grilla de cards por unidad con severidad OK / Warning / Alarm, respaldada por umbrales explícitos (prefiltro DP 0.9/1.0 inWC, HEPA DP 2.9/3.0 inWC, bag leak 8/12%).",
+      },
+      {
+        en: "Fleet Table with client-side sorting and a KPI strip clustered as \"Fleet Status\" / \"Fleet Median\" — median rather than mean, so a single bad sensor cannot drag the fleet reading.",
+        es: "Fleet Table con ordenamiento client-side y KPI strip agrupado en \"Fleet Status\" / \"Fleet Median\" — mediana en vez de media, para que un solo sensor defectuoso no arrastre la lectura de flota.",
+      },
+      {
+        en: "Data-quality fix: a sanitize() pass discarding physically impossible readings (12320.90 inWC, −4761.35 inWC) that were corrupting the fleet averages.",
+        es: "Fix de calidad de datos: un paso sanitize() que descarta lecturas físicamente imposibles (12320.90 inWC, −4761.35 inWC) que corrompían los promedios de flota.",
+      },
+      {
+        en: "Classification fix: lastActivityTime is never populated on ASSET entities, so using it as a severity gate made all 71 units report OFFLINE.",
+        es: "Fix de clasificación: lastActivityTime no se popula en entidades ASSET, por lo que usarlo como gate de severidad hacía que las 71 unidades aparecieran OFFLINE.",
+      },
+      {
+        en: "Own XSS escaping (escHtml / escJs / bdEsc) across every widget, and an ERR_CERT_AUTHORITY_INVALID diagnosis on the Three.js load that turned out to be corporate SSL inspection rather than CSP — solved by self-hosting the library in the TB Resource Library.",
+        es: "Escapado XSS propio (escHtml / escJs / bdEsc) en todos los widgets, y diagnóstico de un ERR_CERT_AUTHORITY_INVALID al cargar Three.js que resultó ser inspección SSL corporativa y no CSP — resuelto self-hosteando la librería en el Resource Library de TB.",
+      },
+    ],
+    tags: ["ThingsBoard PE", "JavaScript", "Three.js", "ECharts", "Digital Twin"],
+  },
+  {
+    title: "AirportIQ",
+    code: "AIQ",
+    client: "Jacksonville Airport",
+    glyph: "bars",
+    category: "iot",
+    description:
+      "Airport operations on IoTLogIQ: air quality, temperature, people counting and flow, queue management and environmental monitoring for control-room reading.",
+    descriptionEs:
+      "Operación aeroportuaria sobre IoTLogIQ: calidad de aire, temperatura, conteo y flujo de personas, gestión de filas y monitoreo ambiental para lectura en sala de control.",
+    longDescription:
+      "Airport operations solution built on the IoTLogIQ platform. Dashboards designed for fast reading in a control room, with threshold alarms, per-terminal views and historical measurements, plus asset management across gateways, IAQ, people movers, moving walkways and predictive maintenance in baggage claim, filterable by floor and location.",
+    longDescriptionEs:
+      "Solución de operación aeroportuaria construida sobre la plataforma IoTLogIQ. Dashboards pensados para lectura rápida en sala de control, con alarmas por umbral, vistas por terminal e histórico de mediciones, más gestión de assets por gateways, IAQ, people movers, moving walkways y mantenimiento predictivo en baggage claim, con filtros por piso y ubicación.",
+    metrics: [
+      { value: "11", label: { en: "WIDGETS · PEOPLE COUNTER 2.0", es: "WIDGETS · PEOPLE COUNTER 2.0" } },
+      { value: "5", label: { en: "KPI SERIES", es: "SERIES DE KPI" } },
+      { value: "3", label: { en: "ASSET DETAIL MODES", es: "MODOS DE DETALLE" } },
+    ],
+    highlights: [
+      {
+        en: "People Counter 2.0: redesign and migration of the original dashboard to a multi-state version (default, bathroom, escalator, plus per-asset-mode detail states — Cleaning In-Out, Count In-Out, Switch/Availability) with dynamic cards and a responsive corporate design.",
+        es: "People Counter 2.0: rediseño y migración del dashboard original a una versión con navegación multi-estado (default, bathroom, escalator, más estados de detalle por modo de asset — Cleaning In-Out, Count In-Out, Switch/Availability) con cards dinámicas y diseño corporativo responsivo.",
+      },
+      {
+        en: "KPI strip: Total Entries (SUM), Total Exits (SUM), Total Traffic, Net People (cumulative in − out) and Switch Available — each with a sparkline and a comparison against the previous period.",
+        es: "KPI strip: Total Entries (SUM), Total Exits (SUM), Total Traffic, Net People (in − out acumulado) y Switch Available — cada uno con sparkline y comparación contra el período anterior.",
+      },
+      {
+        en: "Platform constraint solved: ThingsBoard does not support DELTA_PERCENT with SUM aggregation, so the widget uses DELTA_ABSOLUTE and computes the percentage itself.",
+        es: "Constraint de plataforma resuelto: ThingsBoard no soporta DELTA_PERCENT con agregación SUM, por lo que el widget usa DELTA_ABSOLUTE y calcula el porcentaje por su cuenta.",
+      },
+    ],
+    tags: ["Angular", "ThingsBoard PE", "Node.js", "IoT", "Dashboards"],
+  },
+  {
+    title: "AES Predictive Maintenance",
+    code: "AES",
+    client: "AES Energy · data center",
+    glyph: "scatter",
+    category: "iot",
+    description:
+      "Predictive maintenance platform for a data center: vibration analysis, linear regression, component remaining-life estimation and anomaly detection.",
+    descriptionEs:
+      "Plataforma de mantenimiento predictivo para datacenter: análisis de vibración, regresión lineal, estimación de vida útil de componentes y detección de anomalías.",
+    longDescription:
+      "Predictive maintenance platform for AES Energy, plus a complete redesign of the application. I ran the client workshops that defined its visual identity and translated that into a design system applied across every view — a redesign that drew standout recognition from the client.",
+    longDescriptionEs:
+      "Plataforma de mantenimiento predictivo para AES Energy, más un rediseño completo de la aplicación. Coordiné las reuniones con el cliente que definieron la identidad visual y la traduje a un sistema de diseño aplicado a todas las vistas — un rediseño que recibió reconocimiento destacado del cliente.",
+    highlights: [
+      {
+        en: "Complete platform redesign: client meetings to define the application's visual identity, translated into a design system applied across every view. The result drew standout recognition from the client.",
+        es: "Rediseño completo de la plataforma: reuniones con el cliente para definir la identidad visual de la aplicación, traducida a un sistema de diseño aplicado a todas las vistas. El resultado recibió reconocimiento destacado del cliente.",
+      },
+      {
+        en: "Bearing remaining-life estimation, failure pattern detection and confidence scoring over vibration telemetry.",
+        es: "Estimación de vida útil de rodamientos, detección de patrones de falla y scoring de confianza sobre telemetría de vibración.",
+      },
+      {
+        en: "ECharts plots with a linear regression line drawn over the vibration series, so a technician reads the trend rather than the noise.",
+        es: "Gráficos ECharts con línea de regresión lineal sobre las series de vibración, para que el técnico lea la tendencia y no el ruido.",
+      },
+    ],
+    tags: ["ThingsBoard PE", "ECharts", "Vibration Analysis", "JavaScript", "UX/UI"],
+  },
+  {
+    title: "Ragasa Digital Plant",
+    code: "RGS",
+    client: "Ragasa · industrial plant",
+    glyph: "flow",
+    category: "iot",
+    description:
+      "Multi-domain IoT suite for an active industrial plant: valve monitoring, energy consumption, air quality and predictive maintenance.",
+    descriptionEs:
+      "Suite IoT multi-dominio para planta industrial activa: monitoreo de válvulas, consumo energético, calidad de aire y mantenimiento predictivo.",
+    longDescription:
+      "Multi-domain suite for an active industrial plant. The valve dashboard tracks open/closed state with Abeeway trackers reading tilt, driven by a four-level priority state machine with animated SVG indicators, 48-bar ECharts histograms and Leaflet/OSM mapping. Delivered through Jira alongside a collaborative root-cause investigation.",
+    longDescriptionEs:
+      "Suite multi-dominio para una planta industrial activa. El dashboard de válvulas monitorea estado abierto/cerrado con trackers Abeeway leyendo inclinación, gobernado por una máquina de estados de 4 niveles de prioridad, con indicadores SVG animados, histogramas de 48 barras en ECharts y mapeo Leaflet/OSM. Entregado vía Jira junto a una investigación colaborativa de root cause.",
+    highlights: [
+      {
+        en: "Valve Dashboard: open/closed monitoring with Abeeway trackers reading tiltX_deg, a four-level priority state machine, animated SVG indicators, 48-bar ECharts histograms and Leaflet/OSM mapping.",
+        es: "Valve Dashboard: monitoreo abierto/cerrado con trackers Abeeway leyendo tiltX_deg, máquina de estados de 4 niveles de prioridad, indicadores SVG animados, histogramas de 48 barras en ECharts y mapeo Leaflet/OSM.",
+      },
+      {
+        en: "Design pivot: the real audience turned out to be non-technical users who only needed state, last activity and battery — so the technical data (tilt angles, RSSI) was demoted and the view rebuilt as a split panel (list + floorplan).",
+        es: "Pivote de diseño: la audiencia real eran usuarios no técnicos que solo necesitaban estado, última actividad y batería — así que la data técnica (ángulos de tilt, RSSI) se ocultó y la vista se rediseñó como split-panel (lista + floorplan).",
+      },
+      {
+        en: "Architecture rule established for every widget in the suite: a single datasource bound to the \"Devices under asset\" alias pointing at the currentAsset state param.",
+        es: "Regla de arquitectura establecida para todos los widgets de la suite: un solo datasource atado al alias \"Devices under asset\" apuntando al state param currentAsset.",
+      },
+      {
+        en: "Collaborative root-cause investigation: 5 of 6 trackers had been misconfigured in Actility from valve tilt mode to GPS tracking mode, so they had stopped transmitting while bolted to fixed valves.",
+        es: "Investigación colaborativa de root cause: 5 de 6 trackers habían sido mal configurados en Actility de modo tilt de válvula a modo GPS tracking, dejando de transmitir mientras estaban atornillados a válvulas fijas.",
+      },
+    ],
+    tags: ["ThingsBoard PE", "ECharts", "Leaflet/OSM", "LoRaWAN", "Abeeway", "Jira"],
+  },
+  {
+    title: "IoTArg",
+    code: "ARG",
+    client: "Collaborative project · public repo",
+    url: "https://iotarg.vercel.app/",
+    glyph: "hex",
+    category: "personal",
+    description:
+      "Full-stack IoT fleet management platform: real-time device monitoring, geolocated maps, alarms, drag-and-drop dashboards and multi-tenant role-based access.",
+    descriptionEs:
+      "Plataforma full-stack de gestión de flota IoT: monitoreo de dispositivos en tiempo real, mapas geolocalizados, alarmas, dashboards drag-and-drop y acceso multi-cliente por roles.",
+    longDescription:
+      "Integrates ThingsBoard as the IoT engine (telemetry, rules, entities) behind a NestJS backend exposing REST + WebSocket APIs, with a Next.js/React frontend. Designed to scale to multiple clients with device hierarchies and granular per-role permissions. I own the frontend and UX/UI. It currently runs on the ThingsBoard free tier, so some enterprise features are limited for now.",
+    longDescriptionEs:
+      "Integra ThingsBoard como motor IoT (telemetría, reglas, entidades) detrás de un backend en NestJS que expone APIs REST + WebSocket, con frontend en Next.js/React. Pensada para escalar a múltiples clientes con jerarquías de dispositivos y permisos granulares por rol. Llevo el frontend y el UX/UI. Actualmente corre sobre el free tier de ThingsBoard, por lo que algunas funciones enterprise están limitadas por ahora.",
+    highlights: [
+      {
+        en: "Customisable dashboards with drag-and-drop widget layout, persisted per user.",
+        es: "Dashboards personalizables con layout de widgets drag-and-drop, persistido por usuario.",
+      },
+      {
+        en: "Real-time telemetry over WebSockets, with React Query for cache and Zod for runtime schema validation at the API boundary.",
+        es: "Telemetría en tiempo real sobre WebSockets, con React Query para caché y Zod para validación de esquemas en runtime en el borde de la API.",
+      },
+      {
+        en: "Multi-tenant, multi-role access control with device hierarchies — built to onboard new clients without forking the app.",
+        es: "Control de acceso multi-cliente y multi-rol con jerarquías de dispositivos — pensado para dar de alta clientes nuevos sin forkear la app.",
+      },
+    ],
+    tags: [
+      "React",
+      "Next.js",
+      "TypeScript",
+      "React Query",
+      "Zod",
+      "Tailwind CSS",
+      "WebSockets",
+      "NestJS",
+      "Prisma",
+      "PostgreSQL",
+      "Docker",
+      "ThingsBoard",
+    ],
+  },
+  {
+    title: "Nandina Smart Home",
+    code: "NSH",
+    description:
+      "Real-time IoT smart home dashboard with Synetika sensors. Live data visualization, device control panels, and alerting system.",
+    descriptionEs:
+      "Dashboard IoT de hogar inteligente en tiempo real con sensores Synetika. Visualización de datos en vivo, paneles de control de dispositivos y sistema de alertas.",
+    url: "https://smarthome-nandina.netlify.app",
+    image: "/images/portfolio/portfolio-5.jpg",
+    tags: ["React", "ThingsBoard", "IoT"],
+    category: "web",
+  },
+  {
     title: "Air Ecommerce",
+    code: "AIR",
     description:
       "Minimal clothing store landing page with product showcase, cart interactions, and mobile-first design.",
     descriptionEs:
@@ -130,18 +639,8 @@ export const projects: Project[] = [
     category: "web",
   },
   {
-    title: "To-do List App",
-    description:
-      "Multi-board task management app with drag-and-drop, persistent state, and clean keyboard navigation.",
-    descriptionEs:
-      "App de gestión de tareas con múltiples tableros, drag-and-drop, estado persistente y navegación por teclado.",
-    url: "https://to-do-list-ulises-i-m.netlify.app",
-    image: "/images/portfolio/portfolio-2.jpg",
-    tags: ["React", "TypeScript"],
-    category: "personal",
-  },
-  {
     title: "EnerGym",
+    code: "EGY",
     description:
       "Conversion-focused gym landing page. Optimized for leads with strong CTAs and performance-first build.",
     descriptionEs:
@@ -152,55 +651,16 @@ export const projects: Project[] = [
     category: "web",
   },
   {
-    title: "Nandina Smart Home",
+    title: "To-do List App",
+    code: "TDL",
     description:
-      "Real-time IoT smart home dashboard with Synetika sensors. Live data visualization, device control panels, and alerting system.",
+      "Multi-board task management app with drag-and-drop, persistent state, and clean keyboard navigation.",
     descriptionEs:
-      "Dashboard IoT de hogar inteligente en tiempo real con sensores Synetika. Visualización de datos en vivo, paneles de control de dispositivos y sistema de alertas.",
-    url: "https://smarthome-nandina.netlify.app",
-    image: "/images/portfolio/portfolio-5.jpg",
-    tags: ["React", "ThingsBoard", "IoT"],
-    category: "web",
-  },
-];
-
-export type EducationEntry = {
-  degree: string;
-  institution: string;
-  year: string;
-  type: "formal" | "course" | "self";
-  tags: string[];
-};
-
-// Update these with your real education/courses
-export const education: EducationEntry[] = [
-  {
-    degree: "Bachiller Técnico en Informática",
-    institution: "Actualizar institución",
-    year: "20XX",
-    type: "formal",
-    tags: ["Redes", "Sistemas", "Programación"],
-  },
-  {
-    degree: "React — De cero a experto",
-    institution: "Udemy",
-    year: "2023",
-    type: "course",
-    tags: ["React", "JavaScript", "Hooks", "Context"],
-  },
-  {
-    degree: "TypeScript Completo",
-    institution: "Udemy",
-    year: "2024",
-    type: "course",
-    tags: ["TypeScript", "Generics", "Types"],
-  },
-  {
-    degree: "Next.js — Apps Full Stack",
-    institution: "Udemy",
-    year: "2024",
-    type: "course",
-    tags: ["Next.js", "SSR", "API Routes"],
+      "App de gestión de tareas con múltiples tableros, drag-and-drop, estado persistente y navegación por teclado.",
+    url: "https://to-do-list-ulises-i-m.netlify.app",
+    image: "/images/portfolio/portfolio-2.jpg",
+    tags: ["React", "TypeScript"],
+    category: "personal",
   },
 ];
 

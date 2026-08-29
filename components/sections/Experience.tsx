@@ -64,7 +64,7 @@ export default function Experience() {
                       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
                         <div>
                           <h3 className="font-mono font-bold text-[#efefef] text-lg tracking-tight mb-1">
-                            {exp.role.toUpperCase()}
+                            {(lang === "es" && exp.roleEs ? exp.roleEs : exp.role).toUpperCase()}
                           </h3>
                           <p className="font-mono text-sm text-[#a8ff00] tracking-[0.15em] flex items-center gap-2">
                             @ {exp.company.toUpperCase()}
@@ -73,7 +73,7 @@ export default function Experience() {
                         </div>
                         <div className="font-mono text-[10px] tracking-[0.2em] text-[#555555] sm:text-right">
                           <div className="text-[#a8ff00] mb-1">{exp.periodCode}</div>
-                          <div>{exp.period}</div>
+                          <div>{lang === "es" && exp.periodEs ? exp.periodEs : exp.period}</div>
                         </div>
                       </div>
 
@@ -127,7 +127,10 @@ export default function Experience() {
                                       }}
                                       aria-hidden="true"
                                     />
-                                    {ach.label.toUpperCase()}
+                                    {(lang === "es" && ach.labelEs
+                                      ? ach.labelEs
+                                      : ach.label
+                                    ).toUpperCase()}
                                   </span>
                                   <span
                                     className="text-[#555555] text-xs flex-shrink-0 transition-transform duration-200"
