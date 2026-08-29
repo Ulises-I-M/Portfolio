@@ -149,7 +149,7 @@ export default function Skills() {
     >
       <div className="mx-auto max-w-7xl">
         <RevealText scan>
-          <SectionLabel index="05" label="Skills" className="mb-10" />
+          <SectionLabel index="04" label="Skills" className="mb-10" />
         </RevealText>
 
         {/* Terminal header */}

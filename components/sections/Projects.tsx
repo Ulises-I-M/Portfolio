@@ -18,13 +18,52 @@ import HUDCardFrame from "@/components/ui/HUDCardFrame";
 import GateTransition from "@/components/ui/GateTransition";
 import { frameClipPath } from "@/components/ui/hudFrameGeometry";
 import { useLowPower } from "@/hooks/useLowPower";
+import ProjectGlyph from "@/components/ui/ProjectGlyph";
 import { projects, type Project } from "@/lib/data";
 import { useLang } from "@/context/LangContext";
-import type { Lang } from "@/lib/i18n";
+import { pick, type Lang } from "@/lib/i18n";
 
 // Stable key tying a grid card to its detail panel for the shared-element morph
 const projectSlug = (p: Project) =>
   p.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+/**
+ * Client deployments behind an NDA have no screenshot to show. Borrowing an
+ * unrelated capture would misrepresent them, so those cards get a schematic
+ * drawn from the project's own domain instead.
+ */
+function ProjectVisual({
+  project,
+  sizes,
+  glyphScale = 1,
+  imageProps,
+}: {
+  project: Project;
+  sizes: string;
+  glyphScale?: number;
+  imageProps?: { className?: string; style?: React.CSSProperties };
+}) {
+  if (!project.image) {
+    return (
+      <ProjectGlyph
+        code={project.code}
+        kind={project.glyph}
+        seed={project.title}
+        scale={glyphScale}
+      />
+    );
+  }
+  return (
+    <Image
+      src={project.image}
+      alt={project.title}
+      fill
+      sizes={sizes}
+      className={imageProps?.className}
+      style={imageProps?.style}
+    />
+  );
+}
 
 // ─── Project Detail Modal ────────────────────────────────────────────────────
 
@@ -126,14 +165,17 @@ function ProjectModal({
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       onMouseMove={onOverlayMove}
     >
-      <motion.div {...panelOuter} className="relative w-full max-w-md">
+      <motion.div {...panelOuter} className="relative w-full max-w-lg">
       {/* The chip itself. Clip and overflow live here, not on the outer layer:
           on the outer, a tilted chip would have its corners eaten by the clip
           and the stepped silhouette would deform. */}
       <motion.div
         ref={chipRef}
-        className="relative w-full overflow-hidden bg-[#0a0a0a]"
+        className="relative w-full overflow-hidden bg-[#0a0a0a] flex flex-col"
         style={{
+          // Bounded so a long dossier scrolls inside the chip rather than
+          // stretching it past the viewport
+          maxHeight: "calc(100vh - 5rem)",
           clipPath: frameClipPath(),
           filter:
             "drop-shadow(0 22px 30px rgba(0,0,0,0.75)) drop-shadow(0 0 18px rgba(168,255,0,0.13))",
@@ -143,14 +185,14 @@ function ProjectModal({
         }}
       >
         {/* Image */}
-        <div className="relative aspect-video overflow-hidden bg-[#111111]">
-          <Image
-            src={project.image}
-            alt={project.title}
-            fill
-            className="object-cover"
-            style={{ filter: "grayscale(0.2) contrast(1.05)" }}
-            sizes="(max-width: 768px) 100vw, 448px"
+        <div className="relative aspect-video overflow-hidden bg-[#111111] flex-shrink-0">
+          <ProjectVisual
+            project={project}
+            sizes="(max-width: 768px) 100vw, 512px"
+            imageProps={{
+              className: "object-cover",
+              style: { filter: "grayscale(0.2) contrast(1.05)" },
+            }}
           />
           {/* Neon tint */}
           <div
@@ -187,26 +229,102 @@ function ProjectModal({
           </button>
         </div>
 
-        {/* Info */}
-        <div className="p-6">
-          <div className="flex items-start justify-between gap-4 mb-3">
+        {/* Info — scrolls on its own so a long dossier never grows the chip */}
+        <div className="px-6 pt-6 pb-10 overflow-y-auto overscroll-contain modal-scroll">
+          <div className="flex items-start justify-between gap-4 mb-1">
             <h3 className="font-mono font-bold text-lg text-[#efefef] tracking-tight uppercase">
               {project.title}
             </h3>
-            <a
-              href={project.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-shrink-0 border border-[#a8ff00] px-4 py-2 font-mono text-[10px] tracking-[0.2em] text-[#a8ff00] hover:bg-[#a8ff00] hover:text-[#0a0a0a] transition-all duration-200 cursor-pointer"
-            >
-              {tr.projects.visit}
-            </a>
+            {project.url ? (
+              <a
+                href={project.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-shrink-0 border border-[#a8ff00] px-4 py-2 font-mono text-[10px] tracking-[0.2em] text-[#a8ff00] hover:bg-[#a8ff00] hover:text-[#0a0a0a] transition-all duration-200 cursor-pointer"
+              >
+                {tr.projects.visit}
+              </a>
+            ) : (
+              <span
+                className="flex-shrink-0 border border-[#1e1e1e] px-4 py-2 font-mono text-[10px] tracking-[0.2em] text-[#555555]"
+                title={tr.projects.privateNote}
+              >
+                {tr.projects.private}
+              </span>
+            )}
           </div>
 
-          <p className="font-mono text-sm text-[#555555] leading-loose mb-5">
+          {project.client && (
+            <p className="font-mono text-[10px] tracking-[0.18em] text-[#a8ff00] opacity-70 mb-4">
+              {project.client.toUpperCase()}
+            </p>
+          )}
+
+          <p className="font-mono text-sm text-[#888888] leading-loose mb-5">
             {lang === "es" && project.descriptionEs ? project.descriptionEs : project.description}
           </p>
 
+          {/* Metrics — the numbers carry more than any adjective would */}
+          {project.metrics && project.metrics.length > 0 && (
+            <div className="grid grid-cols-2 gap-px mb-6 bg-[#1e1e1e] border border-[#1e1e1e]">
+              {project.metrics.map((m, i) => (
+                <div
+                  key={m.value + m.label.en}
+                  // An odd count would otherwise leave a bordered empty cell
+                  className={`bg-[#0a0a0a] px-3 py-3 ${
+                    i === project.metrics!.length - 1 && project.metrics!.length % 2 === 1
+                      ? "col-span-2"
+                      : ""
+                  }`}
+                >
+                  <div className="font-mono font-bold text-base text-[#a8ff00] leading-none mb-1.5">
+                    {m.value}
+                  </div>
+                  <div className="font-mono text-[8px] tracking-[0.16em] text-[#555555] leading-snug">
+                    {pick(m.label, lang)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {(project.longDescription || project.longDescriptionEs) && (
+            <>
+              <p className="font-mono text-[10px] tracking-[0.25em] text-[#555555] mb-3">
+                {tr.projects.overview}
+              </p>
+              <p className="font-mono text-xs text-[#888888] leading-loose mb-6">
+                {lang === "es" && project.longDescriptionEs
+                  ? project.longDescriptionEs
+                  : project.longDescription}
+              </p>
+            </>
+          )}
+
+          {project.highlights && project.highlights.length > 0 && (
+            <>
+              <p className="font-mono text-[10px] tracking-[0.25em] text-[#555555] mb-3">
+                {tr.projects.keyWork}
+              </p>
+              <ul className="space-y-3 mb-6">
+                {project.highlights.map((h) => (
+                  <li key={h.en} className="flex gap-3">
+                    <span
+                      aria-hidden="true"
+                      className="mt-[7px] w-1.5 h-1.5 flex-shrink-0 bg-[#a8ff00] opacity-60"
+                    />
+                    <span className="font-mono text-xs text-[#888888] leading-loose">
+                      {pick(h, lang)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+
+          <p className="font-mono text-[10px] tracking-[0.25em] text-[#555555] mb-3">
+            {tr.projects.stack}
+          </p>
           <div className="flex flex-wrap gap-2">
             {project.tags.map((tag) => (
               <span
@@ -218,6 +336,12 @@ function ProjectModal({
               </span>
             ))}
           </div>
+
+          {!project.url && (
+            <p className="font-mono text-[9px] tracking-[0.15em] text-[#333333] mt-5">
+              {tr.projects.privateNote}
+            </p>
+          )}
         </div>
 
         {/* Same frame it wears in the tray — without it, picking the chip up
@@ -306,10 +430,7 @@ function ProjectCard({
 
   // ── Derived dossier metadata ──────────────────────────────────────────────
   const idx = String(index + 1).padStart(3, "0");
-  const typeTag = (project.tags[0] ?? "WEB")
-    .toUpperCase()
-    .replace(/\s+/g, ".")
-    .slice(0, 10);
+  const typeTag = project.category === "iot" ? "IOT.IND" : project.category.toUpperCase();
   const hexId = `0x${project.title
     .split("")
     .reduce((acc, c) => acc + c.charCodeAt(0), 0)
@@ -326,7 +447,7 @@ function ProjectCard({
       initial={{ opacity: 0, y: 20 }}
       exit={{ opacity: 0, y: 20 }}
       transition={{ type: "spring", stiffness: 220, damping: 24, mass: 1 }}
-      className="relative"
+      className="relative h-full"
       // One animate drives both the entry and the hover lift: a chip you touch
       // should rise off the tray, not merely tilt in place.
       animate={
@@ -344,13 +465,15 @@ function ProjectCard({
       onMouseMove={onMouseMove}
       onFocusCapture={() => setHovered(true)}
       onBlurCapture={() => setHovered(false)}
+      // Full height so every card in a row ends at the same footer line
+      // regardless of how far its description or tag list runs
     >
       {/* ── SVG HUD frame (drawn outside the clipped article) ─────────────── */}
       <HUDCardFrame hovered={hovered} />
 
       {/* ── Card body — clipped to the shared frame silhouette ───────────── */}
       <article
-        className="relative overflow-hidden cursor-pointer"
+        className="relative overflow-hidden cursor-pointer h-full flex flex-col"
         onClick={openDetail}
         style={{
           clipPath: frameClipPath(),
@@ -509,19 +632,19 @@ function ProjectCard({
                 : { x: artX, y: artY, scale: 1.06 }
             }
           >
-          <Image
-            src={project.image}
-            alt={project.title}
-            fill
-            className="object-cover transition-all duration-700"
-            style={{
-              filter: hovered
-                ? "grayscale(0) contrast(1.05)"
-                : "grayscale(0.75) contrast(1)",
-              animation: hovered ? "ken-burns 8s ease-in-out infinite" : "none",
-              transformOrigin: "center center",
-            }}
+          <ProjectVisual
+            project={project}
             sizes="(max-width: 768px) 100vw, 50vw"
+            imageProps={{
+              className: "object-cover transition-all duration-700",
+              style: {
+                filter: hovered
+                  ? "grayscale(0) contrast(1.05)"
+                  : "grayscale(0.75) contrast(1)",
+                animation: hovered ? "ken-burns 8s ease-in-out infinite" : "none",
+                transformOrigin: "center center",
+              },
+            }}
           />
           </motion.div>
           {/* Neon tint */}
@@ -581,29 +704,40 @@ function ProjectCard({
         />
 
         {/* ── Info ─────────────────────────────────────────────────────── */}
-        <div style={{ padding: "16px 20px 12px 20px" }}>
-          <div className="flex items-start justify-between gap-2 mb-2">
+        <div style={{ padding: "16px 20px 12px 20px", flex: 1 }}>
+          <div className="flex items-start justify-between gap-2 mb-1">
             <h3 className="font-mono font-bold text-sm text-[#efefef] tracking-tight uppercase">
               {project.title}
             </h3>
-            <a
-              href={project.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-mono text-[10px] tracking-[0.15em] text-[#a8ff00] hover:underline cursor-pointer flex-shrink-0"
-              aria-label={`Open ${project.title}`}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {tr.projects.visit}
-            </a>
+            {project.url ? (
+              <a
+                href={project.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-[10px] tracking-[0.15em] text-[#a8ff00] hover:underline cursor-pointer flex-shrink-0"
+                aria-label={`Open ${project.title}`}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {tr.projects.visit}
+              </a>
+            ) : (
+              <span className="font-mono text-[10px] tracking-[0.15em] text-[#3a3a3a] flex-shrink-0">
+                {tr.projects.private}
+              </span>
+            )}
           </div>
+          {project.client && (
+            <p className="font-mono text-[9px] tracking-[0.18em] text-[#a8ff00] opacity-60 mb-3">
+              {project.client.toUpperCase()}
+            </p>
+          )}
           <p className="font-mono text-xs text-[#888888] leading-relaxed mb-4">
             {lang === "es" && project.descriptionEs
               ? project.descriptionEs
               : project.description}
           </p>
           <div className="flex flex-wrap gap-2">
-            {project.tags.map((tag) => (
+            {project.tags.slice(0, 4).map((tag) => (
               <span
                 key={tag}
                 className="border border-[#1e1e1e] px-2 py-0.5 font-mono text-[9px] tracking-[0.1em] text-[#555555]"
@@ -611,6 +745,11 @@ function ProjectCard({
                 {tag.toUpperCase()}
               </span>
             ))}
+            {project.tags.length > 4 && (
+              <span className="px-1 py-0.5 font-mono text-[9px] tracking-[0.1em] text-[#3a3a3a]">
+                +{project.tags.length - 4}
+              </span>
+            )}
           </div>
         </div>
 
@@ -686,11 +825,14 @@ function ProjectCard({
 
 // ─── Projects Section ────────────────────────────────────────────────────────
 
-// Collect unique tech tags from all projects
-const ALL_TAGS = ["ALL", ...Array.from(new Set(projects.flatMap((p) => p.tags)))];
+// Filtering by tech tag would put ~30 buttons in the bar once the industrial
+// stacks are counted, so the bar filters by domain instead; the full stack of
+// each project stays visible on its card and in its detail panel.
+const CATEGORIES = ["all", "iot", "web", "personal"] as const;
+type CategoryKey = (typeof CATEGORIES)[number];
 
 export default function Projects() {
-  const [activeTag, setActiveTag] = useState("ALL");
+  const [activeTag, setActiveTag] = useState<CategoryKey>("all");
   const [selected, setSelected] = useState<Project | null>(null);
   const { tr, lang } = useLang();
   const prefersReducedMotion = useReducedMotion();
@@ -702,9 +844,9 @@ export default function Projects() {
   // Clicking a filter shuts the gate over the grid, swaps the tag while it is
   // covered, then reopens to reveal the new set.
   const [gateOpen, setGateOpen] = useState(true);
-  const pendingTag = useRef<string | null>(null);
+  const pendingTag = useRef<CategoryKey | null>(null);
 
-  const selectTag = (tag: string) => {
+  const selectTag = (tag: CategoryKey) => {
     if (tag === activeTag) return;
     if (prefersReducedMotion) {
       setActiveTag(tag);
@@ -723,7 +865,14 @@ export default function Projects() {
   };
 
   const filtered =
-    activeTag === "ALL" ? projects : projects.filter((p) => p.tags.includes(activeTag));
+    activeTag === "all" ? projects : projects.filter((p) => p.category === activeTag);
+
+  const categoryLabel: Record<CategoryKey, string> = {
+    all: tr.projects.filterAll,
+    iot: tr.projects.filterIot,
+    web: tr.projects.filterWeb,
+    personal: tr.projects.filterPersonal,
+  };
 
   return (
     <>
@@ -734,12 +883,12 @@ export default function Projects() {
       >
         <div className="mx-auto max-w-7xl">
           <RevealText scan>
-            <SectionLabel index="06" label={tr.sections.projects} className="mb-12" />
+            <SectionLabel index="05" label={tr.sections.projects} className="mb-12" />
           </RevealText>
 
           <RevealText delay={0.1}>
             <div className="flex flex-wrap items-center gap-2 mb-10" role="tablist" aria-label="Filter projects by technology">
-              {ALL_TAGS.map((tag) => (
+              {CATEGORIES.map((tag) => (
                 <button
                   key={tag}
                   role="tab"
@@ -752,7 +901,7 @@ export default function Projects() {
                     background: activeTag === tag ? "rgba(168,255,0,0.05)" : "transparent",
                   }}
                 >
-                  {tag}
+                  {categoryLabel[tag]}
                 </button>
               ))}
               <span className="ml-auto font-mono text-[10px] text-[#555555] tracking-[0.1em]">

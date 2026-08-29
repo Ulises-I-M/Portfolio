@@ -32,6 +32,18 @@ body {
   background: #a8ff00;
 }
 
+/* Panel scroller — dimmer than the page bar so it reads as chrome, not content */
+.modal-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(168, 255, 0, 0.35) transparent;
+}
+.modal-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.modal-scroll::-webkit-scrollbar-thumb {
+  background: rgba(168, 255, 0, 0.35);
+}
+
 /* Selection */
 ::selection {
   background: #a8ff00;

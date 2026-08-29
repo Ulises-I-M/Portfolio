@@ -16,7 +16,7 @@ export default function Navbar() {
     const onScroll = () => {
       setScrolled(window.scrollY > 40);
 
-      const sections = ["home", "about", "experience", "education", "projects", "testimonials", "contact"];
+      const sections = ["home", "about", "experience", "skills", "projects", "contact"];
       for (const id of sections.reverse()) {
         const el = document.getElementById(id);
         if (el && window.scrollY >= el.offsetTop - 120) {
