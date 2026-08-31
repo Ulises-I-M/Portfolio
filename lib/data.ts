@@ -135,6 +135,13 @@ export const experience: ExperienceEntry[] = [
 
 // ─── Projects ────────────────────────────────────────────────────────────────
 
+/**
+ * Folder key under public/images/projects/. Keep in step with slugify() in
+ * scripts/sync-project-images.mjs — renaming a title renames the folder.
+ */
+export const projectSlug = (title: string) =>
+  title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
 /** Motif drawn behind the sigil when a project has no public screenshot. */
 export type ProjectGlyph =
   | "nodes"
@@ -162,8 +169,6 @@ export type Project = {
   highlights?: Bilingual[];
   /** Absent when the deployment is private — the card shows no visit link. */
   url?: string;
-  /** Absent when there is no shareable screenshot — a glyph is drawn instead. */
-  image?: string;
   glyph?: ProjectGlyph;
   tags: string[];
   category: "iot" | "web" | "personal";
@@ -561,7 +566,6 @@ export const projects: Project[] = [
     descriptionEs:
       "Dashboard IoT de hogar inteligente en tiempo real con sensores Synetika. Visualización de datos en vivo, paneles de control de dispositivos y sistema de alertas.",
     url: "https://smarthome-nandina.netlify.app",
-    image: "/images/portfolio/portfolio-5.jpg",
     tags: ["React", "ThingsBoard", "IoT"],
     category: "web",
   },
@@ -573,7 +577,6 @@ export const projects: Project[] = [
     descriptionEs:
       "Landing page minimalista de tienda de ropa con showcase de productos, interacciones de carrito y diseño mobile-first.",
     url: "https://air-ecommerce.netlify.app",
-    image: "/images/portfolio/portfolio-1.jpg",
     tags: ["HTML", "CSS", "JavaScript"],
     category: "web",
   },
@@ -585,21 +588,8 @@ export const projects: Project[] = [
     descriptionEs:
       "Landing page de gimnasio orientada a conversión. Optimizada para generación de leads con CTAs potentes y build de alto rendimiento.",
     url: "https://ener-gym-landing.netlify.app",
-    image: "/images/portfolio/portfolio-4.jpg",
     tags: ["HTML", "CSS", "JavaScript"],
     category: "web",
-  },
-  {
-    title: "To-do List App",
-    code: "TDL",
-    description:
-      "Multi-board task management app with drag-and-drop, persistent state, and clean keyboard navigation.",
-    descriptionEs:
-      "App de gestión de tareas con múltiples tableros, drag-and-drop, estado persistente y navegación por teclado.",
-    url: "https://to-do-list-ulises-i-m.netlify.app",
-    image: "/images/portfolio/portfolio-2.jpg",
-    tags: ["React", "TypeScript"],
-    category: "personal",
   },
 ];
 

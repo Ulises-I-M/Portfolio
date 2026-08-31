@@ -19,13 +19,11 @@ import GateTransition from "@/components/ui/GateTransition";
 import { frameClipPath } from "@/components/ui/hudFrameGeometry";
 import { useLowPower } from "@/hooks/useLowPower";
 import ProjectGlyph from "@/components/ui/ProjectGlyph";
-import { projects, type Project } from "@/lib/data";
+import ProjectGallery from "@/components/ui/ProjectGallery";
+import { projects, projectSlug, type Project } from "@/lib/data";
+import { imagesFor } from "@/lib/projectImages";
 import { useLang } from "@/context/LangContext";
 import { pick, type Lang } from "@/lib/i18n";
-
-// Stable key tying a grid card to its detail panel for the shared-element morph
-const projectSlug = (p: Project) =>
-  p.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 /**
  * Client deployments behind an NDA have no screenshot to show. Borrowing an
@@ -43,7 +41,8 @@ function ProjectVisual({
   glyphScale?: number;
   imageProps?: { className?: string; style?: React.CSSProperties };
 }) {
-  if (!project.image) {
+  const cover = imagesFor(project.title)[0];
+  if (!cover) {
     return (
       <ProjectGlyph
         code={project.code}
@@ -55,7 +54,7 @@ function ProjectVisual({
   }
   return (
     <Image
-      src={project.image}
+      src={cover}
       alt={project.title}
       fill
       sizes={sizes}
@@ -80,6 +79,7 @@ function ProjectModal({
   morph: boolean;
 }) {
   const { tr } = useLang();
+  const shots = imagesFor(project.title);
 
   const chipRef = useRef<HTMLDivElement>(null);
 
@@ -140,7 +140,7 @@ function ProjectModal({
   // that collides with an animate={{ rotateX }} on the same element.
   const panelOuter = morph
     ? {
-        layoutId: `project-${projectSlug(project)}`,
+        layoutId: `project-${projectSlug(project.title)}`,
         transition: { type: "spring" as const, stiffness: 95, damping: 22, mass: 0.9 },
       }
     : {
@@ -186,14 +186,15 @@ function ProjectModal({
       >
         {/* Image */}
         <div className="relative aspect-video overflow-hidden bg-[#111111] flex-shrink-0">
-          <ProjectVisual
-            project={project}
-            sizes="(max-width: 768px) 100vw, 512px"
-            imageProps={{
-              className: "object-cover",
-              style: { filter: "grayscale(0.2) contrast(1.05)" },
-            }}
-          />
+          {shots.length > 0 ? (
+            <ProjectGallery images={shots} alt={project.title} />
+          ) : (
+            <ProjectGlyph
+              code={project.code}
+              kind={project.glyph}
+              seed={project.title}
+            />
+          )}
           {/* Neon tint */}
           <div
             aria-hidden="true"
@@ -431,6 +432,7 @@ function ProjectCard({
   // ── Derived dossier metadata ──────────────────────────────────────────────
   const idx = String(index + 1).padStart(3, "0");
   const typeTag = project.category === "iot" ? "IOT.IND" : project.category.toUpperCase();
+  const shotCount = imagesFor(project.title).length;
   const hexId = `0x${project.title
     .split("")
     .reduce((acc, c) => acc + c.charCodeAt(0), 0)
@@ -443,7 +445,7 @@ function ProjectCard({
     <motion.div
       ref={cardRef}
       layout
-      layoutId={morph ? `project-${projectSlug(project)}` : undefined}
+      layoutId={morph ? `project-${projectSlug(project.title)}` : undefined}
       initial={{ opacity: 0, y: 20 }}
       exit={{ opacity: 0, y: 20 }}
       transition={{ type: "spring", stiffness: 220, damping: 24, mass: 1 }}
@@ -664,6 +666,21 @@ function ProjectCard({
             style={{ opacity: hovered ? 0.5 : 0.12 }}
           />
           <GrainEffect />
+
+          {/* Frame count — tells the reader the panel holds more than this still */}
+          {shotCount > 1 && (
+            <span
+              aria-hidden="true"
+              className="absolute bottom-2 right-2 z-10 px-1.5 py-0.5 font-mono text-[8px] tracking-[0.15em] border transition-colors duration-300"
+              style={{
+                borderColor: hovered ? "rgba(168,255,0,0.45)" : "rgba(168,255,0,0.18)",
+                color: hovered ? "#a8ff00" : "rgba(168,255,0,0.5)",
+                background: "rgba(10,10,10,0.75)",
+              }}
+            >
+              {String(shotCount).padStart(2, "0")}
+            </span>
+          )}
 
           {/* Corner brackets — always faintly visible, bright on hover */}
           {([
