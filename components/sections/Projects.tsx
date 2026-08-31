@@ -8,7 +8,6 @@ import {
   useMotionValue,
   useSpring,
   useTransform,
-  useTime,
   useReducedMotion,
 } from "framer-motion";
 import SectionLabel from "@/components/ui/SectionLabel";
@@ -18,14 +17,14 @@ import HUDCardFrame from "@/components/ui/HUDCardFrame";
 import GateTransition from "@/components/ui/GateTransition";
 import { frameClipPath } from "@/components/ui/hudFrameGeometry";
 import { useLowPower } from "@/hooks/useLowPower";
+import { useGalleryPaging } from "@/hooks/useGalleryPaging";
 import ProjectGlyph from "@/components/ui/ProjectGlyph";
-import { projects, type Project } from "@/lib/data";
+import ProjectGallery from "@/components/ui/ProjectGallery";
+import ProjectImageViewer from "@/components/ui/ProjectImageViewer";
+import { projects, projectSlug, type Project } from "@/lib/data";
+import { imagesFor } from "@/lib/projectImages";
 import { useLang } from "@/context/LangContext";
 import { pick, type Lang } from "@/lib/i18n";
-
-// Stable key tying a grid card to its detail panel for the shared-element morph
-const projectSlug = (p: Project) =>
-  p.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 /**
  * Client deployments behind an NDA have no screenshot to show. Borrowing an
@@ -43,7 +42,8 @@ function ProjectVisual({
   glyphScale?: number;
   imageProps?: { className?: string; style?: React.CSSProperties };
 }) {
-  if (!project.image) {
+  const cover = imagesFor(project.title)[0];
+  if (!cover) {
     return (
       <ProjectGlyph
         code={project.code}
@@ -55,7 +55,7 @@ function ProjectVisual({
   }
   return (
     <Image
-      src={project.image}
+      src={cover}
       alt={project.title}
       fill
       sizes={sizes}
@@ -80,12 +80,31 @@ function ProjectModal({
   morph: boolean;
 }) {
   const { tr } = useLang();
+  const shots = imagesFor(project.title);
+  const { index, direction, paginate, goTo } = useGalleryPaging(shots.length);
+  const [viewerOpen, setViewerOpen] = useState(false);
 
-  const chipRef = useRef<HTMLDivElement>(null);
+  // Escape unwinds one layer at a time: the viewer first, then the panel.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (viewerOpen) setViewerOpen(false);
+        else onClose();
+        return;
+      }
+      if (shots.length < 2) return;
+      if (e.key === "ArrowLeft") paginate(-1);
+      if (e.key === "ArrowRight") paginate(1);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [viewerOpen, onClose, shots.length, paginate]);
 
   // Orientation, -1..1 per axis with 0 facing you. Starts off-centre so the
-  // settle to centre reads as the chip turning upright as it is lifted; the
-  // same springs then serve the pointer tilt, so lift and hold are one thing.
+  // settle to centre reads as the panel turning upright as it is lifted, then
+  // stays there. It used to keep tracking the pointer and drifting on a sine
+  // afterwards, which suited a 512px chip; at 896px with a dashboard inside,
+  // a 15° skew and a permanent wobble fight the one job this panel has.
   const hx = useMotionValue(morph ? -0.75 : 0);
   const hy = useMotionValue(morph ? -0.3 : 0);
   // Mass gives drag and follow-through — without it the chip tracks the
@@ -93,17 +112,8 @@ function ProjectModal({
   const sx = useSpring(hx, { stiffness: 70, damping: 16, mass: 1.2 });
   const sy = useSpring(hy, { stiffness: 70, damping: 16, mass: 1.2 });
 
-  // A held object is never perfectly still. Combining the drift into the same
-  // transform avoids a second wrapper competing for the same rotation.
-  const t = useTime();
-  const rotateY = useTransform(
-    [sx, t] as const,
-    ([v, ms]: number[]) => v * 15 + Math.sin(ms / 1900) * 1.1
-  );
-  const rotateX = useTransform(
-    [sy, t] as const,
-    ([v, ms]: number[]) => -v * 15 + Math.cos(ms / 2300) * 0.8
-  );
+  const rotateY = useTransform(sx, (v: number) => v * 15);
+  const rotateX = useTransform(sy, (v: number) => -v * 15);
 
   // Highlight tracks both axes, and sharpens as the chip turns edge-on
   const shineX = useTransform(sx, [-1, 1], ["-32%", "32%"]);
@@ -121,26 +131,12 @@ function ProjectModal({
     return () => cancelAnimationFrame(id);
   }, [morph, hx, hy]);
 
-  // Measured against the chip's own centre, not the viewport. Mapping over the
-  // whole window made a pointer in a far corner swing the chip as hard as one
-  // right beside it, which is why it felt detached from the cursor.
-  const onOverlayMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!morph) return;
-    const el = chipRef.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    const reach = Math.max(r.width, r.height) * 1.6;
-    const clamp = (v: number) => Math.max(-1, Math.min(1, v));
-    hx.set(clamp((e.clientX - (r.left + r.width / 2)) / reach));
-    hy.set(clamp((e.clientY - (r.top + r.height / 2)) / reach));
-  };
-
   // Outer layer owns the journey only — position and size. Orientation lives on
   // the inner layer, because a mouse-driven tilt needs style={{ rotateX }} and
   // that collides with an animate={{ rotateX }} on the same element.
   const panelOuter = morph
     ? {
-        layoutId: `project-${projectSlug(project)}`,
+        layoutId: `project-${projectSlug(project.title)}`,
         transition: { type: "spring" as const, stiffness: 95, damping: 22, mass: 0.9 },
       }
     : {
@@ -151,6 +147,7 @@ function ProjectModal({
       };
 
   return (
+    <>
     <motion.div
       key="modal-overlay"
       initial={{ opacity: 0 }}
@@ -163,14 +160,12 @@ function ProjectModal({
         backdropFilter: "blur(2px)",
       }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-      onMouseMove={onOverlayMove}
     >
-      <motion.div {...panelOuter} className="relative w-full max-w-lg">
+      <motion.div {...panelOuter} className="relative w-full max-w-4xl">
       {/* The chip itself. Clip and overflow live here, not on the outer layer:
           on the outer, a tilted chip would have its corners eaten by the clip
           and the stepped silhouette would deform. */}
       <motion.div
-        ref={chipRef}
         className="relative w-full overflow-hidden bg-[#0a0a0a] flex flex-col"
         style={{
           // Bounded so a long dossier scrolls inside the chip rather than
@@ -186,21 +181,27 @@ function ProjectModal({
       >
         {/* Image */}
         <div className="relative aspect-video overflow-hidden bg-[#111111] flex-shrink-0">
-          <ProjectVisual
-            project={project}
-            sizes="(max-width: 768px) 100vw, 512px"
-            imageProps={{
-              className: "object-cover",
-              style: { filter: "grayscale(0.2) contrast(1.05)" },
-            }}
-          />
-          {/* Neon tint */}
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 pointer-events-none"
-            style={{ background: "linear-gradient(135deg, rgba(168,255,0,0.06) 0%, transparent 60%)" }}
-          />
-          <GrainEffect />
+          {shots.length > 0 ? (
+            <ProjectGallery
+              images={shots}
+              alt={project.title}
+              index={index}
+              direction={direction}
+              paginate={paginate}
+              goTo={goTo}
+              onExpand={() => setViewerOpen(true)}
+              expandLabel={tr.projects.expand}
+            />
+          ) : (
+            <ProjectGlyph
+              code={project.code}
+              kind={project.glyph}
+              seed={project.title}
+            />
+          )}
+          {/* No grain, no neon wash and no scanlines over a screenshot: the
+              panel's job here is to show the work, and the CRT treatment was
+              making dashboards unreadable. The schematic keeps its own. */}
           {/* HUD corners */}
           {["top-3 left-3", "top-3 right-3", "bottom-3 left-3", "bottom-3 right-3"].map((pos, idx) => (
             <span
@@ -260,22 +261,19 @@ function ProjectModal({
             </p>
           )}
 
-          <p className="font-mono text-sm text-[#888888] leading-loose mb-5">
+          <p className="font-mono text-sm text-[#888888] leading-loose mb-5 max-w-[68ch]">
             {lang === "es" && project.descriptionEs ? project.descriptionEs : project.description}
           </p>
 
           {/* Metrics — the numbers carry more than any adjective would */}
           {project.metrics && project.metrics.length > 0 && (
-            <div className="grid grid-cols-2 gap-px mb-6 bg-[#1e1e1e] border border-[#1e1e1e]">
-              {project.metrics.map((m, i) => (
+            <div className="flex flex-wrap gap-px mb-6 bg-[#1e1e1e] border border-[#1e1e1e]">
+              {project.metrics.map((m) => (
                 <div
                   key={m.value + m.label.en}
-                  // An odd count would otherwise leave a bordered empty cell
-                  className={`bg-[#0a0a0a] px-3 py-3 ${
-                    i === project.metrics!.length - 1 && project.metrics!.length % 2 === 1
-                      ? "col-span-2"
-                      : ""
-                  }`}
+                  // flex-1 over a grid: any number of metrics fills the row
+                  // evenly, with no bordered empty cell left at the end
+                  className="bg-[#0a0a0a] px-3 py-3 flex-1 basis-[45%] sm:basis-40"
                 >
                   <div className="font-mono font-bold text-base text-[#a8ff00] leading-none mb-1.5">
                     {m.value}
@@ -293,7 +291,7 @@ function ProjectModal({
               <p className="font-mono text-[10px] tracking-[0.25em] text-[#555555] mb-3">
                 {tr.projects.overview}
               </p>
-              <p className="font-mono text-xs text-[#888888] leading-loose mb-6">
+              <p className="font-mono text-xs text-[#888888] leading-loose mb-6 max-w-[78ch]">
                 {lang === "es" && project.longDescriptionEs
                   ? project.longDescriptionEs
                   : project.longDescription}
@@ -306,7 +304,7 @@ function ProjectModal({
               <p className="font-mono text-[10px] tracking-[0.25em] text-[#555555] mb-3">
                 {tr.projects.keyWork}
               </p>
-              <ul className="space-y-3 mb-6">
+              <ul className="space-y-3 mb-6 max-w-[78ch]">
                 {project.highlights.map((h) => (
                   <li key={h.en} className="flex gap-3">
                     <span
@@ -366,6 +364,21 @@ function ProjectModal({
       </motion.div>
       </motion.div>
     </motion.div>
+
+    <AnimatePresence>
+      {viewerOpen && shots.length > 0 && (
+        <ProjectImageViewer
+          images={shots}
+          index={index}
+          direction={direction}
+          paginate={paginate}
+          goTo={goTo}
+          onClose={() => setViewerOpen(false)}
+          title={project.title}
+        />
+      )}
+    </AnimatePresence>
+    </>
   );
 }
 
@@ -431,6 +444,7 @@ function ProjectCard({
   // ── Derived dossier metadata ──────────────────────────────────────────────
   const idx = String(index + 1).padStart(3, "0");
   const typeTag = project.category === "iot" ? "IOT.IND" : project.category.toUpperCase();
+  const shotCount = imagesFor(project.title).length;
   const hexId = `0x${project.title
     .split("")
     .reduce((acc, c) => acc + c.charCodeAt(0), 0)
@@ -443,7 +457,7 @@ function ProjectCard({
     <motion.div
       ref={cardRef}
       layout
-      layoutId={morph ? `project-${projectSlug(project)}` : undefined}
+      layoutId={morph ? `project-${projectSlug(project.title)}` : undefined}
       initial={{ opacity: 0, y: 20 }}
       exit={{ opacity: 0, y: 20 }}
       transition={{ type: "spring", stiffness: 220, damping: 24, mass: 1 }}
@@ -665,6 +679,21 @@ function ProjectCard({
           />
           <GrainEffect />
 
+          {/* Frame count — tells the reader the panel holds more than this still */}
+          {shotCount > 1 && (
+            <span
+              aria-hidden="true"
+              className="absolute bottom-2 right-2 z-10 px-1.5 py-0.5 font-mono text-[8px] tracking-[0.15em] border transition-colors duration-300"
+              style={{
+                borderColor: hovered ? "rgba(168,255,0,0.45)" : "rgba(168,255,0,0.18)",
+                color: hovered ? "#a8ff00" : "rgba(168,255,0,0.5)",
+                background: "rgba(10,10,10,0.75)",
+              }}
+            >
+              {String(shotCount).padStart(2, "0")}
+            </span>
+          )}
+
           {/* Corner brackets — always faintly visible, bright on hover */}
           {([
             { t: 8, l: 8, bw: "1.5px 0 0 1.5px" },
@@ -823,6 +852,93 @@ function ProjectCard({
   );
 }
 
+// ─── Compact index row ───────────────────────────────────────────────────────
+
+/**
+ * Thirteen cards of equal weight give a reader no entry point and run to eight
+ * screens on a phone. The strongest six keep the full card; the rest list here
+ * at a fraction of the height and open the same detail panel, so the breadth of
+ * the work stays visible without being scrolled through.
+ */
+function ProjectIndexRow({
+  project,
+  onSelect,
+  lang,
+}: {
+  project: Project;
+  onSelect: (p: Project, morph: boolean) => void;
+  lang: Lang;
+}) {
+  const [hovered, setHovered] = useState(false);
+  const { tr } = useLang();
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(project, false)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onFocus={() => setHovered(true)}
+      onBlur={() => setHovered(false)}
+      className="group relative w-full text-left flex items-center gap-3 sm:gap-5 pl-4 pr-3 py-3 border transition-colors duration-200 cursor-pointer chamfered-sm"
+      style={{
+        borderColor: hovered ? "rgba(168,255,0,0.35)" : "#1e1e1e",
+        background: hovered ? "rgba(168,255,0,0.03)" : "transparent",
+      }}
+      aria-label={`${project.title} — ${lang === "es" ? "ver detalle" : "view detail"}`}
+    >
+      {/* Left accent, the same tell the cards use */}
+      <span
+        aria-hidden="true"
+        className="absolute left-0 top-0 bottom-0 w-[2px] transition-colors duration-200"
+        style={{ background: hovered ? "#a8ff00" : "rgba(168,255,0,0.15)" }}
+      />
+
+      <span
+        className="font-mono text-[10px] tracking-[0.15em] w-9 flex-shrink-0 transition-colors duration-200"
+        style={{ color: hovered ? "#a8ff00" : "rgba(168,255,0,0.4)" }}
+      >
+        {project.code}
+      </span>
+
+      <span className="min-w-0 flex-1">
+        <span className="block font-mono font-bold text-xs text-[#efefef] tracking-tight uppercase truncate">
+          {project.title}
+        </span>
+        {project.client && (
+          <span className="block sm:hidden font-mono text-[9px] tracking-[0.12em] text-[#555555] truncate mt-0.5">
+            {project.client.toUpperCase()}
+          </span>
+        )}
+      </span>
+
+      {project.client && (
+        <span className="hidden sm:block font-mono text-[9px] tracking-[0.12em] text-[#555555] w-52 flex-shrink-0 truncate">
+          {project.client.toUpperCase()}
+        </span>
+      )}
+
+      <span className="hidden lg:flex gap-2 flex-shrink-0">
+        {project.tags.slice(0, 2).map((tag) => (
+          <span
+            key={tag}
+            className="border border-[#1e1e1e] px-2 py-0.5 font-mono text-[8px] tracking-[0.1em] text-[#555555]"
+          >
+            {tag.toUpperCase()}
+          </span>
+        ))}
+      </span>
+
+      <span
+        className="font-mono text-[9px] tracking-[0.15em] flex-shrink-0 transition-colors duration-200"
+        style={{ color: project.url ? (hovered ? "#a8ff00" : "#555555") : "#3a3a3a" }}
+      >
+        {project.url ? tr.projects.visit : tr.projects.private}
+      </span>
+    </button>
+  );
+}
+
 // ─── Projects Section ────────────────────────────────────────────────────────
 
 // Filtering by tech tag would put ~30 buttons in the bar once the industrial
@@ -833,7 +949,9 @@ type CategoryKey = (typeof CATEGORIES)[number];
 
 export default function Projects() {
   const [activeTag, setActiveTag] = useState<CategoryKey>("all");
-  const [selected, setSelected] = useState<Project | null>(null);
+  // An index row is a 70px strip: morphing it into a full panel reads as a
+  // glitch rather than a lift, so rows fade the panel in and cards morph it.
+  const [selected, setSelected] = useState<{ project: Project; morph: boolean } | null>(null);
   const { tr, lang } = useLang();
   const prefersReducedMotion = useReducedMotion();
   const lowPower = useLowPower();
@@ -866,6 +984,11 @@ export default function Projects() {
 
   const filtered =
     activeTag === "all" ? projects : projects.filter((p) => p.category === activeTag);
+
+  // A short list has nothing to gain from being split in two, so it stays cards.
+  const splitList = filtered.length > 3;
+  const cards = splitList ? filtered.filter((p) => p.featured) : filtered;
+  const indexed = splitList ? filtered.filter((p) => !p.featured) : [];
 
   const categoryLabel: Record<CategoryKey, string> = {
     all: tr.projects.filterAll,
@@ -929,17 +1052,35 @@ export default function Projects() {
                 key={activeTag}
                 className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8"
               >
-                {filtered.map((project) => (
+                {cards.map((project) => (
                   <ProjectCard
                     key={project.title}
                     project={project}
                     index={projects.indexOf(project)}
-                    onSelect={setSelected}
+                    onSelect={(p) => setSelected({ project: p, morph: true })}
                     lang={lang}
                   />
                 ))}
               </motion.div>
             </AnimatePresence>
+
+            {indexed.length > 0 && (
+              <div className="mt-10">
+                <p className="font-mono text-[10px] tracking-[0.25em] text-[#555555] mb-4">
+                  {tr.projects.moreWork}
+                </p>
+                <div className="space-y-2">
+                  {indexed.map((project) => (
+                    <ProjectIndexRow
+                      key={project.title}
+                      project={project}
+                      onSelect={(p, morph) => setSelected({ project: p, morph })}
+                      lang={lang}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
             </motion.div>
 
             {!prefersReducedMotion && (
@@ -956,7 +1097,12 @@ export default function Projects() {
       {/* Modal */}
       <AnimatePresence>
         {selected && (
-          <ProjectModal project={selected} onClose={() => setSelected(null)} lang={lang} morph={morph} />
+          <ProjectModal
+            project={selected.project}
+            onClose={() => setSelected(null)}
+            lang={lang}
+            morph={morph && selected.morph}
+          />
         )}
       </AnimatePresence>
     </>

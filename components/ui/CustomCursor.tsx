@@ -86,7 +86,7 @@ export default function CustomCursor() {
       <div
         ref={ringRef}
         aria-hidden="true"
-        className="pointer-events-none fixed top-0 left-0 z-[998] w-6 h-6"
+        className="pointer-events-none fixed top-0 left-0 z-[10098] w-6 h-6"
         style={{ willChange: "transform", transition: "opacity 0.15s" }}
       >
         {/* Horizontal arm */}
@@ -107,7 +107,7 @@ export default function CustomCursor() {
       <div
         ref={dotRef}
         aria-hidden="true"
-        className="pointer-events-none fixed top-0 left-0 z-[999] w-1 h-1 rounded-full"
+        className="pointer-events-none fixed top-0 left-0 z-[10099] w-1 h-1 rounded-full"
         style={{
           background: "#a8ff00",
           willChange: "transform",
@@ -120,7 +120,7 @@ export default function CustomCursor() {
       <div
         ref={hoverBoxRef}
         aria-hidden="true"
-        className="pointer-events-none fixed top-0 left-0 z-[997] w-8 h-8"
+        className="pointer-events-none fixed top-0 left-0 z-[10097] w-8 h-8"
         style={{
           willChange: "transform",
           border: "1px solid rgba(168,255,0,0.7)",

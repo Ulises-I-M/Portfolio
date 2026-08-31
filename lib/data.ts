@@ -61,6 +61,8 @@ export type Achievement = {
   labelEs?: string;
   description: string;
   descriptionEs?: string;
+  /** Anchor to the section that carries the detail, so it is not repeated here. */
+  linkHref?: string;
 };
 
 export type ExperienceEntry = {
@@ -91,118 +93,54 @@ export const experience: ExperienceEntry[] = [
     tags: ["ThingsBoard PE", "Angular", "React", "Node.js", "TypeScript", "IoT", "UX/UI"],
     achievements: [
       {
-        client: "IOTLOGIQ",
-        label: "IoTLogIQ — Platform",
-        labelEs: "IoTLogIQ — Plataforma",
+        client: "PLATFORM",
+        label: "Platform & design system",
+        labelEs: "Plataforma y design system",
         description:
-          "Smart Industry product built from the ground up: a base platform plus per-client tailored solutions for Shell, ENI, AES, IAC, Jacksonville Airport and Ternium, among others. I worked full-stack leading the frontend and in many cases the backend as well, and supported the product's migration from ThingsBoard towards an in-house Angular and Node.js stack.",
+          "IoTLogIQ is a Smart Industry product built from the ground up: a base platform plus per-client tailored solutions. I worked full-stack leading the frontend and in many cases the backend, and supported its migration from ThingsBoard towards an in-house Angular and Node.js stack. On top of it I built Senzary Pro, the reusable navigation system deployed across every client dashboard — cross-dashboard routing, dynamic badges for alarm, ticket and device counts, contextual visibility per contracted service — and defined the design system behind it: palette, typography and hierarchy criteria applied across the board.",
         descriptionEs:
-          "Producto Smart Industry construido desde cero: una plataforma base más soluciones a medida por cliente — Shell, ENI, AES, IAC, Jacksonville Airport y Ternium, entre otros. Trabajé full-stack liderando el frontend y en muchos casos también el backend, y acompañé la migración del producto desde ThingsBoard hacia un stack propio en Angular y Node.js.",
+          "IoTLogIQ es un producto Smart Industry construido desde cero: una plataforma base más soluciones a medida por cliente. Trabajé full-stack liderando el frontend y en muchos casos el backend, y acompañé su migración desde ThingsBoard hacia un stack propio en Angular y Node.js. Sobre esa base construí Senzary Pro, el sistema de navegación reutilizable desplegado en todos los dashboards de clientes — navegación cross-dashboard, badges dinámicos por conteo de alarmas, tickets y dispositivos, visibilidad contextual según los servicios contratados — y definí el design system que lo sostiene: paleta, tipografía y criterios de jerarquía aplicados de forma transversal.",
       },
       {
-        client: "SENZARY_PRO",
-        label: "Senzary Pro — Navigation & design system",
-        labelEs: "Senzary Pro — Navegación y design system",
+        client: "CLIENTS",
+        label: "Clients & industries",
+        labelEs: "Clientes e industrias",
         description:
-          "Built the reusable navigation system (top bar + sidebar) deployed across every client dashboard, with cross-dashboard routing, dynamic badges for alarm, ticket and device counts, and contextual visibility driven by the services each client has contracted. I also defined the platform design system: palette, typography and visual hierarchy criteria applied across the board.",
+          "Solutions delivered for Shell, ENI, AES, IAC, Jacksonville Airport, AWSS Aruba, SF DPW, Ragasa and Ternium — oil & gas, energy, aviation, steel, data centers, water utilities and environmental monitoring, across Latin America and the US. Worker safety, wastewater SCADA, air filtration with a 3D digital twin, waste collection routing, predictive maintenance and airport operations. Each one involved use-case analysis, offsets and thresholds, rule chains and alarms with severity matched to the operation.",
         descriptionEs:
-          "Construí el sistema de navegación reutilizable (top bar + sidebar) desplegado en todos los dashboards de clientes, con navegación entre dashboards, badges dinámicos por conteo de alarmas, tickets y dispositivos, y visibilidad contextual según los servicios contratados por cada cliente. Definí además el design system de la plataforma: paleta, tipografía y criterios de jerarquía visual aplicados de forma transversal.",
+          "Soluciones entregadas para Shell, ENI, AES, IAC, Jacksonville Airport, AWSS Aruba, SF DPW, Ragasa y Ternium — oil & gas, energía, aviación, siderurgia, data centers, saneamiento y monitoreo ambiental, en Latinoamérica y EE.UU. Seguridad de trabajadores, SCADA de aguas residuales, filtración de aire con gemelo digital 3D, ruteo de recolección, mantenimiento predictivo y operación aeroportuaria. Cada una implicó análisis de casos de uso, offsets y thresholds, rule chains y alarmas con severidad acorde a la operación.",
+        linkHref: "#projects",
       },
       {
-        client: "WORKERIQ",
-        label: "WorkerIQ — ENI",
-        labelEs: "WorkerIQ — ENI",
+        client: "DESIGN_PRACTICE",
+        label: "Design practice & accessibility",
+        labelEs: "Práctica de diseño y accesibilidad",
         description:
-          "Worker safety on site: real-time personnel tracking, geolocated maps, mustering and operational alerts over a deployment of 139 Abeeway badges, H2S sensors and a dozen LoRaWAN gateways. I added polygon geofencing solved inside a rule chain, two-level alarm escalation with email and SMS, and a command-center view designed for a control-room TV.",
+          "Redesigned the AES Energy platform end to end, running the client meetings that defined its visual identity and translating that into a design system applied across every view — a result the client singled out. On AWSS I ran a UX and accessibility audit that surfaced real operational-safety findings: inverted colour semantics on a wet-well tank, a running pump plotted in the colour of a fault, and measured WCAG AA contrast failures. On Ragasa I rebuilt the main view once it was clear the audience was operational rather than technical.",
         descriptionEs:
-          "Seguridad de trabajadores en planta: seguimiento de personal en tiempo real, mapas geolocalizados, mustering y alertas operativas sobre un despliegue de 139 badges Abeeway, sensores de H2S y una decena de gateways LoRaWAN. Sumé geofencing por polígonos resuelto en rule chain, escalamiento de alarmas en dos niveles con email y SMS, y una vista de command center pensada para TV en sala de control.",
+          "Rediseñé la plataforma de AES Energy de punta a punta, coordinando las reuniones con el cliente que definieron su identidad visual y traduciéndola a un sistema de diseño aplicado a todas las vistas — un resultado que el cliente destacó. En AWSS hice una auditoría de UX y accesibilidad con hallazgos reales de seguridad operativa: semántica de color invertida en un tanque de wet well, una bomba en marcha graficada con el color de una falla, y fallos de contraste WCAG AA medidos. En Ragasa rediseñé la vista principal cuando quedó claro que la audiencia era operativa y no técnica.",
       },
       {
-        client: "TRASHCANS",
-        label: "TrashCans — SF DPW",
-        labelEs: "TrashCans — SF DPW",
+        client: "TEAM",
+        label: "Team enablement",
+        labelEs: "Habilitación del equipo",
         description:
-          "IoT dashboard for smart waste containers: fill level, temperature, alarms and collection route management over 851 ultrasonic sensors deployed across San Francisco. Includes route planning with HERE Maps, a field installation wizard, user management with roles through the API, and a full mobile adaptation.",
+          "Led the adoption of AI tooling in the development team's workflow: usage standards, prompts and review criteria, plus training for other developers so we could ship faster without giving up quality. Alongside it, technical architecture documentation, bilingual (ES/EN) user manuals for plant operators and managers, and automated Excel reports for performance tracking.",
         descriptionEs:
-          "Dashboard IoT para contenedores de residuos inteligentes: nivel de llenado, temperatura, alarmas y gestión de rutas de recolección sobre 851 sensores ultrasónicos desplegados en San Francisco. Incluye planificación de rutas con HERE Maps, wizard de instalación en campo, gestión de usuarios con roles vía API y adaptación mobile completa.",
-      },
-      {
-        client: "AIRPORTIQ",
-        label: "AirportIQ — Jacksonville Airport",
-        labelEs: "AirportIQ — Jacksonville Airport",
-        description:
-          "Solution for airport operations: air quality, temperature, people counting and flow, queue management and environmental monitoring. Dashboards designed for fast reading in a control room, with threshold alarms, per-terminal views and historical measurements.",
-        descriptionEs:
-          "Solución para operación aeroportuaria: calidad de aire, temperatura, conteo y flujo de personas, gestión de filas y monitoreo ambiental. Dashboards pensados para lectura rápida en sala de control, con alarmas por umbral, vistas por terminal e histórico de mediciones.",
-      },
-      {
-        client: "DUSTIQ",
-        label: "DustIQ — IAC",
-        labelEs: "DustIQ — IAC",
-        description:
-          "Environmental and process monitoring solution: particulate matter measurement together with tank level and volume control, over a fleet of 71 filtration units spread across several plants. I developed the fleet heatmap, the comparison table, the KPI strip and a 3D digital twin of the filtration train in Three.js with live telemetry.",
-        descriptionEs:
-          "Solución de monitoreo ambiental y de proceso: medición de material particulado junto con control de niveles y volumen de tanques, sobre una flota de 71 unidades de filtración distribuidas en varias plantas. Desarrollé el heatmap de flota, la tabla comparativa, el strip de KPIs y un gemelo digital 3D en Three.js del tren de filtración con telemetría en vivo.",
-      },
-      {
-        client: "PUMPIQ",
-        label: "PumpIQ — AWSS Aruba",
-        labelEs: "PumpIQ — AWSS Aruba",
-        description:
-          "Wastewater SCADA for 20 pumping stations: SCADA symbology, per-motor detail with runtime and energy consumption, a fleet analytics section and a twelve-rule alarm engine comparing telemetry against per-station configurable thresholds. It included a UX and accessibility audit that corrected colour semantics with real operational impact.",
-        descriptionEs:
-          "SCADA de aguas residuales para 20 estaciones de bombeo: simbología SCADA, detalle por motor con runtime y consumo energético, sección de analítica de flota y un motor de doce reglas de alarma que comparan telemetría contra umbrales configurables por estación. Incluyó una auditoría de UX y accesibilidad que corrigió semánticas de color con impacto operativo real.",
-      },
-      {
-        client: "RAGASA",
-        label: "Ragasa — Digital plant",
-        labelEs: "Ragasa — Planta digital",
-        description:
-          "Multi-domain suite for an active industrial plant: valve monitoring with LoRaWAN trackers, energy consumption, air quality and predictive maintenance. I redesigned the main view once it became clear the real audience was operational rather than technical, pushing sensor data down to secondary information.",
-        descriptionEs:
-          "Suite multi-dominio para una planta industrial activa: monitoreo de válvulas con trackers LoRaWAN, consumo energético, calidad de aire y mantenimiento predictivo. Rediseñé la vista principal cuando quedó claro que la audiencia real era operativa y no técnica, dejando el dato de sensor como información secundaria.",
-      },
-      {
-        client: "AES",
-        label: "AES Energy — Platform redesign",
-        labelEs: "AES Energy — Rediseño de plataforma",
-        description:
-          "Complete redesign of the platform for AES Energy, coordinating meetings with the client to map out the application's visual identity and bring it down to a design system applicable across every view. The result was very well received by the client.",
-        descriptionEs:
-          "Rediseño completo de la plataforma para AES Energy, coordinando reuniones con el cliente para trazar la identidad visual de la aplicación y bajarla a un sistema de diseño aplicable a todas las vistas. El resultado tuvo muy buena recepción del cliente.",
-      },
-      {
-        client: "HEAVY_INDUSTRY",
-        label: "Oil & gas, energy and steel",
-        labelEs: "Oil & gas, energía y siderurgia",
-        description:
-          "Solutions for Shell, AES and Ternium: asset monitoring, digital twin, predictive analytics and KPI boards for industrial operations. Use-case analysis, offsets and thresholds, rule chains and alarms with severity matched to each operation.",
-        descriptionEs:
-          "Soluciones para Shell, AES y Ternium: monitoreo de activos, digital twin, analítica predictiva y tableros de KPIs para operación industrial. Análisis de casos de uso, offsets y thresholds, rule chains y alarmas con severidad acorde a cada operación.",
-      },
-      {
-        client: "AI_ADOPTION",
-        label: "AI adoption across the team",
-        labelEs: "Adopción de IA en el equipo",
-        description:
-          "Led the incorporation of AI tooling into the development team's workflow: usage standards, prompts and review criteria, plus training for other developers so we could ship faster without giving up quality.",
-        descriptionEs:
-          "Lideré la incorporación de herramientas de IA en el flujo de trabajo del equipo de desarrollo: definición de estándares de uso, prompts y criterios de revisión, además de capacitación a otros desarrolladores para acelerar entregas sin resignar calidad.",
-      },
-      {
-        client: "DOCUMENTATION",
-        label: "Documentation & knowledge transfer",
-        labelEs: "Documentación y transferencia",
-        description:
-          "Produced technical architecture documentation, bilingual (ES/EN) user manuals for plant operators and managers, and automated Excel reports for performance tracking.",
-        descriptionEs:
-          "Produje documentación técnica de arquitectura, manuales de usuario bilingües (ES/EN) para operadores y gerentes de planta, y reportes automatizados en Excel para seguimiento de performance.",
+          "Lideré la adopción de herramientas de IA en el flujo de trabajo del equipo de desarrollo: estándares de uso, prompts y criterios de revisión, más capacitación a otros desarrolladores para acelerar entregas sin resignar calidad. En paralelo, documentación técnica de arquitectura, manuales de usuario bilingües (ES/EN) para operadores y gerentes de planta, y reportes automatizados en Excel para seguimiento de performance.",
       },
     ],
   },
 ];
 
 // ─── Projects ────────────────────────────────────────────────────────────────
+
+/**
+ * Folder key under public/images/projects/. Keep in step with slugify() in
+ * scripts/sync-project-images.mjs — renaming a title renames the folder.
+ */
+export const projectSlug = (title: string) =>
+  title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 /** Motif drawn behind the sigil when a project has no public screenshot. */
 export type ProjectGlyph =
@@ -231,16 +169,17 @@ export type Project = {
   highlights?: Bilingual[];
   /** Absent when the deployment is private — the card shows no visit link. */
   url?: string;
-  /** Absent when there is no shareable screenshot — a glyph is drawn instead. */
-  image?: string;
   glyph?: ProjectGlyph;
   tags: string[];
   category: "iot" | "web" | "personal";
+  /** Drawn as a full card; the rest are listed in the compact index below. */
+  featured?: boolean;
 };
 
 export const projects: Project[] = [
   {
     title: "IoTLogIQ",
+    featured: true,
     code: "ILQ",
     client: "Senzary · Smart Industry",
     glyph: "nodes",
@@ -288,6 +227,7 @@ export const projects: Project[] = [
   },
   {
     title: "WorkerIQ",
+    featured: true,
     code: "WIQ",
     client: "ENI · Puerto Dos Bocas, MX",
     glyph: "radar",
@@ -336,6 +276,7 @@ export const projects: Project[] = [
   },
   {
     title: "TrashCans",
+    featured: true,
     code: "TRC",
     client: "San Francisco Dept. of Public Works",
     url: "https://trashcans.senzary.com/",
@@ -381,6 +322,7 @@ export const projects: Project[] = [
   },
   {
     title: "PumpIQ",
+    featured: true,
     code: "PIQ",
     client: "AWSS · Aruba Wastewater Services",
     glyph: "wave",
@@ -425,6 +367,7 @@ export const projects: Project[] = [
   },
   {
     title: "DustIQ Baghouse",
+    featured: true,
     code: "DIQ",
     client: "IAC · multi-plant",
     glyph: "grid",
@@ -572,6 +515,7 @@ export const projects: Project[] = [
   },
   {
     title: "IoTArg",
+    featured: true,
     code: "ARG",
     client: "Collaborative project · public repo",
     url: "https://iotarg.vercel.app/",
@@ -622,7 +566,6 @@ export const projects: Project[] = [
     descriptionEs:
       "Dashboard IoT de hogar inteligente en tiempo real con sensores Synetika. Visualización de datos en vivo, paneles de control de dispositivos y sistema de alertas.",
     url: "https://smarthome-nandina.netlify.app",
-    image: "/images/portfolio/portfolio-5.jpg",
     tags: ["React", "ThingsBoard", "IoT"],
     category: "web",
   },
@@ -634,7 +577,6 @@ export const projects: Project[] = [
     descriptionEs:
       "Landing page minimalista de tienda de ropa con showcase de productos, interacciones de carrito y diseño mobile-first.",
     url: "https://air-ecommerce.netlify.app",
-    image: "/images/portfolio/portfolio-1.jpg",
     tags: ["HTML", "CSS", "JavaScript"],
     category: "web",
   },
@@ -646,21 +588,8 @@ export const projects: Project[] = [
     descriptionEs:
       "Landing page de gimnasio orientada a conversión. Optimizada para generación de leads con CTAs potentes y build de alto rendimiento.",
     url: "https://ener-gym-landing.netlify.app",
-    image: "/images/portfolio/portfolio-4.jpg",
     tags: ["HTML", "CSS", "JavaScript"],
     category: "web",
-  },
-  {
-    title: "To-do List App",
-    code: "TDL",
-    description:
-      "Multi-board task management app with drag-and-drop, persistent state, and clean keyboard navigation.",
-    descriptionEs:
-      "App de gestión de tareas con múltiples tableros, drag-and-drop, estado persistente y navegación por teclado.",
-    url: "https://to-do-list-ulises-i-m.netlify.app",
-    image: "/images/portfolio/portfolio-2.jpg",
-    tags: ["React", "TypeScript"],
-    category: "personal",
   },
 ];
 
