@@ -8,7 +8,6 @@ import {
   useMotionValue,
   useSpring,
   useTransform,
-  useTime,
   useReducedMotion,
 } from "framer-motion";
 import SectionLabel from "@/components/ui/SectionLabel";
@@ -18,8 +17,10 @@ import HUDCardFrame from "@/components/ui/HUDCardFrame";
 import GateTransition from "@/components/ui/GateTransition";
 import { frameClipPath } from "@/components/ui/hudFrameGeometry";
 import { useLowPower } from "@/hooks/useLowPower";
+import { useGalleryPaging } from "@/hooks/useGalleryPaging";
 import ProjectGlyph from "@/components/ui/ProjectGlyph";
 import ProjectGallery from "@/components/ui/ProjectGallery";
+import ProjectImageViewer from "@/components/ui/ProjectImageViewer";
 import { projects, projectSlug, type Project } from "@/lib/data";
 import { imagesFor } from "@/lib/projectImages";
 import { useLang } from "@/context/LangContext";
@@ -80,12 +81,30 @@ function ProjectModal({
 }) {
   const { tr } = useLang();
   const shots = imagesFor(project.title);
+  const { index, direction, paginate, goTo } = useGalleryPaging(shots.length);
+  const [viewerOpen, setViewerOpen] = useState(false);
 
-  const chipRef = useRef<HTMLDivElement>(null);
+  // Escape unwinds one layer at a time: the viewer first, then the panel.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (viewerOpen) setViewerOpen(false);
+        else onClose();
+        return;
+      }
+      if (shots.length < 2) return;
+      if (e.key === "ArrowLeft") paginate(-1);
+      if (e.key === "ArrowRight") paginate(1);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [viewerOpen, onClose, shots.length, paginate]);
 
   // Orientation, -1..1 per axis with 0 facing you. Starts off-centre so the
-  // settle to centre reads as the chip turning upright as it is lifted; the
-  // same springs then serve the pointer tilt, so lift and hold are one thing.
+  // settle to centre reads as the panel turning upright as it is lifted, then
+  // stays there. It used to keep tracking the pointer and drifting on a sine
+  // afterwards, which suited a 512px chip; at 896px with a dashboard inside,
+  // a 15° skew and a permanent wobble fight the one job this panel has.
   const hx = useMotionValue(morph ? -0.75 : 0);
   const hy = useMotionValue(morph ? -0.3 : 0);
   // Mass gives drag and follow-through — without it the chip tracks the
@@ -93,17 +112,8 @@ function ProjectModal({
   const sx = useSpring(hx, { stiffness: 70, damping: 16, mass: 1.2 });
   const sy = useSpring(hy, { stiffness: 70, damping: 16, mass: 1.2 });
 
-  // A held object is never perfectly still. Combining the drift into the same
-  // transform avoids a second wrapper competing for the same rotation.
-  const t = useTime();
-  const rotateY = useTransform(
-    [sx, t] as const,
-    ([v, ms]: number[]) => v * 15 + Math.sin(ms / 1900) * 1.1
-  );
-  const rotateX = useTransform(
-    [sy, t] as const,
-    ([v, ms]: number[]) => -v * 15 + Math.cos(ms / 2300) * 0.8
-  );
+  const rotateY = useTransform(sx, (v: number) => v * 15);
+  const rotateX = useTransform(sy, (v: number) => -v * 15);
 
   // Highlight tracks both axes, and sharpens as the chip turns edge-on
   const shineX = useTransform(sx, [-1, 1], ["-32%", "32%"]);
@@ -121,20 +131,6 @@ function ProjectModal({
     return () => cancelAnimationFrame(id);
   }, [morph, hx, hy]);
 
-  // Measured against the chip's own centre, not the viewport. Mapping over the
-  // whole window made a pointer in a far corner swing the chip as hard as one
-  // right beside it, which is why it felt detached from the cursor.
-  const onOverlayMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!morph) return;
-    const el = chipRef.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    const reach = Math.max(r.width, r.height) * 1.6;
-    const clamp = (v: number) => Math.max(-1, Math.min(1, v));
-    hx.set(clamp((e.clientX - (r.left + r.width / 2)) / reach));
-    hy.set(clamp((e.clientY - (r.top + r.height / 2)) / reach));
-  };
-
   // Outer layer owns the journey only — position and size. Orientation lives on
   // the inner layer, because a mouse-driven tilt needs style={{ rotateX }} and
   // that collides with an animate={{ rotateX }} on the same element.
@@ -151,6 +147,7 @@ function ProjectModal({
       };
 
   return (
+    <>
     <motion.div
       key="modal-overlay"
       initial={{ opacity: 0 }}
@@ -163,14 +160,12 @@ function ProjectModal({
         backdropFilter: "blur(2px)",
       }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-      onMouseMove={onOverlayMove}
     >
-      <motion.div {...panelOuter} className="relative w-full max-w-lg">
+      <motion.div {...panelOuter} className="relative w-full max-w-4xl">
       {/* The chip itself. Clip and overflow live here, not on the outer layer:
           on the outer, a tilted chip would have its corners eaten by the clip
           and the stepped silhouette would deform. */}
       <motion.div
-        ref={chipRef}
         className="relative w-full overflow-hidden bg-[#0a0a0a] flex flex-col"
         style={{
           // Bounded so a long dossier scrolls inside the chip rather than
@@ -187,7 +182,16 @@ function ProjectModal({
         {/* Image */}
         <div className="relative aspect-video overflow-hidden bg-[#111111] flex-shrink-0">
           {shots.length > 0 ? (
-            <ProjectGallery images={shots} alt={project.title} />
+            <ProjectGallery
+              images={shots}
+              alt={project.title}
+              index={index}
+              direction={direction}
+              paginate={paginate}
+              goTo={goTo}
+              onExpand={() => setViewerOpen(true)}
+              expandLabel={tr.projects.expand}
+            />
           ) : (
             <ProjectGlyph
               code={project.code}
@@ -195,13 +199,9 @@ function ProjectModal({
               seed={project.title}
             />
           )}
-          {/* Neon tint */}
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 pointer-events-none"
-            style={{ background: "linear-gradient(135deg, rgba(168,255,0,0.06) 0%, transparent 60%)" }}
-          />
-          <GrainEffect />
+          {/* No grain, no neon wash and no scanlines over a screenshot: the
+              panel's job here is to show the work, and the CRT treatment was
+              making dashboards unreadable. The schematic keeps its own. */}
           {/* HUD corners */}
           {["top-3 left-3", "top-3 right-3", "bottom-3 left-3", "bottom-3 right-3"].map((pos, idx) => (
             <span
@@ -261,22 +261,19 @@ function ProjectModal({
             </p>
           )}
 
-          <p className="font-mono text-sm text-[#888888] leading-loose mb-5">
+          <p className="font-mono text-sm text-[#888888] leading-loose mb-5 max-w-[68ch]">
             {lang === "es" && project.descriptionEs ? project.descriptionEs : project.description}
           </p>
 
           {/* Metrics — the numbers carry more than any adjective would */}
           {project.metrics && project.metrics.length > 0 && (
-            <div className="grid grid-cols-2 gap-px mb-6 bg-[#1e1e1e] border border-[#1e1e1e]">
-              {project.metrics.map((m, i) => (
+            <div className="flex flex-wrap gap-px mb-6 bg-[#1e1e1e] border border-[#1e1e1e]">
+              {project.metrics.map((m) => (
                 <div
                   key={m.value + m.label.en}
-                  // An odd count would otherwise leave a bordered empty cell
-                  className={`bg-[#0a0a0a] px-3 py-3 ${
-                    i === project.metrics!.length - 1 && project.metrics!.length % 2 === 1
-                      ? "col-span-2"
-                      : ""
-                  }`}
+                  // flex-1 over a grid: any number of metrics fills the row
+                  // evenly, with no bordered empty cell left at the end
+                  className="bg-[#0a0a0a] px-3 py-3 flex-1 basis-[45%] sm:basis-40"
                 >
                   <div className="font-mono font-bold text-base text-[#a8ff00] leading-none mb-1.5">
                     {m.value}
@@ -294,7 +291,7 @@ function ProjectModal({
               <p className="font-mono text-[10px] tracking-[0.25em] text-[#555555] mb-3">
                 {tr.projects.overview}
               </p>
-              <p className="font-mono text-xs text-[#888888] leading-loose mb-6">
+              <p className="font-mono text-xs text-[#888888] leading-loose mb-6 max-w-[78ch]">
                 {lang === "es" && project.longDescriptionEs
                   ? project.longDescriptionEs
                   : project.longDescription}
@@ -307,7 +304,7 @@ function ProjectModal({
               <p className="font-mono text-[10px] tracking-[0.25em] text-[#555555] mb-3">
                 {tr.projects.keyWork}
               </p>
-              <ul className="space-y-3 mb-6">
+              <ul className="space-y-3 mb-6 max-w-[78ch]">
                 {project.highlights.map((h) => (
                   <li key={h.en} className="flex gap-3">
                     <span
@@ -367,6 +364,21 @@ function ProjectModal({
       </motion.div>
       </motion.div>
     </motion.div>
+
+    <AnimatePresence>
+      {viewerOpen && shots.length > 0 && (
+        <ProjectImageViewer
+          images={shots}
+          index={index}
+          direction={direction}
+          paginate={paginate}
+          goTo={goTo}
+          onClose={() => setViewerOpen(false)}
+          title={project.title}
+        />
+      )}
+    </AnimatePresence>
+    </>
   );
 }
 

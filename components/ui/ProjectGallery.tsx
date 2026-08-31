@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useRef } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
@@ -11,41 +11,38 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
  * state, the mobile layout — so the panel pages through them by swipe, arrow
  * button or keyboard, rather than picking one and hoping it carries the whole
  * story. With a single image it renders as a plain still with no chrome.
+ *
+ * Paging state is owned above (useGalleryPaging) so this and the full-screen
+ * viewer stay on the same frame.
  */
 
 const SWIPE_DISTANCE = 60;
 const SWIPE_VELOCITY = 400;
+/** Past this, a pointer-up is the end of a drag and not a click to expand. */
+const DRAG_SLOP = 6;
 
 export default function ProjectGallery({
   images,
   alt,
+  index,
+  direction,
+  paginate,
+  goTo,
+  onExpand,
+  expandLabel,
 }: {
   images: string[];
   alt: string;
+  index: number;
+  direction: number;
+  paginate: (step: number) => void;
+  goTo: (i: number) => void;
+  onExpand: () => void;
+  expandLabel: string;
 }) {
-  const [[index, direction], setPage] = useState<[number, number]>([0, 0]);
   const prefersReducedMotion = useReducedMotion();
   const count = images.length;
-
-  const paginate = useCallback(
-    (step: number) => {
-      if (count < 2) return;
-      setPage(([i]) => [(i + step + count) % count, step]);
-    },
-    [count],
-  );
-
-  // The gallery only exists while the panel is open, so a window listener here
-  // is already scoped to it.
-  useEffect(() => {
-    if (count < 2) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "ArrowLeft") paginate(-1);
-      if (e.key === "ArrowRight") paginate(1);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [count, paginate]);
+  const dragged = useRef(false);
 
   const slide = prefersReducedMotion
     ? {
@@ -73,16 +70,30 @@ export default function ProjectGallery({
             x: { type: "spring", stiffness: 260, damping: 32 },
             opacity: { duration: 0.2 },
           }}
-          className="absolute inset-0"
+          className="absolute inset-0 cursor-zoom-in"
           drag={count > 1 && !prefersReducedMotion ? "x" : false}
           dragConstraints={{ left: 0, right: 0 }}
           dragElastic={0.16}
+          onDragStart={() => {
+            dragged.current = true;
+          }}
           onDragEnd={(_, info) => {
             if (info.offset.x < -SWIPE_DISTANCE || info.velocity.x < -SWIPE_VELOCITY) {
               paginate(1);
             } else if (info.offset.x > SWIPE_DISTANCE || info.velocity.x > SWIPE_VELOCITY) {
               paginate(-1);
             }
+            // Cleared on the next tick so the click that follows a drag is the
+            // one this swallows, not the one after it
+            setTimeout(() => {
+              dragged.current = false;
+            }, 0);
+          }}
+          onClick={() => {
+            if (!dragged.current) onExpand();
+          }}
+          onPointerDown={(e) => {
+            if (Math.abs(e.movementX) > DRAG_SLOP) dragged.current = true;
           }}
         >
           <Image
@@ -92,11 +103,21 @@ export default function ProjectGallery({
             priority={index === 0}
             draggable={false}
             className="object-cover select-none"
-            style={{ filter: "grayscale(0.2) contrast(1.05)" }}
-            sizes="(max-width: 768px) 100vw, 512px"
+            sizes="(max-width: 896px) 100vw, 896px"
           />
         </motion.div>
       </AnimatePresence>
+
+      {/* Expand affordance — the whole frame opens the viewer, but a target
+          that says so beats relying on the cursor alone */}
+      <button
+        type="button"
+        onClick={onExpand}
+        className="absolute bottom-3 right-3 z-20 flex items-center gap-1.5 px-2.5 py-1.5 border border-[#1e1e1e] bg-[#0a0a0a]/80 font-mono text-[9px] tracking-[0.18em] text-[#888888] hover:border-[#a8ff00] hover:text-[#a8ff00] hover:bg-[#0a0a0a]/95 transition-colors duration-200 cursor-pointer"
+      >
+        <span aria-hidden="true">⤢</span>
+        {expandLabel}
+      </button>
 
       {count > 1 && (
         <>
@@ -142,10 +163,10 @@ export default function ProjectGallery({
               <button
                 key={src}
                 type="button"
-                onClick={() => setPage([i, i > index ? 1 : -1])}
+                onClick={() => goTo(i)}
                 aria-label={`Go to image ${i + 1}`}
                 aria-current={i === index}
-                className="h-3 flex items-center cursor-pointer group/tick"
+                className="h-3 flex items-center cursor-pointer"
               >
                 <span
                   className="block transition-all duration-200"
