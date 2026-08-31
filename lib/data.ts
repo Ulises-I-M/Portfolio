@@ -178,6 +178,51 @@ export type Project = {
 
 export const projects: Project[] = [
   {
+    title: "Senzary.com",
+    code: "SNZ",
+    client: "Senzary · corporate site",
+    url: "https://senzary.com/",
+    glyph: "grid",
+    category: "web",
+    featured: true,
+    description:
+      "Corporate site and storefront for Senzary's industrial IoT platform: bilingual, eight solution verticals, sensor catalogue and Stripe checkout.",
+    descriptionEs:
+      "Sitio corporativo y tienda de la plataforma IoT industrial de Senzary: bilingüe, ocho verticales de solución, catálogo de sensores y checkout con Stripe.",
+    longDescription:
+      "The public face of the platform I build behind the scenes. Two ways in — pick your vertical, or pick the problem you arrived with — over a portfolio of eight solutions, each with its own page. Multi-level navigation across solutions, industries, platform, sensors, networks and a store, in English and Spanish, with a sensor catalogue that takes payment rather than routing every buyer to a sales call.",
+    longDescriptionEs:
+      "La cara pública de la plataforma que construyo del otro lado. Dos formas de entrar — elegir tu vertical, o elegir el problema con el que llegaste — sobre un portafolio de ocho soluciones, cada una con su propia página. Navegación multinivel entre soluciones, industrias, plataforma, sensores, redes y tienda, en inglés y español, con un catálogo de sensores que cobra en vez de derivar a cada comprador a una llamada de ventas.",
+    metrics: [
+      { value: "8", label: { en: "SOLUTION VERTICALS", es: "VERTICALES DE SOLUCIÓN" } },
+      { value: "7", label: { en: "TOP-LEVEL SECTIONS", es: "SECCIONES PRINCIPALES" } },
+      { value: "2", label: { en: "LANGUAGES · EN / ES", es: "IDIOMAS · EN / ES" } },
+    ],
+    highlights: [
+      {
+        en: "Two entry paths off the hero — \"select your vertical\" for a visitor who knows their industry, \"pick your problem\" for one who only knows what is going wrong. Industrial buyers arrive as both, and a single funnel loses one of them.",
+        es: "Dos caminos de entrada desde el hero — \"elegí tu vertical\" para quien conoce su industria, \"elegí tu problema\" para quien solo sabe qué se le está rompiendo. El comprador industrial llega de las dos formas, y un embudo único pierde a uno de los dos.",
+      },
+      {
+        en: "Eight solution verticals — RotaryIQ, WorkerIQ, AssetIQ, AirportIQ, DustIQ, CrisisIQ, SmartCity and Campus360 — each with its own page, tied back to a portfolio map that shows all three core problems resolving onto one platform.",
+        es: "Ocho verticales de solución — RotaryIQ, WorkerIQ, AssetIQ, AirportIQ, DustIQ, CrisisIQ, SmartCity y Campus360 — cada una con su página, atadas a un mapa de portafolio que muestra los tres problemas centrales resolviéndose sobre una sola plataforma.",
+      },
+      {
+        en: "Storefront with cart and Stripe checkout alongside the marketing site, so a sensor order does not have to become a sales conversation.",
+        es: "Tienda con carrito y checkout de Stripe conviviendo con el sitio institucional, para que un pedido de sensores no tenga que convertirse en una conversación de ventas.",
+      },
+      {
+        en: "Full EN/ES localisation across every section, for a company selling into Latin America and the US at the same time.",
+        es: "Localización EN/ES completa en todas las secciones, para una empresa que vende a Latinoamérica y EE.UU. en simultáneo.",
+      },
+      {
+        en: "Built in the Senzary brand palette — magenta on near-black — the same visual language as the product dashboards, so the site and the platform read as one company rather than two vendors.",
+        es: "Construido en la paleta de marca de Senzary — magenta sobre casi negro — el mismo lenguaje visual que los dashboards del producto, para que el sitio y la plataforma se lean como una sola empresa y no como dos proveedores.",
+      },
+    ],
+    tags: ["Next.js", "React", "Tailwind CSS", "Stripe", "i18n", "Vercel"],
+  },
+  {
     title: "IoTLogIQ",
     featured: true,
     code: "ILQ",
