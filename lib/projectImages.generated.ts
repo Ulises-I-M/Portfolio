@@ -17,6 +17,27 @@ export const projectImages: Record<string, string[]> = {
   "energym": [
     "/images/projects/energym/01.jpg",
   ],
+  "iotarg": [
+    "/images/projects/iotarg/01.png",
+    "/images/projects/iotarg/02.png",
+    "/images/projects/iotarg/03.png",
+    "/images/projects/iotarg/04.png",
+    "/images/projects/iotarg/05.png",
+    "/images/projects/iotarg/06.png",
+    "/images/projects/iotarg/07.png",
+    "/images/projects/iotarg/08.png",
+    "/images/projects/iotarg/09.png",
+    "/images/projects/iotarg/10.png",
+  ],
+  "iotlogiq": [
+    "/images/projects/iotlogiq/01.png",
+    "/images/projects/iotlogiq/02.png",
+    "/images/projects/iotlogiq/03.png",
+    "/images/projects/iotlogiq/04.png",
+    "/images/projects/iotlogiq/05.png",
+    "/images/projects/iotlogiq/06.png",
+    "/images/projects/iotlogiq/07.png",
+  ],
   "nandina-smart-home": [
     "/images/projects/nandina-smart-home/01.jpg",
   ],
@@ -28,10 +49,24 @@ export const projectImages: Record<string, string[]> = {
     "/images/projects/pumpiq/05.png",
     "/images/projects/pumpiq/06.png",
   ],
+  "senzary-com": [
+    "/images/projects/senzary-com/01.png",
+    "/images/projects/senzary-com/02.png",
+    "/images/projects/senzary-com/03.png",
+    "/images/projects/senzary-com/04.png",
+    "/images/projects/senzary-com/05.png",
+  ],
   "trashcans": [
     "/images/projects/trashcans/01.png",
     "/images/projects/trashcans/02.png",
     "/images/projects/trashcans/03.png",
     "/images/projects/trashcans/04.png",
+  ],
+  "workeriq": [
+    "/images/projects/workeriq/01.png",
+    "/images/projects/workeriq/02.png",
+    "/images/projects/workeriq/03.png",
+    "/images/projects/workeriq/04.png",
+    "/images/projects/workeriq/05.png",
   ],
 };
