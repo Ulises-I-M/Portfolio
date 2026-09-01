@@ -115,13 +115,10 @@ function ProjectModal({
   const rotateY = useTransform(sx, (v: number) => v * 15);
   const rotateX = useTransform(sy, (v: number) => -v * 15);
 
-  // Highlight tracks both axes, and sharpens as the chip turns edge-on
-  const shineX = useTransform(sx, [-1, 1], ["-32%", "32%"]);
-  const shineY = useTransform(sy, [-1, 1], ["-14%", "14%"]);
-  const shineOpacity = useTransform(
-    [sx, sy] as const,
-    ([a, b]: number[]) => 0.35 + Math.min(1, Math.hypot(a, b)) * 0.65
-  );
+  // A specular sweep used to ride these springs. It read as light moving over a
+  // held object only while the panel kept tilting; once the panel settles flat
+  // the highlight settles too, leaving a fixed diagonal band across the panel
+  // and over the screenshot underneath it.
 
   useEffect(() => {
     if (!morph) return;
@@ -345,22 +342,6 @@ function ProjectModal({
         {/* Same frame it wears in the tray — without it, picking the chip up
             turns it into a different object. */}
         <HUDCardFrame hovered />
-
-        {/* Specular sweep — what separates a real object from a rotated div */}
-        {morph && (
-          <motion.div
-            aria-hidden="true"
-            className="absolute inset-y-0 -inset-x-1/4 pointer-events-none"
-            style={{
-              x: shineX,
-              y: shineY,
-              opacity: shineOpacity,
-              background:
-                "linear-gradient(105deg, transparent 38%, rgba(168,255,0,0.07) 47%, rgba(255,255,255,0.10) 50%, rgba(168,255,0,0.07) 53%, transparent 62%)",
-              zIndex: 30,
-            }}
-          />
-        )}
       </motion.div>
       </motion.div>
     </motion.div>
