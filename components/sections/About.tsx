@@ -148,6 +148,8 @@ export default function About() {
                           aria-hidden="true"
                           width={20}
                           height={20}
+                          loading="lazy"
+                          decoding="async"
                           className="opacity-40 group-hover:opacity-100 transition-opacity duration-200"
                           style={{
                             filter:

@@ -145,7 +145,7 @@ function CircuitPanel({ side }: { side: "left" | "right" }) {
           fill="none" stroke="rgba(168,255,0,0.4)" strokeWidth="1" />
 
         {/* "00" counter */}
-        <text x={ax} y="150" textAnchor={anchor} fontFamily="'Space Mono', monospace"
+        <text x={ax} y="150" textAnchor={anchor} fontFamily="var(--font-space-mono), monospace"
           fontSize="80" fill="#a8ff00" filter={`url(#gl-${id})`}>
           00
         </text>

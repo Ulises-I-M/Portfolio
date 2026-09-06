@@ -3,6 +3,8 @@
 import { useEffect, useRef } from "react";
 import { useReducedMotion } from "framer-motion";
 import { useLowPower } from "@/hooks/useLowPower";
+import { useInViewport } from "@/hooks/useInViewport";
+import { monoFamily } from "@/lib/canvasFont";
 
 // ─── Camera ───────────────────────────────────────────────────────────────────
 const FOV       = 560;
@@ -343,7 +345,7 @@ const TRK_LEAD_MARGIN = 26;  // px from the viewport edge the leader line ends
  *  measurement as the Hero's own LAT/LNG block does. Decorative strings stay
  *  hard-coded English here, which is the established convention — only
  *  user-facing copy goes through i18n. */
-const TXT_FONT  = '9px "Space Mono", ui-monospace, monospace';
+const TXT_SIZE  = 9;  // family resolved at runtime — canvas cannot read var()
 const TXT_TRACK = "1.6px";
 const TXT_A     = 0.62;
 
@@ -485,7 +487,6 @@ const FACE_CUTOFF = 0.030;
 
 // ─── Depth of field ───────────────────────────────────────────────────────────
 const DOF_BLUR      = 4;     // px at the reduced scale
-const DOF_STRIPS    = 10;    // per band; enough that the ramp reads continuous
 const DOF_SHARP_TOP = 0.40;  // fraction of height where the sharp strip begins
 const DOF_SHARP_BOT = 0.74;  // and where it ends
 const DOF_A_TOP     = 0.90;  // held below 1 so the far city survives the blur
@@ -718,6 +719,12 @@ export default function CityCanvas() {
   const canvasRef           = useRef<HTMLCanvasElement>(null);
   const prefersReducedMotion = useReducedMotion();
   const lowPower             = useLowPower();
+  // Read through a ref rather than as an effect dependency: rebuilding the
+  // effect on every scroll past the Hero would re-run buildCity and hand back a
+  // different city each time.
+  const inView              = useInViewport(canvasRef);
+  const inViewRef           = useRef(inView);
+  inViewRef.current         = inView;
 
   useEffect(() => {
     if (prefersReducedMotion) return;
@@ -735,12 +742,18 @@ export default function CityCanvas() {
     const smallCtx = small.getContext("2d");
     const blurBuf  = document.createElement("canvas");
     const blurCtx  = blurBuf.getContext("2d");
+    // The blur gets masked before it is composited, and destination-in
+    // consumes the surface it runs on, so the mask cannot be applied to
+    // blurBuf itself without destroying the blur for the next frame.
+    const maskBuf  = document.createElement("canvas");
+    const maskCtx  = maskBuf.getContext("2d");
     // A strip has to be lifted out before it can be put back somewhere else:
     // drawing the canvas onto itself only ever adds a second copy, and on a
     // transparent canvas a second copy of near-transparent pixels is nothing.
     const tearBuf  = document.createElement("canvas");
     const tearCtx  = tearBuf.getContext("2d");
-    if (!smallCtx || !blurCtx || !tearCtx) return;
+    let dofRamp: CanvasGradient | null = null;
+    if (!smallCtx || !blurCtx || !tearCtx || !maskCtx) return;
 
     // ── Grid dimensions based on device capability ──────────────────────────
     const activeRows = lowPower ? LP_ROWS : ROWS;
@@ -817,6 +830,16 @@ export default function CityCanvas() {
       small.height   = Math.max(1, Math.round(canvas.height / BLUR_DIV));
       blurBuf.width  = small.width;
       blurBuf.height = small.height;
+      maskBuf.width  = small.width;
+      maskBuf.height = small.height;
+      // Depth-of-field ramp: opaque at the horizon, gone across the sharp band,
+      // opaque again underfoot. Built here rather than per frame — it only
+      // depends on the canvas height.
+      dofRamp = maskCtx.createLinearGradient(0, 0, 0, maskBuf.height);
+      dofRamp.addColorStop(0,               `rgba(255,255,255,${DOF_A_TOP})`);
+      dofRamp.addColorStop(DOF_SHARP_TOP,   "rgba(255,255,255,0)");
+      dofRamp.addColorStop(DOF_SHARP_BOT,   "rgba(255,255,255,0)");
+      dofRamp.addColorStop(1,               "rgba(255,255,255,1)");
       tearBuf.width  = canvas.width;
       tearBuf.height = GLITCH_TEAR_H;
       city = buildCity(mkRng(canvas.width * 7 + canvas.height * 13), activeRows, activeCols);
@@ -880,6 +903,7 @@ export default function CityCanvas() {
      *  does not support it the assignment is ignored and the text still reads,
      *  just tighter, which is an acceptable way to lose. */
     const ctxLS = ctx as CanvasRenderingContext2D & { letterSpacing?: string };
+    const TXT_FONT = `${TXT_SIZE}px ${monoFamily()}`;
     const label = (str: string, x: number, y: number, a: number, rgb: string = DATA_RGB) => {
       if (a < 0.02) return;
       ctx.font = TXT_FONT;
@@ -1587,6 +1611,16 @@ export default function CityCanvas() {
         rafId = requestAnimationFrame(draw);
         return;
       }
+      // Off-screen: rAF is only throttled for backgrounded tabs, so without
+      // this the city keeps drawing at full cost behind every section below it.
+      // The clock is carried forward but `offset` is not, so the scene freezes
+      // where it was and resumes from there rather than jumping.
+      if (!inViewRef.current) {
+        prevT = t;
+        lastT = t;
+        rafId = requestAnimationFrame(draw);
+        return;
+      }
       // Clamp the step: a backgrounded tab resumes with a gap of seconds, and
       // an unclamped catch-up would teleport the city forward.
       const dt = prevT === 0 ? 16.7 : Math.min(64, t - prevT);
@@ -2152,11 +2186,11 @@ export default function CityCanvas() {
       // top and bottom bands. Blurring the far horizon and the ground underfoot
       // is what makes this read as a projection rather than a place.
       //
-      // The bands are strips of rising alpha rather than a gradient mask.
-      // Masking would need a second full-size canvas and a destination-in pass;
-      // what lands here is already blurred, so the stepping between strips does
-      // not survive to be seen.
-      if (!lowPower) {
+      // The ramp is a gradient mask applied once at the reduced scale, then
+      // composited in a single pass. It used to be twenty alpha-stepped strips
+      // blitted at full size; those twenty blits were the most expensive thing
+      // in the frame, and the mask is both cheaper and free of the stepping.
+      if (!lowPower && dofRamp) {
         smallCtx.clearRect(0, 0, small.width, small.height);
         smallCtx.drawImage(canvas, 0, 0, small.width, small.height);
 
@@ -2165,26 +2199,17 @@ export default function CityCanvas() {
         blurCtx.drawImage(small, 0, 0);
         blurCtx.filter = "none";
 
-        const sy = blurBuf.height / height;   // full-res y -> buffer y
+        // Punch the ramp into a copy of the blur: destination-in keeps the
+        // blurred pixels only where the ramp is opaque.
+        maskCtx.globalCompositeOperation = "source-over";
+        maskCtx.clearRect(0, 0, maskBuf.width, maskBuf.height);
+        maskCtx.drawImage(blurBuf, 0, 0);
+        maskCtx.globalCompositeOperation = "destination-in";
+        maskCtx.fillStyle = dofRamp;
+        maskCtx.fillRect(0, 0, maskBuf.width, maskBuf.height);
+        maskCtx.globalCompositeOperation = "source-over";
 
-        const band = (from: number, to: number, aFrom: number, aTo: number) => {
-          const y0 = height * from;
-          const h  = (height * to - y0) / DOF_STRIPS;
-          for (let i = 0; i < DOF_STRIPS; i++) {
-            const t = (i + 0.5) / DOF_STRIPS;
-            ctx.globalAlpha = aFrom + (aTo - aFrom) * t;
-            const dy = y0 + i * h;
-            ctx.drawImage(
-              blurBuf,
-              0, dy * sy, blurBuf.width, h * sy,
-              0, dy,      width,        h
-            );
-          }
-          ctx.globalAlpha = 1;
-        };
-
-        band(0, DOF_SHARP_TOP, DOF_A_TOP, 0);   // far: hardest at the horizon
-        band(DOF_SHARP_BOT, 1, 0, 1);           // near: hardest underfoot
+        ctx.drawImage(maskBuf, 0, 0, maskBuf.width, maskBuf.height, 0, 0, width, height);
       }
 
       rafId = requestAnimationFrame(draw);

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Space_Mono } from "next/font/google";
 import "./globals.css";
 import { LangProvider } from "@/context/LangContext";
 import GrainOverlay from "@/components/ui/GrainOverlay";
@@ -10,6 +11,19 @@ import BootWrapper from "@/components/ui/BootWrapper";
 import Terminal from "@/components/ui/Terminal";
 import DataTicker from "@/components/ui/DataTicker";
 import Navbar from "@/components/layout/Navbar";
+
+// Self-hosted at build time. As a <link> to fonts.googleapis.com this was a
+// render-blocking stylesheet on a third-party origin: the browser could not
+// paint until that round-trip returned. next/font emits the @font-face rules
+// inline and serves the files from this origin, so nothing blocks on Google.
+const spaceMono = Space_Mono({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  style: ["normal", "italic"],
+  display: "swap",
+  variable: "--font-space-mono",
+  fallback: ["ui-monospace", "monospace"],
+});
 
 export const metadata: Metadata = {
   title: "Ulises Miranda — Frontend Developer",
@@ -41,14 +55,8 @@ export default function RootLayout({
     // The boot-detect script below stamps data-booted on <html> before React
     // hydrates, so the client element carries an attribute the server HTML has
     // not. suppressHydrationWarning covers exactly that one-level difference.
-    <html lang="es" className="h-full" suppressHydrationWarning>
+    <html lang="es" className={`h-full ${spaceMono.variable}`} suppressHydrationWarning>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap"
-          rel="stylesheet"
-        />
         {/* Mark returning visitors before React hydrates — eliminates boot flash.
             Raw <script> in <head> executes synchronously before <body> parses,
             which is the correct App Router pattern (next/script beforeInteractive
@@ -62,7 +70,7 @@ export default function RootLayout({
       </head>
       <body
         className="min-h-full bg-[#0a0a0a] text-[#efefef] antialiased"
-        style={{ fontFamily: "'Space Mono', ui-monospace, monospace" }}
+        style={{ fontFamily: "var(--font-space-mono), ui-monospace, monospace" }}
       >
         <LangProvider>
           {/* Global overlays — always present, outside boot gate */}

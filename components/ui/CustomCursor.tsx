@@ -16,14 +16,31 @@ export default function CustomCursor() {
       'a, button, [role="button"], label, select, textarea, input, [tabindex]:not([tabindex="-1"])';
 
     // ── Move ───────────────────────────────────────────────────────────────────
-    const move = (e: MouseEvent) => {
-      const { clientX: x, clientY: y } = e;
+    // A mouse can report well above display refresh rate, and each report used
+    // to write three transforms straight away — several style invalidations per
+    // frame for a cursor that can only be painted once. The position is stored
+    // and flushed once per frame instead.
+    let mx = 0, my = 0, down = false, moveRaf = 0;
+
+    const flush = () => {
+      moveRaf = 0;
+      const scale = down ? " scale(2)" : "";
       if (ringRef.current)
-        ringRef.current.style.transform = `translate(${x - 12}px, ${y - 12}px)`;
+        ringRef.current.style.transform = `translate(${mx - 12}px, ${my - 12}px)`;
       if (dotRef.current)
-        dotRef.current.style.transform = `translate(${x - 2}px, ${y - 2}px)`;
+        dotRef.current.style.transform = `translate(${mx - 2}px, ${my - 2}px)${scale}`;
       if (hoverBoxRef.current)
-        hoverBoxRef.current.style.transform = `translate(${x - 16}px, ${y - 16}px)`;
+        hoverBoxRef.current.style.transform = `translate(${mx - 16}px, ${my - 16}px)`;
+    };
+
+    const schedule = () => {
+      if (moveRaf === 0) moveRaf = requestAnimationFrame(flush);
+    };
+
+    const move = (e: MouseEvent) => {
+      mx = e.clientX;
+      my = e.clientY;
+      schedule();
     };
 
     // ── Hover state ────────────────────────────────────────────────────────────
@@ -56,13 +73,11 @@ export default function CustomCursor() {
     };
 
     // ── Mousedown flash — briefly contracts dot ────────────────────────────────
-    const onDown = () => {
-      if (dotRef.current) dotRef.current.style.transform += " scale(2)";
-    };
-    const onUp = (e: MouseEvent) => {
-      if (dotRef.current)
-        dotRef.current.style.transform = `translate(${e.clientX - 2}px, ${e.clientY - 2}px)`;
-    };
+    // Held as state and re-applied by flush(). Appending " scale(2)" to the
+    // existing transform, as this did before, left one more scale on the string
+    // after every press.
+    const onDown = () => { down = true;  schedule(); };
+    const onUp   = () => { down = false; schedule(); };
 
     window.addEventListener("mousemove", move);
     window.addEventListener("mouseover", onOver);
@@ -71,6 +86,7 @@ export default function CustomCursor() {
     window.addEventListener("mouseup", onUp);
 
     return () => {
+      if (moveRaf) cancelAnimationFrame(moveRaf);
       window.removeEventListener("mousemove", move);
       window.removeEventListener("mouseover", onOver);
       window.removeEventListener("click", onClick);

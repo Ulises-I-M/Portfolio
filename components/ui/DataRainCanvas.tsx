@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { monoFamily } from "@/lib/canvasFont";
 import { useReducedMotion } from "framer-motion";
 
 // Glyphs pool: hex digits + binary fragments + circuit symbols
@@ -60,7 +61,7 @@ export default function DataRainCanvas() {
       ctx.fillStyle = "rgba(10,10,10,0.18)";
       ctx.fillRect(0, 0, width, height);
 
-      ctx.font = `${FONT_SIZE}px "Space Mono", monospace`;
+      ctx.font = `${FONT_SIZE}px ${monoFamily()}`;
       ctx.textAlign = "center";
 
       for (const col of columns) {

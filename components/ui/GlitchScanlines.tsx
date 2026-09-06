@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useReducedMotion } from "framer-motion";
+import { useInViewport } from "@/hooks/useInViewport";
 
 interface GlitchBand {
   y: number;        // top y of the band
@@ -15,6 +16,9 @@ interface GlitchBand {
 export default function GlitchScanlines() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const prefersReducedMotion = useReducedMotion();
+  const inView    = useInViewport(canvasRef);
+  const inViewRef = useRef(inView);
+  inViewRef.current = inView;
 
   useEffect(() => {
     if (prefersReducedMotion) return;
@@ -49,6 +53,13 @@ export default function GlitchScanlines() {
     };
 
     const draw = () => {
+      // Off-screen the scanlines are drawing a full-width pass per frame that
+      // nobody can see; rAF alone does not stop that in a foreground tab.
+      if (!inViewRef.current) {
+        rafId = requestAnimationFrame(draw);
+        return;
+      }
+
       const { width, height } = canvas;
       ctx.clearRect(0, 0, width, height);
 
