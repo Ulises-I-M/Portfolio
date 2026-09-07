@@ -6,6 +6,23 @@ import { useLowPower } from "@/hooks/useLowPower";
 import { useInViewport } from "@/hooks/useInViewport";
 import { monoFamily } from "@/lib/canvasFont";
 
+// ─── Adaptive resolution ──────────────────────────────────────────────────────
+// Every fill and stroke costs its area, so the size of the backing buffer is
+// the largest single lever on what a frame costs. The scene starts at display
+// resolution and steps down only on a machine that is measurably not keeping
+// up, so hardware that can afford the full-resolution city keeps it.
+//
+// Downwards only: a machine that recovers after a step would otherwise sit
+// there switching resolution back and forth around the threshold.
+const SCALE_STEPS = [1, 0.75, 0.6];
+/** Frames to let settle after start or a step before sampling again — the
+ *  first frames after either are unrepresentative (JIT, buffer reallocation). */
+const ADAPT_WARMUP = 40;
+/** Frames averaged per decision. */
+const ADAPT_SAMPLE = 45;
+/** Step down when the average frame takes this much longer than the target. */
+const ADAPT_SLACK  = 1.3;
+
 // ─── Camera ───────────────────────────────────────────────────────────────────
 const FOV       = 560;
 const CAM_Z     = 260;
@@ -823,9 +840,18 @@ export default function CityCanvas() {
     let craft: { x: number; z: number; y: number; vx: number; len: number }[] = [];
     let motes: { x: number; y: number; z: number; vy: number; ph: number }[] = [];
 
-    const rebuild = () => {
-      canvas.width  = canvas.offsetWidth;
-      canvas.height = canvas.offsetHeight;
+    // ── Adaptive resolution state ────────────────────────────────────────────
+    let scaleIdx    = 0;
+    let renderScale = SCALE_STEPS[0];
+    let adaptWarm   = ADAPT_WARMUP;
+    let adaptN      = 0;
+    let adaptSum    = 0;
+
+    /** Buffer sizes only — safe to re-run when the resolution steps down,
+     *  because it leaves the city itself alone. */
+    const resizeBuffers = () => {
+      canvas.width  = Math.max(1, Math.round(canvas.offsetWidth  * renderScale));
+      canvas.height = Math.max(1, Math.round(canvas.offsetHeight * renderScale));
       small.width    = Math.max(1, Math.round(canvas.width  / BLUR_DIV));
       small.height   = Math.max(1, Math.round(canvas.height / BLUR_DIV));
       blurBuf.width  = small.width;
@@ -842,13 +868,21 @@ export default function CityCanvas() {
       dofRamp.addColorStop(1,               "rgba(255,255,255,1)");
       tearBuf.width  = canvas.width;
       tearBuf.height = GLITCH_TEAR_H;
-      city = buildCity(mkRng(canvas.width * 7 + canvas.height * 13), activeRows, activeCols);
+    };
+
+    /** The city and everything flying through it. Seeded from the CSS box
+     *  rather than the buffer: the layout is what the visitor sees, and seeding
+     *  from the buffer would rebuild a different city on every resolution step. */
+    const rebuildWorld = () => {
+      const cssW = canvas.offsetWidth;
+      const cssH = canvas.offsetHeight;
+      city = buildCity(mkRng(cssW * 7 + cssH * 13), activeRows, activeCols);
       visB = new Array(city.length);
       visZ = new Float64Array(city.length);
       visN = 0;
 
       // Air traffic — a small fixed pool on fixed lanes, wrapping at the edges
-      const cr = mkRng(canvas.width * 31 + 17);
+      const cr = mkRng(cssW * 31 + 17);
       const span = ((activeCols - 1) * CELL) / 2 + CELL * 3;
       craft = Array.from({ length: lowPower ? 0 : CRAFT_N }, () => {
         const dir = cr() > 0.5 ? 1 : -1;
@@ -863,7 +897,7 @@ export default function CityCanvas() {
 
       // Motes — the same wrapping trick as the buildings, so they hold their
       // place in the city rather than drifting across a flat field
-      const pr = mkRng(canvas.width * 53 + 91);
+      const pr = mkRng(cssW * 53 + 91);
       motes = Array.from({ length: lowPower ? 0 : PARTICLE_N }, () => ({
         x:  (pr() * 2 - 1) * (citySpan / 2),
         y:  8 + pr() * PART_TOP,
@@ -1618,6 +1652,9 @@ export default function CityCanvas() {
       if (!inViewRef.current) {
         prevT = t;
         lastT = t;
+        adaptWarm = ADAPT_WARMUP;
+        adaptN = 0;
+        adaptSum = 0;
         rafId = requestAnimationFrame(draw);
         return;
       }
@@ -1627,6 +1664,30 @@ export default function CityCanvas() {
       prevT  = t;
       lastT  = t;
       frameT = t;
+
+      // ── Adaptive resolution ───────────────────────────────────────────────
+      // Compared against whatever this device is aiming for: the low-power
+      // path caps at 30fps on purpose, and measuring it against 60 would read
+      // that cap as a machine falling behind and step it down for nothing.
+      if (scaleIdx < SCALE_STEPS.length - 1) {
+        if (adaptWarm > 0) {
+          adaptWarm--;
+        } else {
+          adaptSum += dt;
+          adaptN++;
+          if (adaptN >= ADAPT_SAMPLE) {
+            const target = fpsInterval > 0 ? fpsInterval : 1000 / 60;
+            if (adaptSum / adaptN > target * ADAPT_SLACK) {
+              scaleIdx++;
+              renderScale = SCALE_STEPS[scaleIdx];
+              resizeBuffers();
+              adaptWarm = ADAPT_WARMUP;
+            }
+            adaptN = 0;
+            adaptSum = 0;
+          }
+        }
+      }
 
       // ── Sweep, pulse and instability bookkeeping ────────────────────────
       const sweepPh = (frameT % SWEEP_PERIOD) / SWEEP_RISE;
@@ -2215,9 +2276,10 @@ export default function CityCanvas() {
       rafId = requestAnimationFrame(draw);
     };
 
-    const ro = new ResizeObserver(rebuild);
+    const ro = new ResizeObserver(() => { resizeBuffers(); rebuildWorld(); });
     ro.observe(canvas);
-    rebuild();
+    resizeBuffers();
+    rebuildWorld();
     // Started through rAF rather than called directly, so the first frame
     // carries a real timestamp for t0 to anchor on
     rafId = requestAnimationFrame(draw);
