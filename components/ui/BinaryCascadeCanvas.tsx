@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { monoFamily } from "@/lib/canvasFont";
 import { useReducedMotion } from "framer-motion";
 
 interface Block {
@@ -86,7 +87,7 @@ export default function BinaryCascadeCanvas() {
         }
 
         const LINE_H = 15;
-        ctx.font = '10px "Space Mono", monospace';
+        ctx.font = `10px ${monoFamily()}`;
         ctx.textAlign = "left";
 
         b.lines.forEach((line, i) => {

@@ -141,7 +141,7 @@ export default function DialGauge({
           x={cx}
           y={cy - r * 0.35}
           textAnchor="middle"
-          fontFamily="'Space Mono', monospace"
+          fontFamily="var(--font-space-mono), monospace"
           fontSize={size * 0.14}
           fill={color}
           fontWeight="bold"

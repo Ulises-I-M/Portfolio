@@ -16,7 +16,7 @@ html {
 body {
   background-color: #0a0a0a;
   color: #efefef;
-  font-family: "Space Mono", ui-monospace, monospace;
+  font-family: var(--font-space-mono), ui-monospace, monospace;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
 }
@@ -183,7 +183,7 @@ html.custom-cursor-active * {
   font-size: 9px;
   letter-spacing: 0.15em;
   color: #333333;
-  font-family: "Space Mono", monospace;
+  font-family: var(--font-space-mono), ui-monospace, monospace;
 }
 
 /* ─── Chamfered corners ─────────────────────────────────────────────────────── */
@@ -251,7 +251,7 @@ html.custom-cursor-active * {
 /* ─── Panel frame header ──────────────────────────────────────────────────────
    Used on PanelFrame: label sits on top border like a fieldset legend          */
 .panel-label {
-  font-family: "Space Mono", monospace;
+  font-family: var(--font-space-mono), ui-monospace, monospace;
   font-size: 9px;
   letter-spacing: 0.25em;
   color: rgba(168,255,0,0.5);
