@@ -843,6 +843,14 @@ export default function CityCanvas() {
     // ── Adaptive resolution state ────────────────────────────────────────────
     let scaleIdx    = 0;
     let renderScale = SCALE_STEPS[0];
+    // The scene is drawn in CSS pixels and mapped onto the buffer by a base
+    // transform, so lowering the resolution changes how many pixels the frame
+    // is rasterised into and nothing else. Drawing in buffer pixels instead
+    // would zoom the camera: project() offsets by FOV/d, an absolute pixel
+    // distance, so the same building lands the same number of pixels from a
+    // centre that moved in with the narrower buffer.
+    let cssW = 0;
+    let cssH = 0;
     let adaptWarm   = ADAPT_WARMUP;
     let adaptN      = 0;
     let adaptSum    = 0;
@@ -850,10 +858,15 @@ export default function CityCanvas() {
     /** Buffer sizes only — safe to re-run when the resolution steps down,
      *  because it leaves the city itself alone. */
     const resizeBuffers = () => {
-      canvas.width  = Math.max(1, Math.round(canvas.offsetWidth  * renderScale));
-      canvas.height = Math.max(1, Math.round(canvas.offsetHeight * renderScale));
-      small.width    = Math.max(1, Math.round(canvas.width  / BLUR_DIV));
-      small.height   = Math.max(1, Math.round(canvas.height / BLUR_DIV));
+      cssW = canvas.offsetWidth;
+      cssH = canvas.offsetHeight;
+      canvas.width  = Math.max(1, Math.round(cssW * renderScale));
+      canvas.height = Math.max(1, Math.round(cssH * renderScale));
+      // Divided from the CSS box, not the buffer: a blur radius over a buffer
+      // that shrank with the resolution would soften the depth of field every
+      // time the scene stepped down.
+      small.width    = Math.max(1, Math.round(cssW / BLUR_DIV));
+      small.height   = Math.max(1, Math.round(cssH / BLUR_DIV));
       blurBuf.width  = small.width;
       blurBuf.height = small.height;
       maskBuf.width  = small.width;
@@ -867,15 +880,13 @@ export default function CityCanvas() {
       dofRamp.addColorStop(DOF_SHARP_BOT,   "rgba(255,255,255,0)");
       dofRamp.addColorStop(1,               "rgba(255,255,255,1)");
       tearBuf.width  = canvas.width;
-      tearBuf.height = GLITCH_TEAR_H;
+      tearBuf.height = Math.max(1, Math.ceil(GLITCH_TEAR_H * renderScale));
     };
 
     /** The city and everything flying through it. Seeded from the CSS box
      *  rather than the buffer: the layout is what the visitor sees, and seeding
      *  from the buffer would rebuild a different city on every resolution step. */
     const rebuildWorld = () => {
-      const cssW = canvas.offsetWidth;
-      const cssH = canvas.offsetHeight;
       city = buildCity(mkRng(cssW * 7 + cssH * 13), activeRows, activeCols);
       visB = new Array(city.length);
       visZ = new Float64Array(city.length);
@@ -1731,7 +1742,12 @@ export default function CityCanvas() {
       const judder = glitching && glitchKind === 0 ? glitchShift : 0;
       const dropping = glitching && glitchKind === 2;
 
-      const { width, height } = canvas;
+      // Everything below is in CSS pixels; this is what puts them on the
+      // buffer. Set per frame rather than once, so a step down in resolution
+      // takes effect on the next frame and no unbalanced save/restore can
+      // leave a stale matrix behind.
+      ctx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
+      const width = cssW, height = cssH;
       ctx.clearRect(0, 0, width, height);
 
       offset += SCROLL_SPEED * dt;
@@ -2236,10 +2252,16 @@ export default function CityCanvas() {
       if (glitching && glitchKind === 1) {
         const th = 4 + glitchTearH * (GLITCH_TEAR_H - 4);
         const ty = glitchTearY * (height - th);
-        tearCtx.clearRect(0, 0, width, th);
-        tearCtx.drawImage(canvas, 0, ty, width, th, 0, 0, width, th);
+        // Source and destination rectangles on tearBuf address the backing
+        // store, which the base transform does not touch — those are the one
+        // pair of coordinates here that stay in buffer pixels.
+        const bw = canvas.width;
+        const bth = Math.max(1, Math.round(th * renderScale));
+        const bty = Math.round(ty * renderScale);
+        tearCtx.clearRect(0, 0, bw, bth);
+        tearCtx.drawImage(canvas, 0, bty, bw, bth, 0, 0, bw, bth);
         ctx.clearRect(0, ty, width, th);
-        ctx.drawImage(tearBuf, 0, 0, width, th, glitchTearX, ty, width, th);
+        ctx.drawImage(tearBuf, 0, 0, bw, bth, glitchTearX, ty, width, th);
       }
 
       // ── Depth of field ──────────────────────────────────────────────────
